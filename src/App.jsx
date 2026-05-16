@@ -797,9 +797,39 @@ function AdIllustration({ icon }) {
 
 const AD_DURATION = 15;
 
+// Helper: trigger Monetag multitag ad (zone 239806), fallback to timer
+function triggerMonetagAd(onReturn) {
+  try {
+    // Monetag multitag zone — intentionally triggered by user click
+    if (typeof window !== "undefined" && typeof window.show_9271985 === "function") {
+      window.show_9271985();
+    }
+  } catch (e) {
+    // Monetag unavailable — fallback gracefully
+  }
+  // Reward after a short delay to allow ad to render and user to engage/return
+  // We listen for visibilitychange (user returns from interstitial) or use a minimum delay
+  let rewarded = false;
+  const doReward = () => {
+    if (rewarded) return;
+    rewarded = true;
+    onReturn();
+  };
+  const onVisible = () => {
+    if (document.visibilityState === "visible") {
+      document.removeEventListener("visibilitychange", onVisible);
+      setTimeout(doReward, 400);
+    }
+  };
+  document.addEventListener("visibilitychange", onVisible);
+  // Safety fallback: reward after 12s max even if no visibility event
+  setTimeout(doReward, 12000);
+}
+
 function TVAdPopup({ onClose, onEarnToken }) {
   const adIndex  = useRef(Math.floor(Math.random() * ADS.length)).current;
   const ad       = ADS[adIndex];
+  const [phase, setPhase]       = useState("tuning"); // "tuning" | "watching" | "rewarded"
   const [secondsLeft, setSecondsLeft] = useState(AD_DURATION);
   const [done,      setDone]      = useState(false);
   const [rewarded,  setRewarded]  = useState(false);
@@ -807,20 +837,35 @@ function TVAdPopup({ onClose, onEarnToken }) {
   const timerRef = useRef(null);
 
   useEffect(() => {
-    timerRef.current = setInterval(() => {
-      setSecondsLeft(s => {
-        if (s <= 1) { clearInterval(timerRef.current); setDone(true); return 0; }
-        return s - 1;
+    if (phase !== "tuning") return;
+    // "Tuning in..." for 1.5s, then trigger Monetag + show fallback UI
+    const tuneTimer = setTimeout(() => {
+      setPhase("watching");
+      // Trigger Monetag ad intentionally
+      triggerMonetagAd(() => {
+        // Called when user returns from ad (or after timeout fallback)
+        if (!rewarded) {
+          setDone(true);
+        }
       });
-    }, 1000);
-    return () => clearInterval(timerRef.current);
-  }, []);
+      // Start fallback countdown timer
+      timerRef.current = setInterval(() => {
+        setSecondsLeft(s => {
+          if (s <= 1) { clearInterval(timerRef.current); setDone(true); return 0; }
+          return s - 1;
+        });
+      }, 1000);
+    }, 1500);
+    return () => clearTimeout(tuneTimer);
+  }, [phase]); // eslint-disable-line
+
+  useEffect(() => { return () => clearInterval(timerRef.current); }, []);
 
   const handleClaim = () => {
     if (!done || rewarded) return;
     setRewarded(true); setShowCoin(true); onEarnToken();
   };
-  const progress = ((AD_DURATION - secondsLeft) / AD_DURATION) * 100;
+  const progress = phase === "tuning" ? 0 : ((AD_DURATION - secondsLeft) / AD_DURATION) * 100;
 
   return (
     <>
@@ -844,6 +889,26 @@ function TVAdPopup({ onClose, onEarnToken }) {
             </div>
           </div>
 
+          {phase === "tuning" ? (
+            <div style={{ background:"#3D2510",padding:"48px 24px",display:"flex",flexDirection:"column",
+              alignItems:"center",gap:14,borderBottom:"2.5px solid #6B4226" }}>
+              <svg viewBox="0 0 60 60" width={60} height={60}>
+                <circle cx={30} cy={30} r={28} fill="none" stroke="#F6C94A" strokeWidth={3} strokeDasharray="8,6"
+                  style={{ animation:"spin 1.5s linear infinite",transformOrigin:"30px 30px" }}/>
+                <circle cx={30} cy={30} r={16} fill="none" stroke="#C9A87A" strokeWidth={2} strokeDasharray="4,4"
+                  style={{ animation:"spin 2s linear infinite reverse",transformOrigin:"30px 30px" }}/>
+                <circle cx={30} cy={30} r={5} fill="#F6C94A"/>
+              </svg>
+              <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:20,color:"#F6C94A",
+                lineHeight:1.4,overflow:"visible" }}>
+                tuning in...
+              </p>
+              <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#C9A87A",opacity:0.7,textAlign:"center" }}>
+                loading a cozy channel
+              </p>
+              <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+            </div>
+          ) : (
           <div style={{ background:ad.bg,padding:"28px 24px 22px",display:"flex",flexDirection:"column",
             alignItems:"center",gap:10,borderBottom:"2.5px solid #6B4226" }}>
             <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#6B4226",opacity:0.7,letterSpacing:1 }}>
@@ -857,8 +922,9 @@ function TVAdPopup({ onClose, onEarnToken }) {
               {ad.tagline}
             </p>
           </div>
+          )} {/* end tuning/watching conditional */}
 
-          <div style={{ padding:"18px 24px 22px",display:"flex",flexDirection:"column",gap:14 }}>
+          {phase !== "tuning" && <div style={{ padding:"18px 24px 22px",display:"flex",flexDirection:"column",gap:14 }}>
             <div>
               <div style={{ display:"flex",justifyContent:"space-between",marginBottom:6,alignItems:"center" }}>
                 <span style={{ fontFamily:"var(--font-body)",fontSize:11,color:"#A07850" }}>
@@ -901,7 +967,7 @@ function TVAdPopup({ onClose, onEarnToken }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>}  {/* end phase !== tuning bottom section */}
       </div>
       {showCoin && <FloatingCoin onDone={() => setShowCoin(false)} />}
     </>
@@ -1012,9 +1078,9 @@ function HomeScreenPrompt({ onDone }) {
   if (isStandalone) return null;
 
   return (
-    <div style={{ position:"fixed",inset:0,background:"rgba(61,37,16,0.35)",
-      backdropFilter:"blur(6px)",display:"flex",alignItems:"center",
-      justifyContent:"center",zIndex:1000,padding:"1.5rem" }}>
+    <div style={{ position:"fixed",inset:0,background:"rgba(251,245,232,0.92)",
+      backdropFilter:"blur(8px)",display:"flex",alignItems:"center",
+      justifyContent:"center",zIndex:1100,padding:"1.5rem" }}>
       <div style={{ background:"#FFFDF0",border:"2.5px solid #6B4226",borderRadius:20,
         width:"min(92vw,400px)",padding:"1.8rem 1.8rem 1.5rem",
         boxShadow:"6px 8px 0 #C9A87A" }}>
@@ -1431,7 +1497,7 @@ function TinyHeart() {
   );
 }
 
-function InfoModal({ onClose }) {
+function InfoModal({ onClose, musicMuted, setMusicMuted, musicVolume, setMusicVolume }) {
   const [page, setPage] = useState("note"); // "note" | "howto" | "settings"
   const [resetConfirm, setResetConfirm] = useState(false);
 
@@ -1715,8 +1781,9 @@ export default function ThoughtJar() {
   const toastTimer = useRef(null);
 
   const [nickname, setNickname]   = useState(() => load(NICKNAME_KEY, null));
+  // Show HS prompt if not yet seen — independent of onboarding state
   const [showHSPrompt, setShowHSPrompt] = useState(
-    () => !load(HS_PROMPT_KEY, false) && !load(INTRO_KEY, false)
+    () => !load(HS_PROMPT_KEY, false)
   );
   const [showOnboarding, setShowOnboarding] = useState(() => !load(INTRO_KEY, false));
   const [tokenExpiry, setTokenExpiry]       = useState(() => load(EXPIRY_KEY, null));
@@ -1977,7 +2044,9 @@ export default function ThoughtJar() {
           onCancel={() => { setShowJarFull(false); setShowNewJar(false); }}
           onOpenTV={() => { setShowJarFull(false); setShowNewJar(false); setTvAdOpen(true); }} />
       )}
-      {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
+      {showInfo && <InfoModal onClose={() => setShowInfo(false)}
+        musicMuted={musicMuted} setMusicMuted={setMusicMuted}
+        musicVolume={musicVolume} setMusicVolume={setMusicVolume} />}
       {showHomeScreen && <HomeScreenModal onClose={() => setShowHomeScreen(false)} />}
 
       {showList && (
