@@ -83,14 +83,14 @@ button {
   cursor: pointer;
 }
 
-/* TV: hide on short mobile viewports (height < 600px) to prevent jar overlap */
-@media (max-height: 600px) {
-  .tv-widget { display: none; }
+/* TV beside jar: hide on narrow screens so jar still gets full width */
+@media (max-width: 420px) {
+  .tv-widget { display: none !important; }
 }
 
-/* On very narrow screens, hide TV to give the jar breathing room */
-@media (max-width: 390px) {
-  .tv-widget { display: none; }
+/* On very short screens (landscape phone) also hide TV */
+@media (max-height: 500px) {
+  .tv-widget { display: none !important; }
 }
 
 /* Safe area inset support for iPhone notch / home indicator */

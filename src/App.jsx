@@ -1175,6 +1175,97 @@ function NewJarButton({ onClick }) {
   );
 }
 
+// ─── HOME SCREEN BUTTON ─────────────────────────────────────────────────────
+
+function HomeScreenButton({ onClick }) {
+  return (
+    <button onClick={onClick} aria-label="add to home screen"
+      style={{ background:"#FFF8EC",border:"2px solid #C9A87A",borderRadius:"50%",
+        width:44,height:44,cursor:"pointer",display:"flex",alignItems:"center",
+        justifyContent:"center",flexShrink:0,
+        WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+      <svg viewBox="0 0 20 20" width={15} height={15}>
+        {/* Phone outline */}
+        <rect x={4} y={1} width={12} height={17} rx={2.5} fill="none" stroke="#A07850" strokeWidth={1.5}/>
+        {/* Home button dot */}
+        <circle cx={10} cy={15.5} r={1} fill="#A07850"/>
+        {/* Plus sign on screen */}
+        <line x1={10} y1={5.5} x2={10} y2={11} stroke="#A07850" strokeWidth={1.4} strokeLinecap="round"/>
+        <line x1={7.2} y1={8.2} x2={12.8} y2={8.2} stroke="#A07850" strokeWidth={1.4} strokeLinecap="round"/>
+      </svg>
+    </button>
+  );
+}
+
+// ─── HOME SCREEN MODAL ───────────────────────────────────────────────────────
+
+function HomeScreenModal({ onClose }) {
+  return (
+    <div style={{ position:"fixed",inset:0,background:"rgba(107,66,38,0.25)",backdropFilter:"blur(5px)",
+      display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,padding:"1.5rem" }}
+      onClick={onClose}>
+      <div style={{ background:"#FFFDF5",border:"2.5px solid #6B4226",borderRadius:20,
+        width:"min(92vw,400px)",padding:"2rem 1.8rem",boxShadow:"6px 8px 0 #C9A87A" }}
+        onClick={e => e.stopPropagation()}>
+
+        <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:18 }}>
+          <svg viewBox="0 0 24 24" width={24} height={24}>
+            <rect x={4} y={1} width={16} height={22} rx={3} fill="none" stroke="#6B4226" strokeWidth={1.8}/>
+            <circle cx={12} cy={19.5} r={1.2} fill="#6B4226"/>
+            <line x1={12} y1={7} x2={12} y2={14} stroke="#6B4226" strokeWidth={1.8} strokeLinecap="round"/>
+            <line x1={8.5} y1={10.5} x2={15.5} y2={10.5} stroke="#6B4226" strokeWidth={1.8} strokeLinecap="round"/>
+          </svg>
+          <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(18px,3.5vw,24px)",
+            color:"#3D2510",lineHeight:1.5,overflow:"visible",paddingBottom:2 }}>
+            add to home screen
+          </p>
+        </div>
+
+        <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
+          {/* iPhone */}
+          <div style={{ background:"#FBF5E8",borderRadius:12,padding:"12px 14px",border:"1.5px solid #E8D8C0" }}>
+            <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#A07850",marginBottom:6,fontWeight:600,letterSpacing:0.3 }}>
+              on iphone
+            </p>
+            <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#5C3D22",lineHeight:1.7 }}>
+              open this page in <strong>safari</strong>, tap the{" "}
+              <span style={{ display:"inline-flex",alignItems:"center",gap:2,verticalAlign:"middle" }}>
+                <svg viewBox="0 0 16 16" width={14} height={14} style={{ display:"inline-block" }}>
+                  <rect x={2} y={7} width={12} height={8} rx={1.5} fill="none" stroke="#6B4226" strokeWidth={1.2}/>
+                  <line x1={8} y1={1} x2={8} y2={10} stroke="#6B4226" strokeWidth={1.2} strokeLinecap="round"/>
+                  <polyline points="5,3.5 8,1 11,3.5" fill="none" stroke="#6B4226" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </span>{" "}
+              share button, then choose <strong>add to home screen</strong>.
+            </p>
+          </div>
+
+          {/* Android */}
+          <div style={{ background:"#FBF5E8",borderRadius:12,padding:"12px 14px",border:"1.5px solid #E8D8C0" }}>
+            <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#A07850",marginBottom:6,fontWeight:600,letterSpacing:0.3 }}>
+              on android
+            </p>
+            <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#5C3D22",lineHeight:1.7 }}>
+              open this page in <strong>chrome</strong>, tap the <strong>⋮</strong> menu in the top right, then choose <strong>add to home screen</strong>.
+            </p>
+          </div>
+
+          <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#B89070",lineHeight:1.6,fontStyle:"italic",textAlign:"center" }}>
+            once added, it will feel just like a real app.
+          </p>
+        </div>
+
+        <button onClick={onClose}
+          style={{ marginTop:18,width:"100%",background:"#E8C87A",border:"2px solid #6B4226",
+            borderRadius:50,padding:"10px 0",fontFamily:"var(--font-body)",fontSize:14,
+            fontWeight:500,color:"#3D2510",cursor:"pointer",boxShadow:"2px 3px 0 #6B4226" }}>
+          got it
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── INFO MODAL ──────────────────────────────────────────────────────────────
 
 // Reusable mini hand-drawn heart SVG
@@ -1190,7 +1281,18 @@ function TinyHeart() {
 }
 
 function InfoModal({ onClose }) {
-  const [page, setPage] = useState("note"); // "note" | "howto"
+  const [page, setPage] = useState("note"); // "note" | "howto" | "settings"
+  const [resetConfirm, setResetConfirm] = useState(false);
+
+  const handleReset = () => {
+    // Clear all app localStorage keys
+    [
+      "tj-jars","tj-tokens","tj-expiry","tj-starter",
+      "tj-intro","tj-nickname","tj-activeJar",
+      "thought-jar-thoughts","thought-jar-tokens",
+    ].forEach(k => localStorage.removeItem(k));
+    window.location.reload();
+  };
 
   const HOW_TO = [
     { icon: "💭", head: "adding thoughts", body: "type anything into the input bar and press enter. your thought becomes a little blob inside the jar." },
@@ -1212,8 +1314,9 @@ function InfoModal({ onClose }) {
         {/* Tab switcher row */}
         <div style={{ display:"flex",gap:0,marginBottom:-2,position:"relative",zIndex:1,paddingLeft:4 }}>
           {[
-            { id:"note",  label:"a tiny note" },
-            { id:"howto", label:"how to use" },
+            { id:"note",     label:"a tiny note" },
+            { id:"howto",    label:"how to use" },
+            { id:"settings", label:"settings" },
           ].map(tab => (
             <button key={tab.id} onClick={() => setPage(tab.id)}
               style={{ background: page===tab.id ? "#FFFDF0" : "#F0E8D8",
@@ -1321,6 +1424,67 @@ function InfoModal({ onClose }) {
           </div>
         )}
 
+        {/* ── PAGE: settings ── */}
+        {page === "settings" && (
+          <div style={{ background:"#FFFDF5",border:"2.5px solid #6B4226",
+            borderRadius:"0 10px 10px 10px",
+            boxShadow:"5px 7px 0 #C9A87A",overflowY:"auto",maxHeight:"70vh" }}>
+            <button onClick={onClose}
+              style={{ position:"sticky",top:12,left:18,float:"left",background:"transparent",border:"none",
+                cursor:"pointer",fontFamily:"var(--font-body)",fontSize:13,color:"#A07850",
+                opacity:0.7,padding:"12px 18px 0",display:"block" }}>
+              ← close
+            </button>
+            <div style={{ padding:"1rem 1.8rem 1.8rem",clear:"both",display:"flex",flexDirection:"column",gap:20 }}>
+              <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(18px,3vw,22px)",
+                color:"#3D2510",lineHeight:1.5,overflow:"visible",paddingBottom:2 }}>
+                settings
+              </p>
+
+              {/* Reset memory */}
+              <div style={{ background:"#FBF5E8",border:"1.5px solid #E8D8C0",borderRadius:14,padding:"16px" }}>
+                <p style={{ fontFamily:"var(--font-body)",fontSize:14,color:"#3D2510",
+                  fontWeight:600,marginBottom:6 }}>
+                  reset memory
+                </p>
+                <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#6B5040",lineHeight:1.65,marginBottom:14 }}>
+                  clears all your jars, thoughts, tokens, and returns the app to the beginning.
+                </p>
+
+                {!resetConfirm ? (
+                  <button onClick={() => setResetConfirm(true)}
+                    style={{ background:"#FFF8EC",border:"2px solid #C9A87A",borderRadius:50,
+                      padding:"9px 20px",fontFamily:"var(--font-body)",fontSize:13,fontWeight:500,
+                      color:"#A07850",cursor:"pointer",width:"100%" }}>
+                    reset everything
+                  </button>
+                ) : (
+                  <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+                    <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#C87A50",
+                      lineHeight:1.6,fontStyle:"italic",textAlign:"center" }}>
+                      this will empty your jars and reset the app back to the beginning. are you sure?
+                    </p>
+                    <div style={{ display:"flex",gap:10 }}>
+                      <button onClick={handleReset}
+                        style={{ flex:1,background:"#E85D3A",border:"2px solid #6B4226",borderRadius:50,
+                          padding:"9px 0",fontFamily:"var(--font-body)",fontSize:13,fontWeight:500,
+                          color:"white",cursor:"pointer",boxShadow:"2px 3px 0 #6B4226" }}>
+                        yes, reset
+                      </button>
+                      <button onClick={() => setResetConfirm(false)}
+                        style={{ flex:1,background:"#A8C5A0",border:"2px solid #6B4226",borderRadius:50,
+                          padding:"9px 0",fontFamily:"var(--font-body)",fontSize:13,fontWeight:500,
+                          color:"#3D2510",cursor:"pointer",boxShadow:"2px 3px 0 #6B4226" }}>
+                        keep my jars
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
@@ -1360,6 +1524,7 @@ export default function ThoughtJar() {
   const [showJarFull, setShowJarFull] = useState(false);
   const [showNewJar, setShowNewJar]   = useState(false);
   const [showInfo, setShowInfo]       = useState(false);
+  const [showHomeScreen, setShowHomeScreen] = useState(false);
   const [showDecPicker, setShowDecPicker] = useState(false);
   const toastTimer = useRef(null);
 
@@ -1550,14 +1715,12 @@ export default function ThoughtJar() {
               <InfoButton onClick={() => setShowInfo(true)} />
               <ListIcon onClick={() => setShowList(true)} />
               <NewJarButton onClick={() => setShowNewJar(true)} />
+              <HomeScreenButton onClick={() => setShowHomeScreen(true)} />
             </div>
           </div>
         </header>
 
-        {/* Retro TV — hidden on short mobile screens to prevent jar overlap */}
-        <div className="tv-widget" style={{ position:"absolute",bottom:"clamp(20px,8vh,80px)",right:"clamp(12px,3vw,48px)",opacity:0.88,zIndex:1 }}>
-          <RetroTV onOpenAd={handleOpenAd} />
-        </div>
+
 
         {/* Decorative dots */}
         <svg viewBox="0 0 200 200" width={160} height={160}
@@ -1574,13 +1737,22 @@ export default function ThoughtJar() {
           marginTop:"clamp(64px,10vh,90px)",
           paddingBottom:"clamp(120px,20vh,160px)" }}>
 
-          {/* The Jar */}
-          <div style={{ width:"100%",display:"flex",justifyContent:"center",
-            transition:"opacity 0.5s ease, filter 0.5s ease",
-            opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none" }}>
-            <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
-              isAnimating={isJarAnimating} jarName={activeJar?.name}
-              lidVariant={(activeJar?.id ?? 0) % 5} />
+          {/* Jar + TV side-by-side row */}
+          <div style={{ width:"100%",display:"flex",alignItems:"center",
+            justifyContent:"center",gap:"clamp(8px,2vw,20px)" }}>
+            {/* The Jar */}
+            <div style={{ flex:"0 0 auto",maxWidth:"min(300px,62vw)",width:"100%",
+              transition:"opacity 0.5s ease, filter 0.5s ease",
+              opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none" }}>
+              <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
+                isAnimating={isJarAnimating} jarName={activeJar?.name}
+                lidVariant={(activeJar?.id ?? 0) % 5} />
+            </div>
+            {/* TV — beside jar, hidden on very narrow screens */}
+            <div className="tv-widget" style={{ flex:"0 0 auto",display:"flex",
+              flexDirection:"column",alignItems:"center",opacity:0.88 }}>
+              <RetroTV onOpenAd={handleOpenAd} />
+            </div>
           </div>
 
           {/* Hint text */}
@@ -1607,6 +1779,7 @@ export default function ThoughtJar() {
           onOpenTV={() => { setShowJarFull(false); setShowNewJar(false); setTvAdOpen(true); }} />
       )}
       {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
+      {showHomeScreen && <HomeScreenModal onClose={() => setShowHomeScreen(false)} />}
 
       {showList && (
         <ThoughtsListModal jars={jars} onClose={() => setShowList(false)}
