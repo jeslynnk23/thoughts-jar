@@ -1763,7 +1763,7 @@ export default function ThoughtJar() {
           <div className="tv-widget" style={{
             position:"absolute",
             right:0,
-            bottom:"clamp(88px,16vh,120px)",
+            bottom:"clamp(130px,22vh,160px)",
             flexDirection:"column",alignItems:"center",
             opacity:0.88,zIndex:2 }}>
             <RetroTV onOpenAd={handleOpenAd} />

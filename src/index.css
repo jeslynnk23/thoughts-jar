@@ -1,5 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500&display=swap');
 
+/* ── Safe-area background: fill status bar on iPhone ────────────────────── */
+html {
+  background-color: #FBF5E8;
+  min-height: 100%;
+  /* Extend background behind iPhone status bar */
+  padding-top: env(safe-area-inset-top);
+}
+
+body {
+  background-color: #FBF5E8;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  font-family: var(--font-body);
+}
+
 @font-face {
   font-family: 'MyFreehandFont5';
   src: url('/MyFreehandFont5.otf') format('opentype');
@@ -22,10 +38,6 @@
   -webkit-text-fill-color: currentColor;
 }
 
-body {
-  overflow-x: hidden;
-  font-family: var(--font-body);
-}
 
 /* Headings use the handwritten font — apply fill fix */
 h1, h2, h3 {
