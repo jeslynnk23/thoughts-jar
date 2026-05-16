@@ -402,8 +402,15 @@ function ListIcon({ onClick }) {
 
 // ─── THOUGHT REVEAL POPUP ───────────────────────────────────────────────────
 
-function ThoughtReveal({ thought, onClose, onComplete }) {
+function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList }) {
+  const [shaking, setShaking] = useState(false);
   if (!thought) return null;
+
+  const handleReroll = () => {
+    setShaking(true);
+    setTimeout(() => setShaking(false), 500);
+    setTimeout(() => onReroll(), 120);
+  };
 
   const blobColor = PASTEL_COLORS[thought.colorIndex ?? 0];
   const blobPaths = [
@@ -420,7 +427,9 @@ function ThoughtReveal({ thought, onClose, onComplete }) {
       display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,padding:"1.5rem" }} onClick={onClose}>
       <div style={{ position:"relative",cursor:"default",display:"flex",flexDirection:"column",alignItems:"center" }}
         onClick={e => e.stopPropagation()}>
-        <div style={{ position:"relative",width:"min(92vw, 420px)" }}>
+        <div style={{ position:"relative",width:"min(92vw, 420px)",
+          animation: shaking ? "blobShake 0.45s ease" : "none" }}>
+          <style>{`@keyframes blobShake{0%,100%{transform:translateX(0) rotate(0deg)}15%{transform:translateX(-8px) rotate(-2deg)}30%{transform:translateX(7px) rotate(2deg)}45%{transform:translateX(-6px) rotate(-1.5deg)}60%{transform:translateX(5px) rotate(1deg)}75%{transform:translateX(-3px) rotate(-0.5deg)}90%{transform:translateX(2px) rotate(0.3deg)}}`}</style>
           <svg viewBox="0 0 360 290" width="100%"
             style={{ display:"block", filter:"drop-shadow(4px 6px 0px rgba(107,66,38,0.28))" }}>
             <path d={blobPath} fill={thought.completed ? "#D4C5B0" : blobColor} stroke="#6B4226" strokeWidth="3" strokeLinejoin="round" />
@@ -442,18 +451,49 @@ function ThoughtReveal({ thought, onClose, onComplete }) {
             </p>
           </div>
         </div>
-        <div style={{ display:"flex",gap:10,marginTop:16 }}>
+        <div style={{ display:"flex",gap:8,marginTop:16,flexWrap:"wrap",justifyContent:"center" }}>
+          {/* Re-roll dice */}
+          <button onClick={handleReroll} aria-label="randomize again"
+            title="roll again"
+            style={{ background:"#FFF8EC",border:"2.5px solid #6B4226",borderRadius:50,
+              width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",
+              cursor:"pointer",boxShadow:"2px 3px 0 #6B4226",flexShrink:0 }}>
+            <svg viewBox="0 0 32 32" width={22} height={22}>
+              <rect x={3} y={3} width={26} height={26} rx={6}
+                fill="#FFF8EC" stroke="#6B4226" strokeWidth={2.2} strokeLinejoin="round"/>
+              <circle cx={10} cy={10} r={2.5} fill="#6B4226" opacity={0.85}/>
+              <circle cx={22} cy={10} r={2.5} fill="#6B4226" opacity={0.85}/>
+              <circle cx={16} cy={16} r={2.5} fill="#6B4226" opacity={0.85}/>
+              <circle cx={10} cy={22} r={2.5} fill="#6B4226" opacity={0.85}/>
+              <circle cx={22} cy={22} r={2.5} fill="#6B4226" opacity={0.85}/>
+            </svg>
+          </button>
+          {/* Open list */}
+          <button onClick={onOpenList} aria-label="view all thoughts"
+            title="see all thoughts"
+            style={{ background:"#FFF8EC",border:"2.5px solid #6B4226",borderRadius:50,
+              width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",
+              cursor:"pointer",boxShadow:"2px 3px 0 #6B4226",flexShrink:0 }}>
+            <svg viewBox="0 0 18 18" width={14} height={14}>
+              <circle cx={3.5} cy={5} r={2} fill="#F2A7B0" stroke="#6B4226" strokeWidth={0.8}/>
+              <circle cx={3.5} cy={9} r={2} fill="#A8BFDF" stroke="#6B4226" strokeWidth={0.8}/>
+              <circle cx={3.5} cy={13} r={2} fill="#F6E27A" stroke="#6B4226" strokeWidth={0.8}/>
+              <line x1={7.5} y1={5} x2={17} y2={5} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
+              <line x1={7.5} y1={9} x2={16} y2={9} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
+              <line x1={7.5} y1={13} x2={16.5} y2={13} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
+            </svg>
+          </button>
           {!thought.completed && (
             <button onClick={() => { onComplete(thought.id); onClose(); }}
               style={{ background:"#A8C5A0",border:"2.5px solid #6B4226",borderRadius:50,
-                padding:"10px 22px",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
+                padding:"10px 18px",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
                 color:"#3D2510",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226",whiteSpace:"nowrap" }}>
               mark complete
             </button>
           )}
           <button onClick={onClose}
             style={{ background:"#E85D3A",border:"2.5px solid #6B4226",borderRadius:50,
-              padding:"10px 22px",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
+              padding:"10px 18px",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
               color:"white",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226",whiteSpace:"nowrap" }}>
             put it back
           </button>
@@ -1036,6 +1076,119 @@ function LockedOverlay({ onOpenTV }) {
   );
 }
 
+// ─── FOOTER ─────────────────────────────────────────────────────────────────
+
+function AppFooter() {
+  return (
+    <div style={{
+      position: "fixed", bottom: 0, left: 0, right: 0,
+      padding: "8px 16px 10px",
+      textAlign: "center",
+      pointerEvents: "none",
+      zIndex: 5,
+    }}>
+      <p style={{
+        fontFamily: "var(--font-body)",
+        fontSize: 10,
+        color: "#A07850",
+        opacity: 0.55,
+        letterSpacing: 0.3,
+        margin: 0,
+      }}>
+        © 2026 little thoughts studio. all rights reserved.
+      </p>
+    </div>
+  );
+}
+
+// ─── PWA GATE ───────────────────────────────────────────────────────────────
+
+function isPWA() {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true ||
+    document.referrer.startsWith('android-app://')
+  );
+}
+
+function BrowserGate() {
+  // Hard gate: shows full-screen add-to-home-screen instructions
+  // Only rendered when NOT in PWA/standalone mode
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "#FBF5E8",
+      display: "flex", flexDirection: "column", alignItems: "center",
+      justifyContent: "center", zIndex: 2000, padding: "2rem 1.5rem",
+    }}>
+      {/* Dot grid */}
+      <svg style={{ position:"absolute",inset:0,width:"100%",height:"100%",opacity:0.06,pointerEvents:"none" }}>
+        <pattern id="bg-dots" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
+          <circle cx="2" cy="2" r="1.5" fill="#6B4226" />
+        </pattern>
+        <rect width="100%" height="100%" fill="url(#bg-dots)" />
+      </svg>
+
+      <div style={{ maxWidth: 380, width: "100%", display: "flex", flexDirection: "column", alignItems: "center", gap: 24, position: "relative" }}>
+        {/* App icon blob */}
+        <svg viewBox="-1.3 -1.3 2.6 2.6" width={56} height={56}>
+          <path d="M0,-1 C0.6,-0.9 1.1,-0.3 1,0.4 C0.9,1.1 0.2,1.3 -0.4,1.1 C-1,0.9 -1.2,0.2 -1,-0.3 C-0.8,-0.9 -0.6,-1.1 0,-1"
+            fill="#F6E27A" stroke="#6B4226" strokeWidth={0.18} />
+        </svg>
+
+        <div style={{ textAlign: "center" }}>
+          <h1 style={{ fontFamily: "var(--font-hand)", fontSize: "clamp(30px,6vw,42px)",
+            color: "#3D2510", lineHeight: 1.5, overflow: "visible", paddingBottom: 4, marginBottom: 8 }}>
+            thoughts jar
+          </h1>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "clamp(14px,2.5vw,16px)",
+            color: "#A07850", lineHeight: 1.65 }}>
+            best experienced as a home screen app.
+          </p>
+        </div>
+
+        {/* Instructions card */}
+        <div style={{ background: "#FFFDF5", border: "2.5px solid #6B4226", borderRadius: 20,
+          width: "100%", padding: "1.5rem 1.6rem", boxShadow: "5px 6px 0 #C9A87A",
+          display: "flex", flexDirection: "column", gap: 16 }}>
+
+          <div style={{ background: "#FBF5E8", borderRadius: 12, padding: "12px 14px", border: "1.5px solid #E8D8C0" }}>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "#A07850",
+              marginBottom: 5, fontWeight: 600, letterSpacing: 0.3 }}>
+              on iphone
+            </p>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "#5C3D22", lineHeight: 1.7 }}>
+              open in <strong>safari</strong> → tap the{" "}
+              <svg viewBox="0 0 16 16" width={13} height={13} style={{ display: "inline-block", verticalAlign: "middle" }}>
+                <rect x={2} y={7} width={12} height={8} rx={1.5} fill="none" stroke="#6B4226" strokeWidth={1.2}/>
+                <line x1={8} y1={1} x2={8} y2={10} stroke="#6B4226" strokeWidth={1.2} strokeLinecap="round"/>
+                <polyline points="5,3.5 8,1 11,3.5" fill="none" stroke="#6B4226" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>{" "}
+              share icon → <strong>add to home screen</strong>
+            </p>
+          </div>
+
+          <div style={{ background: "#FBF5E8", borderRadius: 12, padding: "12px 14px", border: "1.5px solid #E8D8C0" }}>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "#A07850",
+              marginBottom: 5, fontWeight: 600, letterSpacing: 0.3 }}>
+              on android
+            </p>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "#5C3D22", lineHeight: 1.7 }}>
+              open in <strong>chrome</strong> → tap <strong>⋮</strong> → <strong>add to home screen</strong>
+            </p>
+          </div>
+
+          <p style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "#B89070",
+            lineHeight: 1.6, fontStyle: "italic", textAlign: "center" }}>
+            once added, it opens just like a real app — no browser bar, no distractions.
+          </p>
+        </div>
+
+        <AppFooter />
+      </div>
+    </div>
+  );
+}
+
 // ─── HOME SCREEN PROMPT ─────────────────────────────────────────────────────
 
 function HomeScreenPrompt({ onDone }) {
@@ -1494,7 +1647,8 @@ function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musi
 
   const HOW_TO = [
     { icon: "💭", head: "adding thoughts", body: "type anything into the input bar and press enter. your thought becomes a little blob inside the jar." },
-    { icon: "🫙", head: "rediscovering thoughts", body: "click the jar to pull out a random thought. it's a gentle surprise from your past self." },
+    { icon: "🎲", head: "using the dice", body: "tap the little dice above the jar to pull a random thought. you can roll as many times as you like." },
+    { icon: "🫙", head: "rediscovering thoughts", body: "clicking the jar also pulls a random thought — a gentle surprise from your past self." },
     { icon: "◫",  head: "viewing all thoughts", body: "tap the list icon to see every thought across all your jars. you can mark them complete or remove them there." },
     { icon: "↔",  head: "switching jars", body: "inside the list view, tap any jar card at the top to switch to that jar and see its thoughts." },
     { icon: "✦",  head: "tokens",  body: "each token gives you one day of access. you start with 7 free days as a welcome gift." },
@@ -1561,16 +1715,16 @@ function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musi
                     a tiny note
                   </p>
                 </div>
-                <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(14px,2.2vw,17px)",color:"#5C3D22",lineHeight:1.85,overflow:"visible",paddingBottom:4 }}>
+                <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(13px,2vw,15px)",color:"#5C3D22",lineHeight:1.85 }}>
                   i built this because i kept forgetting the little things — small ideas, moments i wanted to return to. by the weekend, they'd just vanish.
                 </p>
-                <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(14px,2.2vw,17px)",color:"#5C3D22",lineHeight:1.85,overflow:"visible",paddingBottom:4,fontStyle:"italic" }}>
+                <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(13px,2vw,15px)",color:"#5C3D22",lineHeight:1.85,fontStyle:"italic" }}>
                   so i made a jar to hold them.
                 </p>
-                <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(14px,2.2vw,17px)",color:"#5C3D22",lineHeight:1.85,overflow:"visible",paddingBottom:4 }}>
+                <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(13px,2vw,15px)",color:"#5C3D22",lineHeight:1.85 }}>
                   each jar holds 25 thoughts on purpose — not a list to fill, but a small space to revisit and actually cherish.
                 </p>
-                <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(13px,2vw,15px)",color:"#8B6040",lineHeight:1.7,marginTop:4,overflow:"visible",paddingBottom:4 }}>
+                <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(12px,1.8vw,14px)",color:"#8B6040",lineHeight:1.7,marginTop:4 }}>
                   i hope it feels like a cozy corner that's just for you.
                 </p>
                 {/* Sign-off — bottom right, postcard signature style */}
@@ -1762,6 +1916,8 @@ export default function ThoughtJar() {
 
   const [nickname, setNickname]   = useState(() => load(NICKNAME_KEY, null));
   // Show HS prompt if not yet seen — independent of onboarding state
+  // PWA gate: detect if running as installed PWA or in browser
+  const [isInPWA]      = useState(() => isPWA());
   const [showHSPrompt, setShowHSPrompt] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(() => !load(INTRO_KEY, false));
   const [tokenExpiry, setTokenExpiry]       = useState(() => load(EXPIRY_KEY, null));
@@ -1904,18 +2060,21 @@ export default function ThoughtJar() {
 
   return (
     <>
+      {/* PWA gate: if not in PWA mode, show hard gate — no app interaction */}
+      {!isInPWA && <BrowserGate />}
 
-      {showHSPrompt && (
+      {isInPWA && showHSPrompt && (
         <HomeScreenPrompt onDone={() => {
           setShowHSPrompt(false);
         }} />
       )}
-      {!showHSPrompt && showOnboarding && <OnboardingFlow onComplete={handleOnboardingComplete} />}
+      {isInPWA && !showHSPrompt && showOnboarding && <OnboardingFlow onComplete={handleOnboardingComplete} />}
 
       <div className="clip-x app-root" style={{ minHeight:"100vh",width:"100%",background:"#FBF5E8",display:"flex",
         flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",
         padding:"2rem 1.5rem",fontFamily:"var(--font-body)",
-        opacity: showOnboarding ? 0 : 1, transition:"opacity 0.4s ease" }}>
+        opacity: showOnboarding ? 0 : 1, transition:"opacity 0.4s ease",
+        visibility: isInPWA ? "visible" : "hidden" }}>
 
         {/* Dot grid background */}
         <svg style={{ position:"absolute",inset:0,width:"100%",height:"100%",opacity:0.06,pointerEvents:"none" }}>
@@ -1977,15 +2136,85 @@ export default function ThoughtJar() {
           paddingBottom:"clamp(24px,4vh,48px)",
           position:"relative" }}>
 
-          {/* The Jar — shifted slightly left to create separation from TV */}
-          <div style={{ width:"100%",maxWidth:"min(380px,82vw)",
-            marginLeft:"auto", marginRight:"auto",
-            transform:"translateX(clamp(-28px,-5vw,-10px))",
-            transition:"opacity 0.5s ease, filter 0.5s ease",
-            opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none" }}>
-            <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
-              isAnimating={isJarAnimating} jarName={activeJar?.name}
-              lidVariant={(activeJar?.id ?? 0) % 5} />
+          {/* Dice icon — above the jar */}
+          <button
+            onClick={handleJarClick}
+            disabled={isLocked}
+            aria-label="roll dice for a random thought"
+            style={{
+              background: "none", border: "none", cursor: isLocked ? "default" : "pointer",
+              padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
+              opacity: isLocked ? 0.4 : 1,
+              WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
+              transform: "translateX(clamp(-28px,-5vw,-10px))",
+            }}>
+            <svg viewBox="0 0 64 64" width={52} height={52}>
+              {/* Handdrawn dice body */}
+              <rect x={6} y={6} width={52} height={52} rx={12}
+                fill="#FFF8EC" stroke="#6B4226" strokeWidth={3.2}
+                strokeLinejoin="round"
+                style={{ strokeDasharray: "none" }}
+              />
+              {/* Dice dots — pattern for 5 (four corners + center) */}
+              <circle cx={19} cy={19} r={4.5} fill="#6B4226" opacity={0.85}/>
+              <circle cx={45} cy={19} r={4.5} fill="#6B4226" opacity={0.85}/>
+              <circle cx={32} cy={32} r={4.5} fill="#6B4226" opacity={0.85}/>
+              <circle cx={19} cy={45} r={4.5} fill="#6B4226" opacity={0.85}/>
+              <circle cx={45} cy={45} r={4.5} fill="#6B4226" opacity={0.85}/>
+              {/* Slight hand-drawn wobble on border using a path overlay */}
+              <rect x={6} y={6} width={52} height={52} rx={12}
+                fill="none" stroke="#6B4226" strokeWidth={1.2} opacity={0.18}
+                strokeLinejoin="round" transform="rotate(1.5 32 32)"
+              />
+            </svg>
+          </button>
+
+          {/* Jar + nav arrows row */}
+          <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
+            gap:"clamp(4px,1.5vw,12px)", width:"100%" }}>
+
+            {/* Left arrow — handdrawn triangle */}
+            <button
+              onClick={goPrev} disabled={!canGoPrev || isLocked}
+              aria-label="previous jar"
+              style={{
+                background:"none", border:"none", cursor: canGoPrev&&!isLocked ? "pointer" : "default",
+                padding:0, flexShrink:0, opacity: canGoPrev&&!isLocked ? 1 : 0.22,
+                WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
+              }}>
+              <svg viewBox="0 0 40 56" width={32} height={44}>
+                <path d="M32,6 C30,8 12,26 8,28 C12,30 30,48 32,50"
+                  fill="none" stroke="#6B4226" strokeWidth={5}
+                  strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {/* The Jar */}
+            <div style={{ flex:"1 1 auto", maxWidth:"min(320px,72vw)", minWidth:0,
+              transform:"translateX(clamp(-14px,-2.5vw,-4px))",
+              transition:"opacity 0.5s ease, filter 0.5s ease",
+              opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none" }}>
+              <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
+                isAnimating={isJarAnimating} jarName={activeJar?.name}
+                lidVariant={(activeJar?.id ?? 0) % 5} />
+            </div>
+
+            {/* Right arrow — handdrawn triangle */}
+            <button
+              onClick={goNext} disabled={!canGoNext || isLocked}
+              aria-label="next jar"
+              style={{
+                background:"none", border:"none", cursor: canGoNext&&!isLocked ? "pointer" : "default",
+                padding:0, flexShrink:0, opacity: canGoNext&&!isLocked ? 1 : 0.22,
+                WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
+              }}>
+              <svg viewBox="0 0 40 56" width={32} height={44}>
+                <path d="M8,6 C10,8 28,26 32,28 C28,30 10,48 8,50"
+                  fill="none" stroke="#6B4226" strokeWidth={5}
+                  strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
           </div>
 
           <AddThoughtInput onAdd={handleAddThought} disabled={isLocked} />
@@ -2010,6 +2239,8 @@ export default function ThoughtJar() {
             <RetroTV onOpenAd={handleOpenAd} />
           </div>
         </main>
+        {/* Footer */}
+        <AppFooter />
       </div>
 
       {isLocked && <LockedOverlay onOpenTV={handleOpenAd} />}
@@ -2037,7 +2268,17 @@ export default function ThoughtJar() {
       )}
 
       <ThoughtReveal thought={revealedThought} onClose={() => setRevealedThought(null)}
-        onComplete={handleCompleteFromReveal} />
+        onComplete={handleCompleteFromReveal}
+        onReroll={() => {
+          // Pick a new random thought (different from current if possible)
+          const pool = currentThoughts.filter(t => t.id !== revealedThought?.id);
+          const source = pool.length > 0 ? pool : currentThoughts;
+          if (source.length === 0) return;
+          const next = source[Math.floor(Math.random() * source.length)];
+          setRevealedThought(next);
+        }}
+        onOpenList={() => { setRevealedThought(null); setShowList(true); }}
+      />
 
       {tvAdOpen && <TVAdPopup onClose={handleCloseAd} onEarnToken={handleEarnToken} />}
       <Toast message={toast.message} visible={toast.visible} />
