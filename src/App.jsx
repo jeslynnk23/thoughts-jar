@@ -243,6 +243,29 @@ function useBackgroundMusic() {
     };
   }, []); // eslint-disable-line
 
+  // Pause music when user leaves the app/tab, resume when they return
+useEffect(() => {
+  const handleVisibilityChange = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (document.hidden) {
+      audio.dataset.wasPlaying = audio.paused ? "false" : "true";
+      audio.pause();
+    } else {
+      if (audio.dataset.wasPlaying === "true" && !muted) {
+        audio.play().catch(() => {});
+      }
+    }
+  };
+
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  return () => {
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+  };
+}, [muted]);
+  
   // Start playback on first user interaction (browser autoplay policy)
   useEffect(() => {
     const start = () => {
