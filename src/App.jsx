@@ -1,5 +1,6 @@
 import './index.css';
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Analytics } from '@vercel/analytics/react';
 
 // ─── CONSTANTS & STORAGE ────────────────────────────────────────────────────
 
@@ -278,8 +279,9 @@ function ListIcon({ onClick }) {
   return (
     <button onClick={onClick} aria-label="view all thoughts"
       style={{ background:"#FFF8EC",border:"2px solid #C9A87A",borderRadius:"50%",
-        width:30,height:30,cursor:"pointer",display:"flex",alignItems:"center",
-        justifyContent:"center",flexShrink:0 }}>
+        width:44,height:44,cursor:"pointer",display:"flex",alignItems:"center",
+        justifyContent:"center",flexShrink:0,WebkitTapHighlightColor:"transparent",
+        touchAction:"manipulation" }}>
       <svg viewBox="0 0 18 18" width={14} height={14}>
         <circle cx={3.5} cy={5} r={2} fill="#F2A7B0" stroke="#6B4226" strokeWidth={0.8}/>
         <circle cx={3.5} cy={9} r={2} fill="#A8BFDF" stroke="#6B4226" strokeWidth={0.8}/>
@@ -1136,8 +1138,9 @@ function InfoButton({ onClick }) {
   return (
     <button onClick={onClick} aria-label="about thought jar"
       style={{ background:"#FFF8EC",border:"2px solid #C9A87A",borderRadius:"50%",
-        width:30,height:30,cursor:"pointer",display:"flex",alignItems:"center",
-        justifyContent:"center",flexShrink:0 }}>
+        width:44,height:44,cursor:"pointer",display:"flex",alignItems:"center",
+        justifyContent:"center",flexShrink:0,WebkitTapHighlightColor:"transparent",
+        touchAction:"manipulation" }}>
       <svg viewBox="0 0 20 20" width={14} height={14}>
         <circle cx={10} cy={10} r={9} fill="none" stroke="#A07850" strokeWidth={1.8}/>
         <line x1={10} y1={8.5} x2={10} y2={14} stroke="#A07850" strokeWidth={2} strokeLinecap="round"/>
@@ -1153,8 +1156,9 @@ function NewJarButton({ onClick }) {
   return (
     <button onClick={onClick} aria-label="create new jar"
       style={{ background:"#FFF8EC",border:"2px solid #C9A87A",borderRadius:"50%",
-        width:30,height:30,cursor:"pointer",display:"flex",alignItems:"center",
-        justifyContent:"center",flexShrink:0 }}>
+        width:44,height:44,cursor:"pointer",display:"flex",alignItems:"center",
+        justifyContent:"center",flexShrink:0,WebkitTapHighlightColor:"transparent",
+        touchAction:"manipulation" }}>
       <svg viewBox="0 0 20 20" width={15} height={15}>
         {/* Mini jar body */}
         <path d="M4,8 C3,9 3,11 3,13 C3,15 4,16 6,16.5 C7.5,17 9,17 10,17 C11,17 12.5,17 14,16.5 C16,16 17,15 17,13 C17,11 17,9 16,8 Z"
@@ -1519,7 +1523,8 @@ export default function ThoughtJar() {
 
         {/* Header */}
         <header style={{ position:"absolute",top:0,left:0,right:0,display:"flex",
-          alignItems:"flex-start",justifyContent:"space-between",padding:"1.2rem 2rem" }}>
+          alignItems:"flex-start",justifyContent:"space-between",padding:"1.2rem 2rem",
+          zIndex:10 }}>
           <div style={{ display:"flex",alignItems:"center",gap:9 }}>
             {/* Mini blob app icon */}
             <svg viewBox="-1.3 -1.3 2.6 2.6" width={30} height={30} style={{ flexShrink:0 }}>
@@ -1540,7 +1545,8 @@ export default function ThoughtJar() {
                 {tokens} {tokens===1?"day":"days"} left
               </span>
             )}
-            <div style={{ display:"flex",flexDirection:"column",gap:5,alignItems:"center",marginTop:4 }}>
+            <div style={{ display:"flex",flexDirection:"column",gap:5,alignItems:"center",
+              marginTop:4,position:"relative",zIndex:20 }}>
               <InfoButton onClick={() => setShowInfo(true)} />
               <ListIcon onClick={() => setShowList(true)} />
               <NewJarButton onClick={() => setShowNewJar(true)} />
@@ -1548,8 +1554,8 @@ export default function ThoughtJar() {
           </div>
         </header>
 
-        {/* Retro TV */}
-        <div style={{ position:"absolute",bottom:"clamp(110px,18vh,180px)",right:"clamp(16px,4vw,56px)",opacity:0.88,zIndex:1 }}>
+        {/* Retro TV — hidden on short mobile screens to prevent jar overlap */}
+        <div className="tv-widget" style={{ position:"absolute",bottom:"clamp(20px,8vh,80px)",right:"clamp(12px,3vw,48px)",opacity:0.88,zIndex:1 }}>
           <RetroTV onOpenAd={handleOpenAd} />
         </div>
 
@@ -1562,9 +1568,11 @@ export default function ThoughtJar() {
           <circle cx={15} cy={130} r={2} fill="#C87A50" />
         </svg>
 
-        {/* Main content */}
+        {/* Main content — tighter on mobile so jar sits higher and TV can't overlap */}
         <main style={{ display:"flex",flexDirection:"column",alignItems:"center",
-          gap:"clamp(12px,2.5vh,24px)",width:"100%",maxWidth:520,marginTop:"clamp(60px,8vh,80px)" }}>
+          gap:"clamp(8px,2vh,20px)",width:"100%",maxWidth:520,
+          marginTop:"clamp(64px,10vh,90px)",
+          paddingBottom:"clamp(120px,20vh,160px)" }}>
 
           {/* The Jar */}
           <div style={{ width:"100%",display:"flex",justifyContent:"center",
@@ -1577,7 +1585,7 @@ export default function ThoughtJar() {
 
           {/* Hint text */}
           <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(13px,2vw,15px)",
-            color:"#A07850",textAlign:"center",opacity:0.85,lineHeight:1.5,marginTop:"-12px" }}>
+            color:"#A07850",textAlign:"center",opacity:0.85,lineHeight:1.5,marginTop:"-8px" }}>
             {currentThoughts.length === 0
               ? "add a thought, and it will float inside the jar"
               : currentThoughts.length >= JAR_CAPACITY
@@ -1615,6 +1623,7 @@ export default function ThoughtJar() {
 
       {tvAdOpen && <TVAdPopup onClose={handleCloseAd} onEarnToken={handleEarnToken} />}
       <Toast message={toast.message} visible={toast.visible} />
+      <Analytics />
     </>
   );
 }

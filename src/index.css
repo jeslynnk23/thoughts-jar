@@ -73,3 +73,29 @@ button:active { transform: scale(0.96); }
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #FBF5E8; }
 ::-webkit-scrollbar-thumb { background: #C9A87A; border-radius: 3px; }
+
+/* ── Mobile layout fixes ─────────────────────────────────────────────────── */
+
+/* Ensure all buttons have proper touch handling on iOS */
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+/* TV: hide on short mobile viewports (height < 600px) to prevent jar overlap */
+@media (max-height: 600px) {
+  .tv-widget { display: none; }
+}
+
+/* On very narrow screens, hide TV to give the jar breathing room */
+@media (max-width: 390px) {
+  .tv-widget { display: none; }
+}
+
+/* Safe area inset support for iPhone notch / home indicator */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  main {
+    padding-bottom: max(120px, calc(100px + env(safe-area-inset-bottom)));
+  }
+}
