@@ -1630,8 +1630,8 @@ function TinyHeart() {
   );
 }
 
-function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musicVolume = 0.35, setMusicVolume = () => {} }) {
-  const [page, setPage] = useState("note"); // "note" | "howto" | "settings"
+function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musicVolume = 0.35, setMusicVolume = () => {}, initialPage = "note" }) {
+  const [page, setPage] = useState(initialPage); // "note" | "howto" | "settings"
   const [resetConfirm, setResetConfirm] = useState(false);
 
   const handleReset = () => {
@@ -1910,6 +1910,7 @@ export default function ThoughtJar() {
   const [showJarFull, setShowJarFull] = useState(false);
   const [showNewJar, setShowNewJar]   = useState(false);
   const [showInfo, setShowInfo]       = useState(false);
+  const [infoInitPage, setInfoInitPage] = useState("note");
   const [showHomeScreen, setShowHomeScreen] = useState(false);
   const [showDecPicker, setShowDecPicker] = useState(false);
   const toastTimer = useRef(null);
@@ -1978,6 +1979,11 @@ export default function ThoughtJar() {
     setTokenExpiry(expiry);
     setStarterRemaining(r => Math.max(0, r - 1));
     didInitAccess.current = true;
+    // Auto-show the How To Use tutorial after first onboarding
+    setTimeout(() => {
+      setInfoInitPage("howto");
+      setShowInfo(true);
+    }, 600);
   }, []);
 
   const handleAddThought = useCallback((text) => {
@@ -1999,7 +2005,7 @@ export default function ThoughtJar() {
   }, [currentThoughts.length, updateActiveJar, showToast]);
 
   const handleJarClick = useCallback(() => {
-    if (currentThoughts.length === 0) { showToast("the jar is empty! add a thought"); return; }
+    if (currentThoughts.length === 0) { showToast("this jar is empty — add thoughts to use it"); return; }
     const random = currentThoughts[Math.floor(Math.random() * currentThoughts.length)];
     setIsJarAnimating(true);
     setTimeout(() => { setIsJarAnimating(false); setRevealedThought(random); }, 400);
@@ -2129,14 +2135,14 @@ export default function ThoughtJar() {
           <circle cx={15} cy={130} r={2} fill="#C87A50" />
         </svg>
 
-        {/* Main content */}
+        {/* Main content — structured to fill central space cleanly */}
         <main style={{ display:"flex",flexDirection:"column",alignItems:"center",
-          gap:"clamp(6px,1.5vh,14px)",width:"100%",maxWidth:520,
-          marginTop:"clamp(60px,9vh,84px)",
-          paddingBottom:"clamp(24px,4vh,48px)",
+          gap:"clamp(4px,1vh,10px)",width:"100%",maxWidth:500,
+          marginTop:"clamp(56px,8.5vh,80px)",
+          paddingBottom:"clamp(20px,3vh,40px)",
           position:"relative" }}>
 
-          {/* Dice icon — above the jar */}
+          {/* Dice icon — above the jar, shifted left to balance right-side icons */}
           <button
             onClick={handleJarClick}
             disabled={isLocked}
@@ -2146,52 +2152,55 @@ export default function ThoughtJar() {
               padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
               opacity: isLocked ? 0.4 : 1,
               WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
-              transform: "translateX(clamp(-28px,-5vw,-10px))",
+              transform: "translateX(clamp(-22px,-4vw,-8px))",
+              marginBottom: 2,
             }}>
-            <svg viewBox="0 0 64 64" width={52} height={52}>
-              {/* Handdrawn dice body */}
-              <rect x={6} y={6} width={52} height={52} rx={12}
-                fill="#FFF8EC" stroke="#6B4226" strokeWidth={3.2}
-                strokeLinejoin="round"
-                style={{ strokeDasharray: "none" }}
-              />
-              {/* Dice dots — pattern for 5 (four corners + center) */}
-              <circle cx={19} cy={19} r={4.5} fill="#6B4226" opacity={0.85}/>
-              <circle cx={45} cy={19} r={4.5} fill="#6B4226" opacity={0.85}/>
-              <circle cx={32} cy={32} r={4.5} fill="#6B4226" opacity={0.85}/>
-              <circle cx={19} cy={45} r={4.5} fill="#6B4226" opacity={0.85}/>
-              <circle cx={45} cy={45} r={4.5} fill="#6B4226" opacity={0.85}/>
-              {/* Slight hand-drawn wobble on border using a path overlay */}
-              <rect x={6} y={6} width={52} height={52} rx={12}
-                fill="none" stroke="#6B4226" strokeWidth={1.2} opacity={0.18}
-                strokeLinejoin="round" transform="rotate(1.5 32 32)"
-              />
+            {/* Handdrawn 3D dice — isometric, warm illustration style matching TV */}
+            <svg viewBox="0 0 72 72" width={54} height={54}>
+              <ellipse cx={38} cy={67} rx={18} ry={4} fill="#C9A87A" opacity={0.28}/>
+              <path d="M46,18 L62,27 L62,51 L46,60 Z"
+                fill="#E8C87A" stroke="#6B4226" strokeWidth={2.2} strokeLinejoin="round"/>
+              <path d="M22,8 L46,18 L46,60 L22,50 Z"
+                fill="#FFF8EC" stroke="#6B4226" strokeWidth={2.2} strokeLinejoin="round"/>
+              <path d="M10,27 L22,8 L46,18 L62,27 L62,51 L46,60 L22,50 L10,51 Z"
+                fill="#FFF0D8" stroke="#6B4226" strokeWidth={2.2} strokeLinejoin="round"/>
+              <circle cx={22} cy={32} r={3} fill="#6B4226" opacity={0.82}/>
+              <circle cx={38} cy={32} r={3} fill="#6B4226" opacity={0.82}/>
+              <circle cx={30} cy={39} r={3} fill="#6B4226" opacity={0.82}/>
+              <circle cx={22} cy={46} r={3} fill="#6B4226" opacity={0.82}/>
+              <circle cx={38} cy={46} r={3} fill="#6B4226" opacity={0.82}/>
+              <circle cx={30} cy={12} r={2.4} fill="#6B4226" opacity={0.7}/>
+              <circle cx={40} cy={16} r={2.4} fill="#6B4226" opacity={0.7}/>
+              <circle cx={53} cy={31} r={2.4} fill="#6B4226" opacity={0.65}/>
+              <circle cx={57} cy={39} r={2.4} fill="#6B4226" opacity={0.65}/>
+              <circle cx={53} cy={47} r={2.4} fill="#6B4226" opacity={0.65}/>
+              <path d="M26,10 C28,8 32,8 34,10" fill="none" stroke="white" strokeWidth={1.2} strokeLinecap="round" opacity={0.55}/>
             </svg>
           </button>
 
-          {/* Jar + nav arrows row */}
+          {/* Jar + nav arrows — arrows close to jar body */}
           <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
-            gap:"clamp(4px,1.5vw,12px)", width:"100%" }}>
+            gap:"clamp(2px,0.8vw,6px)", width:"100%" }}>
 
-            {/* Left arrow — handdrawn triangle */}
+            {/* Left arrow — tight to jar */}
             <button
               onClick={goPrev} disabled={!canGoPrev || isLocked}
               aria-label="previous jar"
               style={{
                 background:"none", border:"none", cursor: canGoPrev&&!isLocked ? "pointer" : "default",
-                padding:0, flexShrink:0, opacity: canGoPrev&&!isLocked ? 1 : 0.22,
+                padding:"0 2px", flexShrink:0, opacity: canGoPrev&&!isLocked ? 1 : 0.2,
                 WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
               }}>
-              <svg viewBox="0 0 40 56" width={32} height={44}>
-                <path d="M32,6 C30,8 12,26 8,28 C12,30 30,48 32,50"
-                  fill="none" stroke="#6B4226" strokeWidth={5}
+              <svg viewBox="0 0 28 48" width={20} height={36}>
+                <path d="M22,5 C20,7 8,21 5,24 C8,27 20,41 22,43"
+                  fill="none" stroke="#6B4226" strokeWidth={4.5}
                   strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
 
-            {/* The Jar */}
-            <div style={{ flex:"1 1 auto", maxWidth:"min(320px,72vw)", minWidth:0,
-              transform:"translateX(clamp(-14px,-2.5vw,-4px))",
+            {/* The Jar — taller via maxWidth increase, slight left offset */}
+            <div style={{ flex:"1 1 auto", maxWidth:"min(360px,76vw)", minWidth:0,
+              transform:"translateX(clamp(-12px,-2vw,-3px))",
               transition:"opacity 0.5s ease, filter 0.5s ease",
               opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none" }}>
               <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
@@ -2199,18 +2208,18 @@ export default function ThoughtJar() {
                 lidVariant={(activeJar?.id ?? 0) % 5} />
             </div>
 
-            {/* Right arrow — handdrawn triangle */}
+            {/* Right arrow — tight to jar */}
             <button
               onClick={goNext} disabled={!canGoNext || isLocked}
               aria-label="next jar"
               style={{
                 background:"none", border:"none", cursor: canGoNext&&!isLocked ? "pointer" : "default",
-                padding:0, flexShrink:0, opacity: canGoNext&&!isLocked ? 1 : 0.22,
+                padding:"0 2px", flexShrink:0, opacity: canGoNext&&!isLocked ? 1 : 0.2,
                 WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
               }}>
-              <svg viewBox="0 0 40 56" width={32} height={44}>
-                <path d="M8,6 C10,8 28,26 32,28 C28,30 10,48 8,50"
-                  fill="none" stroke="#6B4226" strokeWidth={5}
+              <svg viewBox="0 0 28 48" width={20} height={36}>
+                <path d="M6,5 C8,7 20,21 23,24 C20,27 8,41 6,43"
+                  fill="none" stroke="#6B4226" strokeWidth={4.5}
                   strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
@@ -2226,14 +2235,14 @@ export default function ThoughtJar() {
               ? "add a thought, and it will float inside the jar"
               : currentThoughts.length >= JAR_CAPACITY
                 ? "this jar is full — create a new one with a token"
-                : "click the jar to rediscover a forgotten thought"}
+                : "tap the dice or jar to rediscover a thought"}
           </p>
 
-          {/* TV — absolutely positioned bottom-right of main, above input area */}
+          {/* TV — absolutely positioned, right side, vertically centred in jar area */}
           <div className="tv-widget" style={{
             position:"absolute",
             right:0,
-            bottom:"clamp(130px,22vh,160px)",
+            bottom:"clamp(120px,20vh,150px)",
             flexDirection:"column",alignItems:"center",
             opacity:0.88,zIndex:2 }}>
             <RetroTV onOpenAd={handleOpenAd} />
@@ -2252,9 +2261,10 @@ export default function ThoughtJar() {
           onCancel={() => { setShowJarFull(false); setShowNewJar(false); }}
           onOpenTV={() => { setShowJarFull(false); setShowNewJar(false); setTvAdOpen(true); }} />
       )}
-      {showInfo && <InfoModal onClose={() => setShowInfo(false)}
+      {showInfo && <InfoModal onClose={() => { setShowInfo(false); setInfoInitPage("note"); }}
         musicMuted={musicMuted} setMusicMuted={setMusicMuted}
-        musicVolume={musicVolume} setMusicVolume={setMusicVolume} />}
+        musicVolume={musicVolume} setMusicVolume={setMusicVolume}
+        initialPage={infoInitPage} />}
       {showHomeScreen && <HomeScreenModal onClose={() => setShowHomeScreen(false)} />}
 
       {showList && (
