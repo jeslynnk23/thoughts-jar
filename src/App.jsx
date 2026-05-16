@@ -1754,7 +1754,7 @@ export default function ThoughtJar() {
 
   const [nickname, setNickname]   = useState(() => load(NICKNAME_KEY, null));
   // Show HS prompt if not yet seen — independent of onboarding state
-  const [showHSPrompt, setShowHSPrompt] = useState(
+  const [showHSPrompt, setShowHSPrompt] = useState(true);
     () => !load(HS_PROMPT_KEY, false)
   );
   const [showOnboarding, setShowOnboarding] = useState(() => !load(INTRO_KEY, false));
@@ -1901,7 +1901,6 @@ export default function ThoughtJar() {
 
       {showHSPrompt && (
         <HomeScreenPrompt onDone={() => {
-          save(HS_PROMPT_KEY, true);
           setShowHSPrompt(false);
         }} />
       )}
