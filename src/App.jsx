@@ -1211,7 +1211,7 @@ function OnboardingFlow({ onComplete }) {
             </g>
             <path d="M26,55 C25,65 24,78 25,88" fill="none" stroke="white" strokeWidth={2.5} strokeLinecap="round" opacity={0.5} />
           </svg>
-          <h1 style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(34px,6vw,52px)",color:"#3D2510",lineHeight:1.6,paddingBottom:10,overflow:"visible",display:"block",animation:"floatUp 0.6s ease 0.1s both" }}>welcome to thought jar</h1>
+          <h1 style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(34px,6vw,52px)",color:"#3D2510",lineHeight:1.6,paddingBottom:10,overflow:"visible",display:"block",animation:"floatUp 0.6s ease 0.1s both" }}>welcome to thoughts jar</h1>
           <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(14px,2.2vw,17px)",color:"#A07850",lineHeight:1.65,animation:"floatUp 0.6s ease 0.2s both" }}>a tiny home for wandering thoughts</p>
           {btn("open the jar", () => advance(2))}
         </>}
