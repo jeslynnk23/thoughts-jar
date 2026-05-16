@@ -1755,8 +1755,6 @@ export default function ThoughtJar() {
   const [nickname, setNickname]   = useState(() => load(NICKNAME_KEY, null));
   // Show HS prompt if not yet seen — independent of onboarding state
   const [showHSPrompt, setShowHSPrompt] = useState(true);
-    () => !load(HS_PROMPT_KEY, false)
-  );
   const [showOnboarding, setShowOnboarding] = useState(() => !load(INTRO_KEY, false));
   const [tokenExpiry, setTokenExpiry]       = useState(() => load(EXPIRY_KEY, null));
   const [starterRemaining, setStarterRemaining] = useState(() => load(STARTER_KEY, STARTER_TOKENS));
