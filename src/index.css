@@ -116,3 +116,26 @@ button {
     padding-bottom: max(24px, env(safe-area-inset-bottom));
   }
 }
+
+/* ── PWA / standalone mode: match browser layout exactly ────────────────── */
+
+/* Use dvh in standalone so height matches browser addressable area */
+@media (display-mode: standalone) {
+  body {
+    min-height: 100dvh;
+  }
+  .app-root {
+    min-height: 100dvh;
+    /* In standalone mode the html padding-top already accounts for safe-area;
+       prevent double-spacing at the top */
+    padding-top: max(2rem, env(safe-area-inset-top, 0px));
+  }
+}
+
+/* On browsers (non-standalone), html padding-top handles status bar.
+   Remove it in non-standalone so it doesn't add extra space. */
+@media not (display-mode: standalone) {
+  html {
+    padding-top: 0;
+  }
+}

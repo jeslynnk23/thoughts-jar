@@ -1673,7 +1673,7 @@ export default function ThoughtJar() {
 
       {showOnboarding && <OnboardingFlow onComplete={handleOnboardingComplete} />}
 
-      <div className="clip-x" style={{ minHeight:"100vh",width:"100%",background:"#FBF5E8",display:"flex",
+      <div className="clip-x app-root" style={{ minHeight:"100vh",width:"100%",background:"#FBF5E8",display:"flex",
         flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",
         padding:"2rem 1.5rem",fontFamily:"var(--font-body)",
         opacity: showOnboarding ? 0 : 1, transition:"opacity 0.4s ease" }}>
@@ -1738,8 +1738,10 @@ export default function ThoughtJar() {
           paddingBottom:"clamp(24px,4vh,48px)",
           position:"relative" }}>
 
-          {/* The Jar — full width, centered, no TV beside it */}
+          {/* The Jar — shifted slightly left to create separation from TV */}
           <div style={{ width:"100%",maxWidth:"min(380px,82vw)",
+            marginLeft:"auto", marginRight:"auto",
+            transform:"translateX(clamp(-28px,-5vw,-10px))",
             transition:"opacity 0.5s ease, filter 0.5s ease",
             opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none" }}>
             <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
