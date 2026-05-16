@@ -83,13 +83,18 @@ button {
   cursor: pointer;
 }
 
-/* TV beside jar: hide on narrow screens so jar still gets full width */
-@media (max-width: 420px) {
+/* TV beside jar: always flex by default */
+.tv-widget {
+  display: flex;
+}
+
+/* Only hide TV on truly tiny screens (smaller than iPhone SE) */
+@media (max-width: 320px) {
   .tv-widget { display: none !important; }
 }
 
-/* On very short screens (landscape phone) also hide TV */
-@media (max-height: 500px) {
+/* Hide TV in landscape on phones to avoid height clipping */
+@media (max-height: 420px) and (orientation: landscape) {
   .tv-widget { display: none !important; }
 }
 

@@ -1739,18 +1739,18 @@ export default function ThoughtJar() {
 
           {/* Jar + TV side-by-side row */}
           <div style={{ width:"100%",display:"flex",alignItems:"center",
-            justifyContent:"center",gap:"clamp(8px,2vw,20px)" }}>
-            {/* The Jar */}
-            <div style={{ flex:"0 0 auto",maxWidth:"min(300px,62vw)",width:"100%",
+            justifyContent:"center",gap:"clamp(8px,2vw,16px)",flexWrap:"nowrap" }}>
+            {/* The Jar — flex shrinks to make room for TV */}
+            <div style={{ flex:"1 1 auto",maxWidth:"min(280px,58vw)",minWidth:0,
               transition:"opacity 0.5s ease, filter 0.5s ease",
               opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none" }}>
               <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
                 isAnimating={isJarAnimating} jarName={activeJar?.name}
                 lidVariant={(activeJar?.id ?? 0) % 5} />
             </div>
-            {/* TV — beside jar, hidden on very narrow screens */}
-            <div className="tv-widget" style={{ flex:"0 0 auto",display:"flex",
-              flexDirection:"column",alignItems:"center",opacity:0.88 }}>
+            {/* TV — beside jar, fixed size, hidden only on tiny screens via CSS */}
+            <div className="tv-widget" style={{ flex:"0 0 auto",flexDirection:"column",
+              alignItems:"center",opacity:0.88,zIndex:2 }}>
               <RetroTV onOpenAd={handleOpenAd} />
             </div>
           </div>
