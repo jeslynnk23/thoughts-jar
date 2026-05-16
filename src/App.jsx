@@ -16,6 +16,9 @@ const STARTER_KEY = "tj-starter";
 const INTRO_KEY   = "tj-intro";
 const NICKNAME_KEY= "tj-nickname";
 const ACTIVE_JAR  = "tj-activeJar";
+const HS_PROMPT_KEY= "tj-hsPromptSeen";
+const MUSIC_KEY    = "tj-musicMuted";
+const MUSIC_VOL_KEY= "tj-musicVol";
 
 const STARTER_TOKENS = 7;
 const ACCESS_HOURS   = 24;
@@ -49,11 +52,14 @@ const BLOB_VARIANTS = [
   "M-0.1,-1 C0.5,-1 1.1,-0.4 1.1,0.2 C1.1,0.9 0.4,1.3 -0.2,1.2 C-0.8,1.1 -1.2,0.5 -1.1,-0.2 C-1,-0.8 -0.7,-1 -0.1,-1",
 ];
 
-function BlobShape({ color, x, y, size, opacity = 0.88, seed = 0, completed = false }) {
+function BlobShape({ color, x, y, size, opacity = 0.88, seed = 0, completed = false, floatPhase = 0 }) {
   const path = BLOB_VARIANTS[seed % BLOB_VARIANTS.length];
   const r = size / 2;
+  // Each blob gets a unique CSS animation-delay based on its floatPhase
+  const delay = `-${(floatPhase / 360 * 6).toFixed(2)}s`;
   return (
-    <g transform={`translate(${x},${y}) scale(${r})`} opacity={completed ? 0.35 : opacity}>
+    <g transform={`translate(${x},${y}) scale(${r})`} opacity={completed ? 0.35 : opacity}
+       style={{ animation:`blobFloat 6s ease-in-out ${delay} infinite`, transformOrigin:`${x}px ${y}px` }}>
       <path d={path} fill={color} stroke="#6B4226" strokeWidth={1.5 / r} strokeLinejoin="round"
         strokeDasharray={completed ? `${6/r},${3/r}` : "none"} />
     </g>
@@ -76,19 +82,28 @@ function JarSVG({ thoughts, onJarClick, isAnimating, jarName, lidVariant = 0 }) 
   const maxBlobs = JAR_CAPACITY;
   const count    = thoughts.length;
 
-  // Blob grid: 5 cols × 5 rows = 25 capacity, centered in jar interior (x:50-170, y:100-270)
-  // Each position is staggered naturally so blobs spread evenly with no right-gap
-  const COLS = 5;
-  const jarLeft = 52, jarRight = 168;
-  const jarInnerWidth = jarRight - jarLeft; // 116px
-  const colStep = jarInnerWidth / COLS;     // 23.2px per column
-  const blobPositions = thoughts.map((t, i) => {
-    const col  = i % COLS;
-    const row  = Math.floor(i / COLS);
-    const rowStagger = (row % 2) * (colStep / 2);
-    const baseX = jarLeft + colStep * col + colStep / 2 + rowStagger;
-    const baseY = 262 - row * 34 + (col % 2) * 5;
-    return { x: baseX, y: Math.max(100, baseY), color: PASTEL_COLORS[t.colorIndex], seed: t.blobSeed, completed: t.completed };
+  // Organic blob positions: seeded pseudo-random so each thought has a stable,
+  // natural-looking position that doesn't shift when other thoughts are added/removed.
+  // Uses the thought's id as a stable seed to avoid re-layout on every render.
+  const blobPositions = thoughts.map((t) => {
+    // Stable hash from thought id → deterministic but organic-looking position
+    const h  = (t.id * 2654435761 >>> 0) % 1000;
+    const h2 = (t.id * 40503 + 1013904223 >>> 0) % 1000;
+    const h3 = (t.id * 69069 + 12345 >>> 0) % 1000;
+    // Jar interior x: 58-162, y: 100-270
+    const baseX = 62 + (h  / 1000) * 92;
+    const baseY = 110 + (h2 / 1000) * 148;
+    // Small organic jitter for extra naturalness
+    const jitterX = ((h3 / 1000) - 0.5) * 14;
+    const jitterY = ((h  / 1000) - 0.5) * 10;
+    return {
+      x: Math.max(62, Math.min(158, baseX + jitterX)),
+      y: Math.max(108, Math.min(268, baseY + jitterY)),
+      color: PASTEL_COLORS[t.colorIndex],
+      seed:  t.blobSeed,
+      completed: t.completed,
+      floatPhase: (h3 % 360), // unique phase per blob for staggered float
+    };
   });
 
   const fillLevel = count > 0 ? Math.max(102, 278 - (count / maxBlobs) * 168) : 280;
@@ -99,7 +114,7 @@ function JarSVG({ thoughts, onJarClick, isAnimating, jarName, lidVariant = 0 }) 
   return (
     <svg viewBox="0 0 220 300" width="100%"
       style={{
-        maxWidth: 340, cursor: "pointer",
+        maxWidth: 380, cursor: "pointer",
         filter: isAnimating ? "drop-shadow(0 0 18px #F4B18355)" : "none",
         transition: "filter 0.4s ease, transform 0.3s cubic-bezier(0.34,1.56,0.64,1)",
         transform: isAnimating ? "scale(1.03)" : "scale(1)",
@@ -124,7 +139,7 @@ function JarSVG({ thoughts, onJarClick, isAnimating, jarName, lidVariant = 0 }) 
         )}
         {blobPositions.map((b, i) => (
           <BlobShape key={thoughts[i].id} color={b.color} x={b.x} y={b.y}
-            size={18 + (b.seed % 3) * 4} seed={b.seed} opacity={0.82} completed={b.completed} />
+            size={18 + (b.seed % 3) * 4} seed={b.seed} opacity={0.82} completed={b.completed} floatPhase={b.floatPhase ?? 0} />
         ))}
       </g>
 
@@ -193,6 +208,59 @@ function JarSVG({ thoughts, onJarClick, isAnimating, jarName, lidVariant = 0 }) 
 
     </svg>
   );
+}
+
+// ─── MUSIC HOOK ─────────────────────────────────────────────────────────────
+
+function useBackgroundMusic() {
+  const audioRef = useRef(null);
+  const [muted, setMuted]   = useState(() => load(MUSIC_KEY, false));
+  const [volume, setVolume] = useState(() => load(MUSIC_VOL_KEY, 0.35));
+  const started = useRef(false);
+
+  // Init audio element once
+  useEffect(() => {
+    const audio = new Audio('/music.mp3');
+    audio.loop   = true;
+    audio.volume = volume;
+    audio.muted  = muted;
+    audioRef.current = audio;
+    return () => { audio.pause(); audio.src = ''; };
+  }, []); // eslint-disable-line
+
+  // Start playback on first user interaction (browser autoplay policy)
+  useEffect(() => {
+    const start = () => {
+      if (started.current || !audioRef.current || muted) return;
+      started.current = true;
+      audioRef.current.play().catch(() => {});
+    };
+    window.addEventListener('pointerdown', start, { once: true });
+    window.addEventListener('keydown',     start, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', start);
+      window.removeEventListener('keydown',     start);
+    };
+  }, [muted]);
+
+  // Sync muted state
+  useEffect(() => {
+    if (!audioRef.current) return;
+    audioRef.current.muted = muted;
+    save(MUSIC_KEY, muted);
+    if (!muted && started.current) {
+      audioRef.current.play().catch(() => {});
+    }
+  }, [muted]);
+
+  // Sync volume
+  useEffect(() => {
+    if (!audioRef.current) return;
+    audioRef.current.volume = volume;
+    save(MUSIC_VOL_KEY, volume);
+  }, [volume]);
+
+  return { muted, setMuted, volume, setVolume };
 }
 
 // ─── RETRO TV ───────────────────────────────────────────────────────────────
@@ -930,6 +998,73 @@ function LockedOverlay({ onOpenTV }) {
   );
 }
 
+// ─── HOME SCREEN PROMPT ─────────────────────────────────────────────────────
+
+function HomeScreenPrompt({ onDone }) {
+  // Detect if already in standalone (PWA) mode — skip if so
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  // Auto-skip in standalone
+  useEffect(() => { if (isStandalone) onDone(); }, [isStandalone, onDone]);
+
+  if (isStandalone) return null;
+
+  return (
+    <div style={{ position:"fixed",inset:0,background:"rgba(61,37,16,0.35)",
+      backdropFilter:"blur(6px)",display:"flex",alignItems:"center",
+      justifyContent:"center",zIndex:1000,padding:"1.5rem" }}>
+      <div style={{ background:"#FFFDF0",border:"2.5px solid #6B4226",borderRadius:20,
+        width:"min(92vw,400px)",padding:"1.8rem 1.8rem 1.5rem",
+        boxShadow:"6px 8px 0 #C9A87A" }}>
+        {/* Tiny phone icon */}
+        <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:14 }}>
+          <svg viewBox="0 0 24 24" width={22} height={22}>
+            <rect x={4} y={1} width={16} height={22} rx={3} fill="none" stroke="#6B4226" strokeWidth={1.8}/>
+            <circle cx={12} cy={19.5} r={1.2} fill="#6B4226"/>
+            <line x1={12} y1={7} x2={12} y2={14} stroke="#6B4226" strokeWidth={1.8} strokeLinecap="round"/>
+            <line x1={8.5} y1={10.5} x2={15.5} y2={10.5} stroke="#6B4226" strokeWidth={1.8} strokeLinecap="round"/>
+          </svg>
+          <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(16px,3.5vw,20px)",
+            color:"#3D2510",lineHeight:1.4,overflow:"visible",paddingBottom:2 }}>
+            best used as a home screen app
+          </p>
+        </div>
+        <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#6B5040",lineHeight:1.7,marginBottom:14 }}>
+          save thoughts jar to your home screen before you begin — it feels much more like a real app that way.
+        </p>
+        <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:14 }}>
+          <div style={{ background:"#FBF5E8",borderRadius:10,padding:"9px 12px",border:"1.5px solid #E8D8C0" }}>
+            <p style={{ fontFamily:"var(--font-body)",fontSize:11,color:"#A07850",fontWeight:600,marginBottom:3 }}>on iphone</p>
+            <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#5C3D22",lineHeight:1.6 }}>
+              open in safari → tap share → choose <strong>add to home screen</strong>
+            </p>
+          </div>
+          <div style={{ background:"#FBF5E8",borderRadius:10,padding:"9px 12px",border:"1.5px solid #E8D8C0" }}>
+            <p style={{ fontFamily:"var(--font-body)",fontSize:11,color:"#A07850",fontWeight:600,marginBottom:3 }}>on android</p>
+            <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#5C3D22",lineHeight:1.6 }}>
+              open in chrome → tap menu → choose <strong>add to home screen</strong>
+            </p>
+          </div>
+        </div>
+        <div style={{ display:"flex",gap:10 }}>
+          <button onClick={onDone}
+            style={{ flex:1,background:"#E85D3A",border:"2px solid #6B4226",borderRadius:50,
+              padding:"10px 0",fontFamily:"var(--font-body)",fontSize:13,fontWeight:500,
+              color:"white",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226" }}>
+            continue in browser
+          </button>
+        </div>
+        <p style={{ fontFamily:"var(--font-body)",fontSize:11,color:"#B89070",textAlign:"center",
+          marginTop:10,fontStyle:"italic" }}>
+          you can add it later via the home screen icon in the menu
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── ONBOARDING ──────────────────────────────────────────────────────────────
 
 function PulsingBlob({ color, style: s }) {
@@ -951,6 +1086,11 @@ function OnboardingFlow({ onComplete }) {
   const advance = (next) => {
     setLeaving(true);
     setTimeout(() => { setLeaving(false); setScreen(next); }, 320);
+  };
+  const goBack = () => {
+    if (screen <= 1) return;
+    setLeaving(true);
+    setTimeout(() => { setLeaving(false); setScreen(s => s - 1); }, 320);
   };
   const handleNicknameSubmit = () => {
     const chosen = nicknameInput.trim() || suggestion;
@@ -999,12 +1139,23 @@ function OnboardingFlow({ onComplete }) {
         </pattern>
         <rect width="100%" height="100%" fill="url(#ob-dots)" />
       </svg>
-      <div style={{ position:"absolute",bottom:40,display:"flex",gap:10 }}>
-        {[1,2,3,4].map(n => (
-          <div key={n} style={{ width: n===screen?22:8, height:8, borderRadius:50,
-            background: n===screen?"#E85D3A":"#D4C5B0", border:"1.5px solid #6B4226",
-            transition:"all 0.3s ease" }} />
-        ))}
+      <div style={{ position:"absolute",bottom:32,display:"flex",flexDirection:"column",
+        alignItems:"center",gap:10 }}>
+        <div style={{ display:"flex",gap:10 }}>
+          {[1,2,3,4].map(n => (
+            <div key={n} style={{ width: n===screen?22:8, height:8, borderRadius:50,
+              background: n===screen?"#E85D3A":"#D4C5B0", border:"1.5px solid #6B4226",
+              transition:"all 0.3s ease" }} />
+          ))}
+        </div>
+        {screen > 1 && (
+          <button onClick={goBack}
+            style={{ background:"transparent",border:"none",cursor:"pointer",
+              fontFamily:"var(--font-body)",fontSize:12,color:"#A07850",opacity:0.7,
+              display:"flex",alignItems:"center",gap:4 }}>
+            ← back
+          </button>
+        )}
       </div>
       <div style={screenStyle}>
         {screen===1 && <>
@@ -1289,6 +1440,7 @@ function InfoModal({ onClose }) {
     [
       "tj-jars","tj-tokens","tj-expiry","tj-starter",
       "tj-intro","tj-nickname","tj-activeJar",
+      "tj-hsPromptSeen","tj-musicMuted","tj-musicVol",
       "thought-jar-thoughts","thought-jar-tokens",
     ].forEach(k => localStorage.removeItem(k));
     window.location.reload();
@@ -1441,6 +1593,36 @@ function InfoModal({ onClose }) {
                 settings
               </p>
 
+              {/* Music controls */}
+              <div style={{ background:"#FBF5E8",border:"1.5px solid #E8D8C0",borderRadius:14,padding:"16px",marginBottom:0 }}>
+                <p style={{ fontFamily:"var(--font-body)",fontSize:14,color:"#3D2510",fontWeight:600,marginBottom:6 }}>
+                  background music
+                </p>
+                <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#6B5040",lineHeight:1.6,marginBottom:12 }}>
+                  soft looping music while you use the app.
+                </p>
+                <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:10 }}>
+                  <button onClick={() => setMusicMuted(m => !m)}
+                    style={{ background: musicMuted ? "#FBF5E8" : "#A8C5A0",
+                      border:"2px solid #6B4226",borderRadius:50,padding:"7px 16px",
+                      fontFamily:"var(--font-body)",fontSize:13,fontWeight:500,
+                      color:"#3D2510",cursor:"pointer",
+                      boxShadow: musicMuted ? "none" : "2px 3px 0 #6B4226",minWidth:80 }}>
+                    {musicMuted ? "unmute" : "mute"}
+                  </button>
+                  <span style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#A07850" }}>
+                    {musicMuted ? "music off" : "music on"}
+                  </span>
+                </div>
+                <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+                  <span style={{ fontFamily:"var(--font-body)",fontSize:11,color:"#A07850",flexShrink:0 }}>volume</span>
+                  <input type="range" min="0" max="1" step="0.05"
+                    value={musicVolume}
+                    onChange={e => setMusicVolume(parseFloat(e.target.value))}
+                    style={{ flex:1,accentColor:"#E85D3A",cursor:"pointer" }} />
+                </div>
+              </div>
+
               {/* Reset memory */}
               <div style={{ background:"#FBF5E8",border:"1.5px solid #E8D8C0",borderRadius:14,padding:"16px" }}>
                 <p style={{ fontFamily:"var(--font-body)",fontSize:14,color:"#3D2510",
@@ -1493,6 +1675,10 @@ function InfoModal({ onClose }) {
 // ─── MAIN APP ────────────────────────────────────────────────────────────────
 
 export default function ThoughtJar() {
+  // ── Music
+  const { muted: musicMuted, setMuted: setMusicMuted,
+          volume: musicVolume, setVolume: setMusicVolume } = useBackgroundMusic();
+
   // ── Jars state: array of { id, name, thoughts[] }
   // Migrate legacy single-jar data on first load
   const [jars, setJars] = useState(() => {
@@ -1529,6 +1715,9 @@ export default function ThoughtJar() {
   const toastTimer = useRef(null);
 
   const [nickname, setNickname]   = useState(() => load(NICKNAME_KEY, null));
+  const [showHSPrompt, setShowHSPrompt] = useState(
+    () => !load(HS_PROMPT_KEY, false) && !load(INTRO_KEY, false)
+  );
   const [showOnboarding, setShowOnboarding] = useState(() => !load(INTRO_KEY, false));
   const [tokenExpiry, setTokenExpiry]       = useState(() => load(EXPIRY_KEY, null));
   const [starterRemaining, setStarterRemaining] = useState(() => load(STARTER_KEY, STARTER_TOKENS));
@@ -1671,7 +1860,13 @@ export default function ThoughtJar() {
   return (
     <>
 
-      {showOnboarding && <OnboardingFlow onComplete={handleOnboardingComplete} />}
+      {showHSPrompt && (
+        <HomeScreenPrompt onDone={() => {
+          save(HS_PROMPT_KEY, true);
+          setShowHSPrompt(false);
+        }} />
+      )}
+      {!showHSPrompt && showOnboarding && <OnboardingFlow onComplete={handleOnboardingComplete} />}
 
       <div className="clip-x app-root" style={{ minHeight:"100vh",width:"100%",background:"#FBF5E8",display:"flex",
         flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",

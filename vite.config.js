@@ -7,7 +7,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'MyFreehandFont5.otf', 'icons/*.png'],
+      // Use a different filename so Monetag's sw.js at /sw.js is preserved
+      filename: 'pwa-sw.js',
+      includeAssets: ['favicon.ico', 'MyFreehandFont5.otf', 'icons/*.png', 'music.mp3'],
       manifest: {
         name: 'thoughts jar',
         short_name: 'thoughts jar',
@@ -18,38 +20,21 @@ export default defineConfig({
         start_url: '/',
         orientation: 'portrait',
         icons: [
-          {
-            src: 'icons/icon-192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any maskable',
-          },
-          {
-            src: 'icons/icon-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable',
-          },
-          {
-            src: 'icons/icon-180.png',
-            sizes: '180x180',
-            type: 'image/png',
-            purpose: 'any',
-          },
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          { src: 'icons/icon-180.png', sizes: '180x180', type: 'image/png', purpose: 'any' },
         ],
       },
     }),
   ],
   build: {
     outDir: 'dist',
-    sourcemap: false,       // no source maps in production
-    minify: 'esbuild',      // fast, tree-shaking minification
+    sourcemap: false,
+    minify: 'esbuild',
     target: 'es2020',
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ['react', 'react-dom'],
-        },
+        manualChunks: { react: ['react', 'react-dom'] },
       },
     },
   },
