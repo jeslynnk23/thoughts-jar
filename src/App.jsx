@@ -876,6 +876,7 @@ function TVAdPopup({ onClose, onEarnToken }) {
           width:"min(92vw,420px)",boxShadow:"6px 8px 0 #C9A87A" }}
           onClick={e => e.stopPropagation()}>
 
+          {/* Channel header — always visible */}
           <div style={{ background:"#3D2510",padding:"8px 18px",display:"flex",
             alignItems:"center",justifyContent:"space-between",
             borderRadius:"16px 16px 0 0" }}>
@@ -889,7 +890,8 @@ function TVAdPopup({ onClose, onEarnToken }) {
             </div>
           </div>
 
-          {phase === "tuning" ? (
+          {/* Tuning phase */}
+          {phase === "tuning" && (
             <div style={{ background:"#3D2510",padding:"48px 24px",display:"flex",flexDirection:"column",
               alignItems:"center",gap:14,borderBottom:"2.5px solid #6B4226" }}>
               <svg viewBox="0 0 60 60" width={60} height={60}>
@@ -908,66 +910,73 @@ function TVAdPopup({ onClose, onEarnToken }) {
               </p>
               <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
             </div>
-          ) : (
-          <div style={{ background:ad.bg,padding:"28px 24px 22px",display:"flex",flexDirection:"column",
-            alignItems:"center",gap:10,borderBottom:"2.5px solid #6B4226" }}>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#6B4226",opacity:0.7,letterSpacing:1 }}>
-              {ad.label}
-            </p>
-            <AdIllustration icon={ad.icon} />
-            <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:28,color:"#3D2510",textAlign:"center",lineHeight:1.6,paddingBottom:6,overflow:"visible" }}>
-              {ad.brand}
-            </p>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#6B4226",opacity:0.75,textAlign:"center",fontStyle:"italic" }}>
-              {ad.tagline}
-            </p>
-          </div>
-          )} {/* end tuning/watching conditional */}
+          )}
 
-          {phase !== "tuning" && <div style={{ padding:"18px 24px 22px",display:"flex",flexDirection:"column",gap:14 }}>
-            <div>
-              <div style={{ display:"flex",justifyContent:"space-between",marginBottom:6,alignItems:"center" }}>
-                <span style={{ fontFamily:"var(--font-body)",fontSize:11,color:"#A07850" }}>
-                  {done ? "ready to claim!" : "watch to earn a token"}
-                </span>
-                <span style={{ fontFamily:"var(--font-body)",fontSize:16,fontWeight:500,
-                  color: done ? "#4A8C50" : "#C87A50",transition:"color 0.4s" }}>
-                  {done ? "done!" : `${secondsLeft}s`}
-                </span>
+          {/* Watching phase — ad card */}
+          {phase !== "tuning" && (
+            <div style={{ background:ad.bg,padding:"28px 24px 22px",display:"flex",flexDirection:"column",
+              alignItems:"center",gap:10,borderBottom:"2.5px solid #6B4226" }}>
+              <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#6B4226",opacity:0.7,letterSpacing:1 }}>
+                {ad.label}
+              </p>
+              <AdIllustration icon={ad.icon} />
+              <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:28,color:"#3D2510",textAlign:"center",lineHeight:1.6,paddingBottom:6,overflow:"visible" }}>
+                {ad.brand}
+              </p>
+              <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#6B4226",opacity:0.75,textAlign:"center",fontStyle:"italic" }}>
+                {ad.tagline}
+              </p>
+            </div>
+          )}
+
+          {/* Watching phase — timer + claim */}
+          {phase !== "tuning" && (
+            <div style={{ padding:"18px 24px 22px",display:"flex",flexDirection:"column",gap:14 }}>
+              <div>
+                <div style={{ display:"flex",justifyContent:"space-between",marginBottom:6,alignItems:"center" }}>
+                  <span style={{ fontFamily:"var(--font-body)",fontSize:11,color:"#A07850" }}>
+                    {done ? "ready to claim!" : "watch to earn a token"}
+                  </span>
+                  <span style={{ fontFamily:"var(--font-body)",fontSize:16,fontWeight:500,
+                    color: done ? "#4A8C50" : "#C87A50",transition:"color 0.4s" }}>
+                    {done ? "done!" : `${secondsLeft}s`}
+                  </span>
+                </div>
+                <div style={{ height:10,background:"#E8D8C0",borderRadius:50,border:"1.5px solid #6B4226",overflow:"hidden" }}>
+                  <div style={{ height:"100%",width:`${progress}%`,background: done ? "#A8C5A0" : "#F6C94A",
+                    borderRadius:50,transition:"width 1s linear, background 0.4s" }} />
+                </div>
               </div>
-              <div style={{ height:10,background:"#E8D8C0",borderRadius:50,border:"1.5px solid #6B4226",overflow:"hidden" }}>
-                <div style={{ height:"100%",width:`${progress}%`,background: done ? "#A8C5A0" : "#F6C94A",
-                  borderRadius:50,transition:"width 1s linear, background 0.4s" }} />
+              <div style={{ display:"flex",gap:10 }}>
+                {!rewarded ? (
+                  <button onClick={handleClaim} disabled={!done}
+                    style={{ flex:1,background: done ? "#E85D3A" : "#D4C5B0",border:"2.5px solid #6B4226",
+                      borderRadius:50,padding:"11px 0",fontFamily:"var(--font-body)",fontSize:15,fontWeight:500,
+                      color: done ? "white" : "#A09080",cursor: done ? "pointer" : "not-allowed",
+                      boxShadow: done ? "3px 4px 0 #6B4226" : "none",transition:"background 0.3s, box-shadow 0.3s",
+                      whiteSpace:"nowrap" }}>
+                    {done ? "claim token" : "watching..."}
+                  </button>
+                ) : (
+                  <button onClick={onClose}
+                    style={{ flex:1,background:"#A8C5A0",border:"2.5px solid #6B4226",borderRadius:50,
+                      padding:"11px 0",fontFamily:"var(--font-body)",fontSize:15,fontWeight:500,
+                      color:"#3D2510",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226",whiteSpace:"nowrap" }}>
+                    token earned
+                  </button>
+                )}
+                <button onClick={onClose} aria-label="close"
+                  style={{ background:"transparent",border:"2px solid #C9A87A",borderRadius:"50%",
+                    width:44,height:44,flexShrink:0,fontFamily:"var(--font-body)",fontSize:16,fontWeight:500,
+                    color:"#A07850",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",
+                    lineHeight:1.3 }}>
+                  X
+                </button>
               </div>
             </div>
-            <div style={{ display:"flex",gap:10 }}>
-              {!rewarded ? (
-                <button onClick={handleClaim} disabled={!done}
-                  style={{ flex:1,background: done ? "#E85D3A" : "#D4C5B0",border:"2.5px solid #6B4226",
-                    borderRadius:50,padding:"11px 0",fontFamily:"var(--font-body)",fontSize:15,fontWeight:500,
-                    color: done ? "white" : "#A09080",cursor: done ? "pointer" : "not-allowed",
-                    boxShadow: done ? "3px 4px 0 #6B4226" : "none",transition:"background 0.3s, box-shadow 0.3s",
-                    whiteSpace:"nowrap" }}>
-                  {done ? "claim token" : "watching..."}
-                </button>
-              ) : (
-                <button onClick={onClose}
-                  style={{ flex:1,background:"#A8C5A0",border:"2.5px solid #6B4226",borderRadius:50,
-                    padding:"11px 0",fontFamily:"var(--font-body)",fontSize:15,fontWeight:500,
-                    color:"#3D2510",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226",whiteSpace:"nowrap" }}>
-                  token earned
-                </button>
-              )}
-              <button onClick={onClose} aria-label="close"
-                style={{ background:"transparent",border:"2px solid #C9A87A",borderRadius:"50%",
-                  width:44,height:44,flexShrink:0,fontFamily:"var(--font-body)",fontSize:16,fontWeight:500,
-                  color:"#A07850",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",
-                  lineHeight:1.3 }}>
-                X
-              </button>
-            </div>
-          </div>
-        </div>}  {/* end phase !== tuning bottom section */}
+          )}
+
+        </div>
       </div>
       {showCoin && <FloatingCoin onDone={() => setShowCoin(false)} />}
     </>
