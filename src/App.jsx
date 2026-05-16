@@ -55,13 +55,23 @@ const BLOB_VARIANTS = [
 function BlobShape({ color, x, y, size, opacity = 0.88, seed = 0, completed = false, floatPhase = 0 }) {
   const path = BLOB_VARIANTS[seed % BLOB_VARIANTS.length];
   const r = size / 2;
-  // Each blob gets a unique CSS animation-delay based on its floatPhase
   const delay = `-${(floatPhase / 360 * 6).toFixed(2)}s`;
+
   return (
-    <g transform={`translate(${x},${y}) scale(${r})`} opacity={completed ? 0.35 : opacity}
-       style={{ animation:`blobFloat 6s ease-in-out ${delay} infinite`, transformOrigin:`${x}px ${y}px` }}>
-      <path d={path} fill={color} stroke="#6B4226" strokeWidth={1.5 / r} strokeLinejoin="round"
-        strokeDasharray={completed ? `${6/r},${3/r}` : "none"} />
+    <g
+      transform={`translate(${x},${y}) scale(${r})`}
+      opacity={completed ? 0.35 : opacity}
+    >
+      <g style={{ animation: `blobFloat 6s ease-in-out ${delay} infinite` }}>
+        <path
+          d={path}
+          fill={color}
+          stroke="#6B4226"
+          strokeWidth={1.5 / r}
+          strokeLinejoin="round"
+          strokeDasharray={completed ? `${6 / r},${3 / r}` : "none"}
+        />
+      </g>
     </g>
   );
 }
