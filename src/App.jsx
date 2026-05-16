@@ -228,10 +228,10 @@ function RetroTV({ onOpenAd }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-      <div style={{ fontFamily: "var(--font-hand)", fontSize: 16, color: "#C87A50", opacity: 0.9, whiteSpace: "nowrap" }}>
+      <div style={{ fontFamily: "var(--font-hand)", fontSize: 12, color: "#C87A50", opacity: 0.8, whiteSpace: "nowrap" }}>
         earn tokens!
       </div>
-      <svg viewBox="0 0 96 88" width={96} height={88} onClick={handleTVClick}
+      <svg viewBox="0 0 96 88" width={70} height={64} onClick={handleTVClick}
         style={{ cursor: "pointer", transition: "transform 0.15s", transform: isFlickering ? "scale(1.04)" : "scale(1)" }}>
         <rect x={6} y={14} width={76} height={60} rx={7} fill="#D4C5B0" stroke="#6B4226" strokeWidth={2.5} />
         <rect x={14} y={21} width={50} height={38} rx={4}
@@ -1731,17 +1731,17 @@ export default function ThoughtJar() {
           <circle cx={15} cy={130} r={2} fill="#C87A50" />
         </svg>
 
-        {/* Main content — tighter on mobile so jar sits higher and TV can't overlap */}
+        {/* Main content */}
         <main style={{ display:"flex",flexDirection:"column",alignItems:"center",
-          gap:"clamp(8px,2vh,20px)",width:"100%",maxWidth:520,
+          gap:"clamp(8px,2vh,18px)",width:"100%",maxWidth:520,
           marginTop:"clamp(64px,10vh,90px)",
-          paddingBottom:"clamp(120px,20vh,160px)" }}>
+          paddingBottom:"clamp(24px,4vh,48px)" }}>
 
           {/* Jar + TV side-by-side row */}
           <div style={{ width:"100%",display:"flex",alignItems:"center",
             justifyContent:"center",gap:"clamp(8px,2vw,16px)",flexWrap:"nowrap" }}>
-            {/* The Jar — flex shrinks to make room for TV */}
-            <div style={{ flex:"1 1 auto",maxWidth:"min(280px,58vw)",minWidth:0,
+            {/* The Jar — given more space so it remains the focal point */}
+            <div style={{ flex:"1 1 auto",maxWidth:"min(320px,66vw)",minWidth:0,
               transition:"opacity 0.5s ease, filter 0.5s ease",
               opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none" }}>
               <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}

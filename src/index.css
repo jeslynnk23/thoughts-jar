@@ -101,6 +101,6 @@ button {
 /* Safe area inset support for iPhone notch / home indicator */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   main {
-    padding-bottom: max(120px, calc(100px + env(safe-area-inset-bottom)));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
   }
 }
