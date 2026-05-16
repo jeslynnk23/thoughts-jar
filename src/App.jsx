@@ -1069,8 +1069,16 @@ function HomeScreenPrompt({ onDone }) {
             best used as a home screen app
           </p>
         </div>
-        <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#6B5040",lineHeight:1.7,marginBottom:14 }}>
-          save thoughts jar to your home screen before you begin — it feels much more like a real app that way.
+                <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#6B5040",lineHeight:1.7,marginBottom:10 }}>
+          thoughts jar currently saves your thoughts locally on this device.
+        </p>
+
+        <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#6B5040",lineHeight:1.7,marginBottom:10 }}>
+          before you start filling your jar, please add the app to your home screen first so your thoughts stay in the same place.
+        </p>
+
+        <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#C65A4A",fontWeight:700,lineHeight:1.6,marginBottom:14 }}>
+          starting in browser first may not carry your thoughts over later
         </p>
         <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:14 }}>
           <div style={{ background:"#FBF5E8",borderRadius:10,padding:"9px 12px",border:"1.5px solid #E8D8C0" }}>
