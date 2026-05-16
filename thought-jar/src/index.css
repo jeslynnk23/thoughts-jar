@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500&display=swap');
+
+@font-face {
+  font-family: 'MyFreehandFont5';
+  src: url('/MyFreehandFont5.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  --font-hand: 'MyFreehandFont5', cursive;
+  --font-body: 'Montserrat', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Paint-order fix for self-intersecting glyphs in MyFreehandFont5.
+   Applies to all elements — the global fill color fix prevents hollow rendering. */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-text-fill-color: currentColor;
+}
+
+body {
+  overflow-x: hidden;
+  font-family: var(--font-body);
+}
+
+/* Headings use the handwritten font — apply fill fix */
+h1, h2, h3 {
+  overflow: visible !important;
+  line-height: 1.6 !important;
+  padding-bottom: 8px !important;
+  display: block;
+  paint-order: stroke fill;
+  -webkit-text-stroke: 0.6px currentColor;
+}
+
+/* Body elements: paint-order but no visible stroke */
+p, span, button, input, li {
+  paint-order: stroke fill;
+  -webkit-text-stroke: 0px currentColor;
+}
+
+/* Descender fix for handwritten font elements */
+.hand-text {
+  overflow: visible !important;
+  line-height: 1.6 !important;
+  padding-bottom: 8px !important;
+  display: block;
+  font-synthesis: none;
+  -webkit-text-fill-color: currentColor;
+  -webkit-text-stroke: 0.6px currentColor;
+  paint-order: stroke fill;
+}
+
+/* Utility class for non-heading hand-font elements */
+.fh {
+  -webkit-text-fill-color: currentColor;
+  -webkit-text-stroke: 0.6px currentColor;
+  paint-order: stroke fill;
+}
+
+/* Layout helpers */
+header, main, section, div { overflow: visible; }
+.clip-x { overflow-x: hidden; overflow-y: visible; }
+
+/* Interactions */
+button:active { transform: scale(0.96); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #FBF5E8; }
+::-webkit-scrollbar-thumb { background: #C9A87A; border-radius: 3px; }
+
+/* ── Mobile layout fixes ─────────────────────────────────────────────────── */
+
+/* Ensure all buttons have proper touch handling on iOS */
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+/* TV: hide on short mobile viewports (height < 600px) to prevent jar overlap */
+@media (max-height: 600px) {
+  .tv-widget { display: none; }
+}
+
+/* On very narrow screens, hide TV to give the jar breathing room */
+@media (max-width: 390px) {
+  .tv-widget { display: none; }
+}
+
+/* Safe area inset support for iPhone notch / home indicator */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  main {
+    padding-bottom: max(120px, calc(100px + env(safe-area-inset-bottom)));
+  }
+}
