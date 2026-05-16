@@ -1733,31 +1733,25 @@ export default function ThoughtJar() {
 
         {/* Main content */}
         <main style={{ display:"flex",flexDirection:"column",alignItems:"center",
-          gap:"clamp(8px,2vh,18px)",width:"100%",maxWidth:520,
-          marginTop:"clamp(64px,10vh,90px)",
-          paddingBottom:"clamp(24px,4vh,48px)" }}>
+          gap:"clamp(6px,1.5vh,14px)",width:"100%",maxWidth:520,
+          marginTop:"clamp(60px,9vh,84px)",
+          paddingBottom:"clamp(24px,4vh,48px)",
+          position:"relative" }}>
 
-          {/* Jar + TV side-by-side row */}
-          <div style={{ width:"100%",display:"flex",alignItems:"center",
-            justifyContent:"center",gap:"clamp(8px,2vw,16px)",flexWrap:"nowrap" }}>
-            {/* The Jar — given more space so it remains the focal point */}
-            <div style={{ flex:"1 1 auto",maxWidth:"min(320px,66vw)",minWidth:0,
-              transition:"opacity 0.5s ease, filter 0.5s ease",
-              opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none" }}>
-              <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
-                isAnimating={isJarAnimating} jarName={activeJar?.name}
-                lidVariant={(activeJar?.id ?? 0) % 5} />
-            </div>
-            {/* TV — beside jar, fixed size, hidden only on tiny screens via CSS */}
-            <div className="tv-widget" style={{ flex:"0 0 auto",flexDirection:"column",
-              alignItems:"center",opacity:0.88,zIndex:2 }}>
-              <RetroTV onOpenAd={handleOpenAd} />
-            </div>
+          {/* The Jar — full width, centered, no TV beside it */}
+          <div style={{ width:"100%",maxWidth:"min(380px,82vw)",
+            transition:"opacity 0.5s ease, filter 0.5s ease",
+            opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none" }}>
+            <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
+              isAnimating={isJarAnimating} jarName={activeJar?.name}
+              lidVariant={(activeJar?.id ?? 0) % 5} />
           </div>
 
-          {/* Hint text */}
-          <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(13px,2vw,15px)",
-            color:"#A07850",textAlign:"center",opacity:0.85,lineHeight:1.5,marginTop:"-8px" }}>
+          <AddThoughtInput onAdd={handleAddThought} disabled={isLocked} />
+
+          {/* Hint text — below the input */}
+          <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(12px,1.8vw,14px)",
+            color:"#A07850",textAlign:"center",opacity:0.75,lineHeight:1.5 }}>
             {currentThoughts.length === 0
               ? "add a thought, and it will float inside the jar"
               : currentThoughts.length >= JAR_CAPACITY
@@ -1765,7 +1759,15 @@ export default function ThoughtJar() {
                 : "click the jar to rediscover a forgotten thought"}
           </p>
 
-          <AddThoughtInput onAdd={handleAddThought} disabled={isLocked} />
+          {/* TV — absolutely positioned bottom-right of main, above input area */}
+          <div className="tv-widget" style={{
+            position:"absolute",
+            right:0,
+            bottom:"clamp(52px,10vh,80px)",
+            flexDirection:"column",alignItems:"center",
+            opacity:0.88,zIndex:2 }}>
+            <RetroTV onOpenAd={handleOpenAd} />
+          </div>
         </main>
       </div>
 
