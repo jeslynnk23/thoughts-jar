@@ -2435,8 +2435,9 @@ export default function ThoughtJar() {
                     {
                       label: "info",
                       icon: (
-                        {/* Info: circle + i letterform matching reference */}
-                        <svg viewBox="0 0 24 28" width={16} height={19}>
+                        // Info: circle + i letterform matching reference
+                        icon: (
+                          <svg viewBox="0 0 24 28" width={16} height={19}>
                           <circle cx={12} cy={4} r={3.5} fill="none" stroke="#A07850" strokeWidth={2.2}/>
                           <path d="M10,11 C10,10 14,10 14,11 C13,14 11,20 10,24 C11,24 13,24 14,24"
                             fill="none" stroke="#A07850" strokeWidth={2.4}
