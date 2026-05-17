@@ -540,9 +540,19 @@ function JarFullModal({ tokens, onConfirm, onCancel, onOpenTV, atJarLimit = fals
     <div style={{ position:"fixed",inset:0,background:"rgba(107,66,38,0.22)",backdropFilter:"blur(5px)",
       display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,padding:"1.5rem" }}
       onClick={onCancel}>
-      <div style={{ background:"#FFFDF5",border:"3px solid #6B4226",borderRadius:20,
-        width:"min(92vw,420px)",padding:"2rem 1.8rem",boxShadow:"6px 8px 0 #C9A87A" }}
-        onClick={e => e.stopPropagation()}>
+      <div style={{
+  background:"#FFFDF5",
+  border:"3px solid #6B4226",
+  borderRadius:20,
+  width:"min(92vw,420px)",
+  minHeight:420,
+  padding:"2rem 1.8rem",
+  boxShadow:"6px 8px 0 #C9A87A",
+  display:"flex",
+  flexDirection:"column",
+  justifyContent:"space-between",
+}}
+onClick={e => e.stopPropagation()}>
         {atJarLimit ? (
           <>
             <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(22px,4vw,30px)",
@@ -1437,8 +1447,8 @@ function OnboardingFlow({ onComplete }) {
   src="/icons/token.svg"
   alt="token"
   style={{
-    width: 26,
-    height: 26,
+    width: 86,
+    height: 86,
     flexShrink: 0,
   }}
 />
@@ -1926,15 +1936,18 @@ function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musi
 const TUTORIAL_STEPS = [
   {
     icon: (
-      <img
-  src="/icons/add-jar.svg"
-  alt="add jar"
-  style={{
-    width: 52,
-    height: 52,
-  }}
-/>
-    ),
+  <svg viewBox="0 0 60 60" width={52} height={52}>
+    <path d="M12,18 C11,20 9,25 9,30 C8,37 8,44 9,49 C10,53 12,55 17,56 C22,57 26,57 30,57 C34,57 38,57 43,56 C48,55 50,53 51,49 C52,44 52,37 51,30 C51,25 49,20 48,18 Z"
+      fill="#FFF8EC" stroke="#6B4226" strokeWidth={2.2} strokeLinejoin="round"/>
+    <path d="M19,12 C18,13 17,15 16,17 C15,17.5 14,18 12,18 L48,18 C46,18 45,17.5 44,17 C43,15 42,13 41,12 Z"
+      fill="#FFF8EC" stroke="#6B4226" strokeWidth={2.2} strokeLinejoin="round"/>
+    <rect x={16} y={6} width={28} height={8} rx={3} fill="#E8C87A" stroke="#6B4226" strokeWidth={2}/>
+    <ellipse cx={30} cy={6} rx={6} ry={3} fill="#D4A840" stroke="#6B4226" strokeWidth={1.8}/>
+    <circle cx={44} cy={44} r={10} fill="#A8C5A0" stroke="#6B4226" strokeWidth={2}/>
+    <line x1={44} y1={38} x2={44} y2={50} stroke="#6B4226" strokeWidth={2.2} strokeLinecap="round"/>
+    <line x1={38} y1={44} x2={50} y2={44} stroke="#6B4226" strokeWidth={2.2} strokeLinecap="round"/>
+  </svg>
+),
     head: "drop a thought in",
     body: "type anything in the bar below — a feeling, an idea, something you want to remember. tap enter and it floats into the jar.",
   },
@@ -2389,12 +2402,15 @@ export default function ThoughtJar() {
                 touchAction:"manipulation",
               }}>
               {/* Coin */}
-              <svg viewBox="0 0 44 44" width={26} height={26} style={{ flexShrink:0 }}>
-                <circle cx={22} cy={22} r={20} fill="#F6C94A" stroke="#6B4226" strokeWidth={2.8} />
-                <circle cx={22} cy={22} r={15} fill="#EDAE1C" stroke="#6B4226" strokeWidth={1.5} opacity={0.6} />
-                <polygon points="22,10 24.4,18.5 33.5,18.5 26.3,23.5 28.7,32 22,27 15.3,32 17.7,23.5 10.5,18.5 19.6,18.5"
-                  fill="#FDE78A" stroke="#6B4226" strokeWidth={1.2} strokeLinejoin="round" />
-              </svg>
+              <img
+  src="/icons/token.svg"
+  alt="token"
+  style={{
+    width: 26,
+    height: 26,
+    flexShrink: 0,
+  }}
+/>
               {/* Count + days */}
               <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-start",gap:0 }}>
                 <span style={{ fontFamily:"var(--font-body)",fontSize:14,fontWeight:700,
@@ -2545,7 +2561,7 @@ export default function ThoughtJar() {
         {/* Main content — maximises central screen zone between header, right bar and input */}
         <main style={{ display:"flex",flexDirection:"column",alignItems:"center",
           gap:"clamp(6px,1.2vh,14px)",width:"100%",maxWidth:480,
-          marginTop:"clamp(56px,8vh,76px)",
+          marginTop:"clamp(28px,4.5vh,48px)",
           paddingBottom:"clamp(24px,4vh,48px)",
           position:"relative" }}>
 
