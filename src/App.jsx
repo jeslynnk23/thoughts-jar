@@ -1957,45 +1957,38 @@ const TUTORIAL_STEPS = [
   },
   {
     icon: (
-      <img
   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-  <img
-    src="/icons/full-jar.svg"
-    alt="jar"
-    style={{ width: 38, height: 48 }}
-  />
-
-  <svg viewBox="0 0 36 18" width={36} height={18}>
-    <path
-      d="M3 9 H29"
-      fill="none"
-      stroke="#6B4226"
-      strokeWidth={3}
-      strokeLinecap="round"
+    <img
+      src="/icons/full-jar.svg"
+      alt="jar"
+      style={{ width: 38, height: 48 }}
     />
-    <path
-      d="M22 3 L31 9 L22 15"
-      fill="none"
-      stroke="#6B4226"
-      strokeWidth={3}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
 
-  <img
-    src="/icons/full-jar.svg"
-    alt="jar"
-    style={{ width: 38, height: 48 }}
-  />
-</div>
-  alt="list"
-  style={{
-    width: 52,
-    height: 52,
-  }}
-/>
-    ),
+    <svg viewBox="0 0 36 18" width={36} height={18}>
+      <path
+        d="M3 9 H29"
+        fill="none"
+        stroke="#6B4226"
+        strokeWidth={3}
+        strokeLinecap="round"
+      />
+      <path
+        d="M22 3 L31 9 L22 15"
+        fill="none"
+        stroke="#6B4226"
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+
+    <img
+      src="/icons/full-jar.svg"
+      alt="jar"
+      style={{ width: 38, height: 48 }}
+    />
+  </div>
+),
     head: "move between jars",
     body: "use the arrows on either side of the jar to navigate between your jars. you can have up to 5 jars.",
   },
