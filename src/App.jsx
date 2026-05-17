@@ -1980,7 +1980,7 @@ export default function ThoughtJar() {
           {/* The Jar — shifted slightly left to create separation from TV */}
           <div style={{ width:"100%",maxWidth:"min(380px,82vw)",
             marginLeft:"auto", marginRight:"auto",
-            transform:"translateX(clamp(-28px,-5vw,-10px))",
+            transform:"translate(0px,-64px)",
             transition:"opacity 0.5s ease, filter 0.5s ease",
             opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none" }}>
             <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
