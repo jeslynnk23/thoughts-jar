@@ -445,8 +445,16 @@ function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList }) {
           </svg>
 
           {/* Dice + list icons — pinned top-right, following blob curve */}
-          <div style={{ position:"absolute", top:"10%", right:"4%",
-            display:"flex", flexDirection:"column", gap:10 }}>
+          <div style={{
+  position:"absolute",
+  top:"10%",
+  right:"4%",
+  display:"flex",
+  flexDirection:"column",
+  gap:10,
+  zIndex:10,
+  pointerEvents:"auto",
+}}>
             <button onClick={e => { e.stopPropagation(); handleReroll(); }} aria-label="roll again"
               style={{ background:"rgba(255,248,236,0.95)",border:"2.5px solid #6B4226",borderRadius:"50%",
                 width:46,height:46,display:"flex",alignItems:"center",justifyContent:"center",
@@ -1460,7 +1468,7 @@ function OnboardingFlow({ onComplete }) {
         </>}
         {screen===4 && <>
           <img
-            src="/icons/dice.svg"
+            src="/icons/full-jar.svg"
             alt="jar"
             style={{
               width: 70,
@@ -1930,7 +1938,7 @@ const TUTORIAL_STEPS = [
   {
     icon: (
           <img
-      src="/icons/full-jar.svg"
+      src="/icons/dice.svg"
       alt="jar"
       style={{
         width: 70,
@@ -1994,15 +2002,36 @@ const TUTORIAL_STEPS = [
   },
   {
     icon: (
-      <svg viewBox="0 0 64 64" width={52} height={52}>
-        {/* Blob */}
-        <path d="M32,6 C48,4 58,14 58,28 C58,44 46,60 32,58 C18,56 6,46 6,30 C6,14 16,8 32,6 Z"
-          fill="#F2A7B0" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round"/>
-        {/* Checkmark */}
-        <path d="M20,32 L28,42 L46,22"
-          fill="none" stroke="#6B4226" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
+  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <svg viewBox="0 0 22 18" width={22} height={18}>
+      <path
+        d="M14 3 L6 9 L14 15"
+        fill="none"
+        stroke="#6B4226"
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+
+    <img
+      src="/icons/full-jar.svg"
+      alt="jar"
+      style={{ width: 42, height: 52 }}
+    />
+
+    <svg viewBox="0 0 22 18" width={22} height={18}>
+      <path
+        d="M8 3 L16 9 L8 15"
+        fill="none"
+        stroke="#6B4226"
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  </div>
+),
     head: "mark it done",
     body: "when a thought pops open, you can mark it complete or put it back. completed thoughts stay in the jar with a little strikethrough.",
   },
@@ -2398,12 +2427,15 @@ export default function ThoughtJar() {
                   <div style={{ display:"flex",alignItems:"center",gap:10,
                     padding:"14px 18px 12px",
                     borderBottom:"1.5px dashed #E0C898" }}>
-                    <svg viewBox="0 0 44 44" width={36} height={36} style={{ flexShrink:0 }}>
-                      <circle cx={22} cy={22} r={20} fill="#F6C94A" stroke="#6B4226" strokeWidth={2.8} />
-                      <circle cx={22} cy={22} r={15} fill="#EDAE1C" stroke="#6B4226" strokeWidth={1.5} opacity={0.6} />
-                      <polygon points="22,10 24.4,18.5 33.5,18.5 26.3,23.5 28.7,32 22,27 15.3,32 17.7,23.5 10.5,18.5 19.6,18.5"
-                        fill="#FDE78A" stroke="#6B4226" strokeWidth={1.2} strokeLinejoin="round" />
-                    </svg>
+                    <img
+  src="/icons/token.svg"
+  alt="token"
+  style={{
+    width: 36,
+    height: 36,
+    flexShrink: 0,
+  }}
+/>
                     <div>
                       <p style={{ fontFamily:"var(--font-body)",fontSize:18,fontWeight:700,color:"#3D2510",lineHeight:1.2 }}>
                         {tokens} tokens
