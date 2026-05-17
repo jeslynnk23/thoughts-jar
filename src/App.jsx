@@ -2094,6 +2094,7 @@ export default function ThoughtJar() {
   const [infoInitPage, setInfoInitPage] = useState("note");
   const [showDecPicker, setShowDecPicker] = useState(false);
   const [showTutorial, setShowTutorial]   = useState(false);
+  const [showTokenMenu, setShowTokenMenu] = useState(false);
   const toastTimer = useRef(null);
 
   const [nickname, setNickname]   = useState(() => load(NICKNAME_KEY, null));
@@ -2270,34 +2271,176 @@ export default function ThoughtJar() {
 
         {/* Header */}
         <header style={{ position:"absolute",top:0,left:0,right:0,display:"flex",
-          alignItems:"flex-start",justifyContent:"space-between",padding:"1.2rem 2rem",
-          zIndex:10 }}>
+          alignItems:"center",justifyContent:"space-between",padding:"1rem 1.4rem",
+          zIndex:30 }}>
+
+          {/* LEFT: blob icon + title */}
           <div style={{ display:"flex",alignItems:"center",gap:9 }}>
-            {/* Mini blob app icon */}
             <svg viewBox="-1.3 -1.3 2.6 2.6" width={30} height={30} style={{ flexShrink:0 }}>
               <path d="M0,-1 C0.6,-0.9 1.1,-0.3 1,0.4 C0.9,1.1 0.2,1.3 -0.4,1.1 C-1,0.9 -1.2,0.2 -1,-0.3 C-0.8,-0.9 -0.6,-1.1 0,-1"
                 fill="#F6E27A" stroke="#6B4226" strokeWidth={0.18} />
             </svg>
-            <h1 className="hand-text" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(26px,4.2vw,40px)",
+            <h1 className="hand-text" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(22px,4vw,36px)",
               fontWeight:700,color:"#3D2510",letterSpacing:0.5,
-              lineHeight:1.6,overflow:"visible",paddingBottom:10,display:"block" }}>
+              lineHeight:1.5,overflow:"visible",paddingBottom:6,display:"block" }}>
               thoughts jar
             </h1>
-
           </div>
-          <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5 }}>
-            <TokenCoin count={tokens} />
-            {tokens > 0 && (
-              <span style={{ fontFamily:"var(--font-body)",fontSize:11,color:"#A07850",opacity:0.85 }}>
-                {tokens} {tokens===1?"day":"days"} left
-              </span>
+
+          {/* RIGHT: token pill — tap to open dropdown */}
+          <div style={{ position:"relative" }}>
+            {/* Pill trigger */}
+            <button
+              onClick={() => setShowTokenMenu(m => !m)}
+              aria-label="open menu"
+              style={{
+                display:"flex",alignItems:"center",gap:10,
+                background:"#FFFDF0",
+                border:"2px solid #C9A87A",
+                borderRadius:50,
+                padding:"8px 14px 8px 10px",
+                cursor:"pointer",
+                boxShadow: showTokenMenu
+                  ? "inset 1px 2px 4px rgba(107,66,38,0.12)"
+                  : "2px 3px 0 #C9A87A",
+                transition:"box-shadow 0.18s ease",
+                WebkitTapHighlightColor:"transparent",
+                touchAction:"manipulation",
+              }}>
+              {/* Coin */}
+              <svg viewBox="0 0 44 44" width={32} height={32} style={{ flexShrink:0 }}>
+                <circle cx={22} cy={22} r={20} fill="#F6C94A" stroke="#6B4226" strokeWidth={2.8} />
+                <circle cx={22} cy={22} r={15} fill="#EDAE1C" stroke="#6B4226" strokeWidth={1.5} opacity={0.6} />
+                <polygon points="22,10 24.4,18.5 33.5,18.5 26.3,23.5 28.7,32 22,27 15.3,32 17.7,23.5 10.5,18.5 19.6,18.5"
+                  fill="#FDE78A" stroke="#6B4226" strokeWidth={1.2} strokeLinejoin="round" />
+              </svg>
+              {/* Count + days */}
+              <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-start",gap:0 }}>
+                <span style={{ fontFamily:"var(--font-body)",fontSize:17,fontWeight:700,
+                  color:"#3D2510",lineHeight:1.2 }}>
+                  {tokens} tokens
+                </span>
+                <span style={{ fontFamily:"var(--font-body)",fontSize:11,color:"#A07850",lineHeight:1.2 }}>
+                  {tokens > 0
+                    ? `${tokens} ${tokens===1?"day":"days"} left`
+                    : "watch cozy tv to earn more"}
+                </span>
+              </div>
+              {/* Handdrawn chevron */}
+              <svg viewBox="0 0 18 12" width={14} height={9} style={{ flexShrink:0,
+                transform: showTokenMenu ? "rotate(180deg)" : "rotate(0deg)",
+                transition:"transform 0.22s ease" }}>
+                <path d="M2,2 C5,5 9,8 9,9 C9,8 13,5 16,2"
+                  fill="none" stroke="#A07850" strokeWidth={2.2}
+                  strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+
+            {/* Dropdown card */}
+            {showTokenMenu && (
+              <>
+                {/* Click-outside backdrop */}
+                <div
+                  style={{ position:"fixed",inset:0,zIndex:28 }}
+                  onClick={() => setShowTokenMenu(false)}
+                />
+                <div style={{
+                  position:"absolute",top:"calc(100% + 8px)",right:0,
+                  background:"#FFFDF0",
+                  border:"2px solid #C9A87A",
+                  borderRadius:18,
+                  minWidth:200,
+                  boxShadow:"4px 6px 0 #C9A87A",
+                  overflow:"hidden",
+                  zIndex:29,
+                }}>
+                  {/* Token summary row */}
+                  <div style={{ display:"flex",alignItems:"center",gap:10,
+                    padding:"14px 18px 12px",
+                    borderBottom:"1.5px dashed #E0C898" }}>
+                    <svg viewBox="0 0 44 44" width={36} height={36} style={{ flexShrink:0 }}>
+                      <circle cx={22} cy={22} r={20} fill="#F6C94A" stroke="#6B4226" strokeWidth={2.8} />
+                      <circle cx={22} cy={22} r={15} fill="#EDAE1C" stroke="#6B4226" strokeWidth={1.5} opacity={0.6} />
+                      <polygon points="22,10 24.4,18.5 33.5,18.5 26.3,23.5 28.7,32 22,27 15.3,32 17.7,23.5 10.5,18.5 19.6,18.5"
+                        fill="#FDE78A" stroke="#6B4226" strokeWidth={1.2} strokeLinejoin="round" />
+                    </svg>
+                    <div>
+                      <p style={{ fontFamily:"var(--font-body)",fontSize:18,fontWeight:700,color:"#3D2510",lineHeight:1.2 }}>
+                        {tokens} tokens
+                      </p>
+                      <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#A07850",lineHeight:1.2 }}>
+                        {tokens > 0
+                          ? `${tokens} ${tokens===1?"day":"days"} left`
+                          : "watch cozy tv to earn more"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Menu items */}
+                  {[
+                    {
+                      label: "info",
+                      icon: (
+                        <svg viewBox="0 0 20 20" width={18} height={18}>
+                          <circle cx={10} cy={10} r={9} fill="none" stroke="#A07850" strokeWidth={1.8}/>
+                          <line x1={10} y1={8.5} x2={10} y2={14} stroke="#A07850" strokeWidth={2} strokeLinecap="round"/>
+                          <circle cx={10} cy={6} r={1.2} fill="#A07850"/>
+                        </svg>
+                      ),
+                      action: () => { setShowTokenMenu(false); setShowInfo(true); },
+                    },
+                    {
+                      label: "all thoughts",
+                      icon: (
+                        <svg viewBox="0 0 18 18" width={18} height={18}>
+                          <circle cx={3.5} cy={5} r={2} fill="#F2A7B0" stroke="#6B4226" strokeWidth={0.8}/>
+                          <circle cx={3.5} cy={9} r={2} fill="#A8BFDF" stroke="#6B4226" strokeWidth={0.8}/>
+                          <circle cx={3.5} cy={13} r={2} fill="#F6E27A" stroke="#6B4226" strokeWidth={0.8}/>
+                          <line x1={7.5} y1={5} x2={17} y2={5} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
+                          <line x1={7.5} y1={9} x2={16} y2={9} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
+                          <line x1={7.5} y1={13} x2={16.5} y2={13} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
+                        </svg>
+                      ),
+                      action: () => { setShowTokenMenu(false); setShowList(true); },
+                    },
+                    {
+                      label: "new jar",
+                      icon: (
+                        <svg viewBox="0 0 20 20" width={18} height={18}>
+                          <path d="M4,8 C3,9 3,11 3,13 C3,15 4,16 6,16.5 C7.5,17 9,17 10,17 C11,17 12.5,17 14,16.5 C16,16 17,15 17,13 C17,11 17,9 16,8 Z"
+                            fill="none" stroke="#A07850" strokeWidth={1.5} strokeLinejoin="round"/>
+                          <path d="M6.5,5.5 L6,8 L14,8 L13.5,5.5 Z" fill="none" stroke="#A07850" strokeWidth={1.5} strokeLinejoin="round"/>
+                          <rect x={6} y={3.5} width={8} height={2.5} rx={1} fill="none" stroke="#A07850" strokeWidth={1.3}/>
+                          <line x1={10} y1={10} x2={10} y2={14.5} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
+                          <line x1={7.8} y1={12.2} x2={12.2} y2={12.2} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
+                        </svg>
+                      ),
+                      action: () => { setShowTokenMenu(false); setShowNewJar(true); },
+                    },
+                  ].map((item, i, arr) => (
+                    <button key={item.label}
+                      onClick={item.action}
+                      style={{
+                        display:"flex",alignItems:"center",gap:14,
+                        width:"100%",padding:"13px 18px",
+                        background:"transparent",border:"none",cursor:"pointer",
+                        borderBottom: i < arr.length-1 ? "1.5px solid #F0E4D0" : "none",
+                        WebkitTapHighlightColor:"transparent",
+                        touchAction:"manipulation",
+                        transition:"background 0.12s",
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background="#FFF8EC"}
+                      onMouseLeave={e => e.currentTarget.style.background="transparent"}>
+                      {item.icon}
+                      <span style={{ fontFamily:"var(--font-body)",fontSize:15,
+                        color:"#3D2510",fontWeight:500 }}>
+                        {item.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
-            <div style={{ display:"flex",flexDirection:"column",gap:5,alignItems:"center",
-              marginTop:4,position:"relative",zIndex:20 }}>
-              <InfoButton onClick={() => setShowInfo(true)} />
-              <ListIcon onClick={() => setShowList(true)} />
-              <NewJarButton onClick={() => setShowNewJar(true)} />
-            </div>
           </div>
         </header>
 
@@ -2315,7 +2458,7 @@ export default function ThoughtJar() {
         {/* Main content — maximises central screen zone between header, right bar and input */}
         <main style={{ display:"flex",flexDirection:"column",alignItems:"center",
           gap:"clamp(2px,0.6vh,8px)",width:"100%",maxWidth:480,
-          marginTop:"clamp(72px,11vh,96px)",
+          marginTop:"clamp(68px,10vh,88px)",
           paddingBottom:"clamp(16px,2.5vh,32px)",
           position:"relative" }}>
 
