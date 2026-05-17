@@ -370,13 +370,13 @@ function TokenCoin({ count }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <img
-          src="/icons/token.png"
-          alt="token"
-          style={{
-            width: 38,
-            height: 38,
-          }}
-        />
+  src="/icons/token.svg"
+  alt="token"
+  style={{
+    width: 38,
+    height: 38,
+  }}
+/>
       <span style={{ fontFamily: "var(--font-body)", fontSize: 26, fontWeight: 700, color: "#6B4226", lineHeight: 1.3 }}>
         {count}
       </span>
@@ -393,14 +393,14 @@ function ListIcon({ onClick }) {
         width:44,height:44,cursor:"pointer",display:"flex",alignItems:"center",
         justifyContent:"center",flexShrink:0,WebkitTapHighlightColor:"transparent",
         touchAction:"manipulation" }}>
-      <svg viewBox="0 0 18 18" width={14} height={14}>
-        <circle cx={3.5} cy={5} r={2} fill="#F2A7B0" stroke="#6B4226" strokeWidth={0.8}/>
-        <circle cx={3.5} cy={9} r={2} fill="#A8BFDF" stroke="#6B4226" strokeWidth={0.8}/>
-        <circle cx={3.5} cy={13} r={2} fill="#F6E27A" stroke="#6B4226" strokeWidth={0.8}/>
-        <line x1={7.5} y1={5} x2={17} y2={5} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
-        <line x1={7.5} y1={9} x2={16} y2={9} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
-        <line x1={7.5} y1={13} x2={16.5} y2={13} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
-      </svg>
+      <img
+  src="/icons/list-no-border.svg"
+  alt="list"
+  style={{
+    width: 18,
+    height: 18,
+  }}
+/>
     </button>
   );
 }
@@ -1920,20 +1920,14 @@ function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musi
 const TUTORIAL_STEPS = [
   {
     icon: (
-      <svg viewBox="0 0 60 60" width={52} height={52}>
-        {/* Jar with plus */}
-        <path d="M12,18 C11,20 9,25 9,30 C8,37 8,44 9,49 C10,53 12,55 17,56 C22,57 26,57 30,57 C34,57 38,57 43,56 C48,55 50,53 51,49 C52,44 52,37 51,30 C51,25 49,20 48,18 Z"
-          fill="#FFF8EC" stroke="#6B4226" strokeWidth={2.2} strokeLinejoin="round"/>
-        <path d="M19,12 C18,13 17,15 16,17 C15,17.5 14,18 12,18 L48,18 C46,18 45,17.5 44,17 C43,15 42,13 41,12 Z"
-          fill="#FFF8EC" stroke="#6B4226" strokeWidth={2.2} strokeLinejoin="round"/>
-        <rect x={16} y={6} width={28} height={8} rx={3} fill="#E8C87A" stroke="#6B4226" strokeWidth={2}/>
-        <ellipse cx={30} cy={6} rx={6} ry={3} fill="#D4A840" stroke="#6B4226" strokeWidth={1.8}/>
-        <path d="M15,25 C14,32 14,39 15,44" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" opacity={0.5}/>
-        {/* Plus */}
-        <circle cx={44} cy={44} r={10} fill="#A8C5A0" stroke="#6B4226" strokeWidth={2}/>
-        <line x1={44} y1={38} x2={44} y2={50} stroke="#6B4226" strokeWidth={2.2} strokeLinecap="round"/>
-        <line x1={38} y1={44} x2={50} y2={44} stroke="#6B4226" strokeWidth={2.2} strokeLinecap="round"/>
-      </svg>
+      <img
+  src="/icons/add-jar.svg"
+  alt="add jar"
+  style={{
+    width: 52,
+    height: 52,
+  }}
+/>
     ),
     head: "drop a thought in",
     body: "type anything in the bar below — a feeling, an idea, something you want to remember. tap enter and it floats into the jar.",
@@ -1972,20 +1966,14 @@ const TUTORIAL_STEPS = [
   },
   {
     icon: (
-      <svg viewBox="0 0 88 56" width={68} height={44}>
-        {/* Left arrow */}
-        <path d="M18,5 C16,7 6,26 4,28 C6,30 16,47 18,51"
-          fill="none" stroke="#6B4226" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round"/>
-        {/* Mini jar */}
-        <path d="M34,10 C33,12 31,16 30,20 C29,25 29,32 30,38 C31,41 33,43 36,44 C39,45 42,45 44,45 C46,45 49,45 52,44 C55,43 57,41 58,38 C59,32 59,25 58,20 C57,16 55,12 54,10 Z"
-          fill="#FFF8EC" stroke="#6B4226" strokeWidth={2} strokeLinejoin="round"/>
-        <path d="M37,6 C36,7 35,9 34,10 L54,10 C53,9 52,7 51,6 Z"
-          fill="#FFF8EC" stroke="#6B4226" strokeWidth={2}/>
-        <rect x={35} y={2} width={18} height={5} rx={2} fill="#E8C87A" stroke="#6B4226" strokeWidth={1.8}/>
-        {/* Right arrow */}
-        <path d="M70,5 C72,7 82,26 84,28 C82,30 72,47 70,51"
-          fill="none" stroke="#6B4226" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
+      <img
+  src="/icons/list.svg"
+  alt="list"
+  style={{
+    width: 52,
+    height: 52,
+  }}
+/>
     ),
     head: "move between jars",
     body: "use the arrows on either side of the jar to navigate between your jars. you can have up to 5 jars.",
@@ -2433,14 +2421,14 @@ export default function ThoughtJar() {
                       label: "all thoughts",
                      // List: open circles + lines matching reference
                         icon: (
-                         <svg viewBox="0 0 26 26" width={20} height={20}>
-                          <circle cx={5} cy={7}  r={3} fill="none" stroke="#A07850" strokeWidth={2}/>
-                          <circle cx={5} cy={14} r={3} fill="none" stroke="#A07850" strokeWidth={2}/>
-                          <circle cx={5} cy={21} r={3} fill="none" stroke="#A07850" strokeWidth={2}/>
-                          <line x1={11} y1={7}  x2={25} y2={7}  stroke="#A07850" strokeWidth={2.2} strokeLinecap="round"/>
-                          <line x1={11} y1={14} x2={24} y2={14} stroke="#A07850" strokeWidth={2.2} strokeLinecap="round"/>
-                          <line x1={11} y1={21} x2={25} y2={21} stroke="#A07850" strokeWidth={2.2} strokeLinecap="round"/>
-                        </svg>
+                         <img
+  src="/icons/list.svg"
+  alt="all thoughts"
+  style={{
+    width: 20,
+    height: 20,
+  }}
+/>
                       ),
                       action: () => { setShowTokenMenu(false); setShowList(true); },
                     },
@@ -2517,7 +2505,7 @@ export default function ThoughtJar() {
             }}>
             {/* Handdrawn 3D dice — matches reference: cube with rounded corners, clear pips */}
               <img
-                src="/icons/dice.png"
+                src="/icons/dice.svg"
                 alt="dice"
                 style={{ width: 62, height: 62 }}
               />
