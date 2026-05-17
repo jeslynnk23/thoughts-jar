@@ -491,16 +491,16 @@ function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList }) {
           {/* Thought text — centred inside blob */}
           <div style={{ position:"absolute",inset:0,display:"flex",flexDirection:"column",
             alignItems:"center",justifyContent:"center",padding:"2rem 3.5rem 2rem 2rem",textAlign:"center" }}>
-            <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(14px,2.8vw,18px)",
+            <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(14px,2.8vw,22px)",
               color:"#6B4226",opacity:0.7,marginBottom:6,letterSpacing:1,lineHeight:1.5,overflow:"visible" }}>
               {thought.completed ? "a completed thought" : "a thought from the jar"}
             </p>
-            <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(20px,5vw,30px)",
+            <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(20px,5vw,32px)",
               color:"#3D2510",lineHeight:1.5,overflow:"visible",marginBottom:6,wordBreak:"break-word",hyphens:"auto",
               textDecoration: thought.completed ? "line-through" : "none", opacity: thought.completed ? 0.6 : 1 }}>
               {thought.text}
             </p>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(10px,1.8vw,12px)",color:"#6B4226",opacity:0.55 }}>
+            <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(10px,1.8vw,14px)",color:"#6B4226",opacity:0.55 }}>
               {formattedDate}
             </p>
           </div>
@@ -1433,12 +1433,15 @@ function OnboardingFlow({ onComplete }) {
           {/* Token coin + TV side by side — shows the relationship visually */}
           <div style={{ display:"flex",alignItems:"center",gap:18,animation:"floatUp 0.6s ease both" }}>
             {/* Coin */}
-            <svg viewBox="0 0 72 72" width={72} height={72}>
-              <circle cx={36} cy={36} r={32} fill="#F6C94A" stroke="#6B4226" strokeWidth={2.5} />
-              <circle cx={36} cy={36} r={24} fill="#EDAE1C" stroke="#6B4226" strokeWidth={1.2} opacity={0.6} />
-              <polygon points="36,19 38.8,29 50,29 41.5,35 44.3,45 36,39 27.7,45 30.5,35 22,29 33.2,29"
-                fill="#FDE78A" stroke="#6B4226" strokeWidth={1.4} strokeLinejoin="round" />
-            </svg>
+            <img
+  src="/icons/token.svg"
+  alt="token"
+  style={{
+    width: 26,
+    height: 26,
+    flexShrink: 0,
+  }}
+/>
             {/* Arrow */}
             <svg viewBox="0 0 28 18" width={22} height={14}>
               <path d="M2,9 L20,9 M14,3 L22,9 L14,15" fill="none" stroke="#C9A87A" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"/>
@@ -1966,43 +1969,6 @@ const TUTORIAL_STEPS = [
   {
     icon: (
   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-    <img
-      src="/icons/full-jar.svg"
-      alt="jar"
-      style={{ width: 38, height: 48 }}
-    />
-
-    <svg viewBox="0 0 36 18" width={36} height={18}>
-      <path
-        d="M3 9 H29"
-        fill="none"
-        stroke="#6B4226"
-        strokeWidth={3}
-        strokeLinecap="round"
-      />
-      <path
-        d="M22 3 L31 9 L22 15"
-        fill="none"
-        stroke="#6B4226"
-        strokeWidth={3}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-
-    <img
-      src="/icons/full-jar.svg"
-      alt="jar"
-      style={{ width: 38, height: 48 }}
-    />
-  </div>
-),
-    head: "move between jars",
-    body: "use the arrows on either side of the jar to navigate between your jars. you can have up to 5 jars.",
-  },
-  {
-    icon: (
-  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
     <svg viewBox="0 0 22 18" width={22} height={18}>
       <path
         d="M14 3 L6 9 L14 15"
@@ -2031,6 +1997,29 @@ const TUTORIAL_STEPS = [
       />
     </svg>
   </div>
+),
+    head: "move between jars",
+    body: "use the arrows on either side of the jar to navigate between your jars. you can have up to 5 jars.",
+  },
+  {
+    icon: (
+  <svg viewBox="0 0 64 64" width={52} height={52}>
+    <path
+      d="M32,6 C48,4 58,14 58,28 C58,44 46,60 32,58 C18,56 6,46 6,30 C6,14 16,8 32,6 Z"
+      fill="#F2A7B0"
+      stroke="#6B4226"
+      strokeWidth={2.5}
+      strokeLinejoin="round"
+    />
+    <path
+      d="M20,32 L28,42 L46,22"
+      fill="none"
+      stroke="#6B4226"
+      strokeWidth={3.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
 ),
     head: "mark it done",
     body: "when a thought pops open, you can mark it complete or put it back. completed thoughts stay in the jar with a little strikethrough.",
@@ -2179,26 +2168,49 @@ export default function ThoughtJar() {
   }, [showOnboarding, isAccessActive, starterRemaining]);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      setTokenExpiry(prev => {
-        // If expiry has passed and user still has tokens, auto-deduct one and renew
-        if (prev && Date.now() >= new Date(prev).getTime()) {
-          setTokens(t => {
-            if (t > 0) {
-              const next = new Date(Date.now() + ACCESS_HOURS * 60 * 60 * 1000).toISOString();
-              save(EXPIRY_KEY, next);
-              save(TOKEN_KEY, t - 1);
-              return t - 1;
-            }
-            return t;
-          });
-          return new Date(Date.now() + ACCESS_HOURS * 60 * 60 * 1000).toISOString();
-        }
-        return prev;
-      });
-    }, 60_000);
-    return () => clearInterval(id);
-  }, []);
+  const checkExpiry = () => {
+    setTokenExpiry(prev => {
+      if (!prev) return prev;
+
+      const expiryTime = new Date(prev).getTime();
+      const now = Date.now();
+
+      // How many full access periods passed?
+      const diff = now - expiryTime;
+
+      if (diff >= 0) {
+        const periodsMissed =
+          Math.floor(diff / (ACCESS_HOURS * 60 * 60 * 1000)) + 1;
+
+        setTokens(t => {
+          const nextTokens = Math.max(0, t - periodsMissed);
+
+          // Set next expiry from NOW
+          const nextExpiry = new Date(
+            now + ACCESS_HOURS * 60 * 60 * 1000
+          ).toISOString();
+
+          save(TOKEN_KEY, nextTokens);
+          save(EXPIRY_KEY, nextExpiry);
+
+          setTokenExpiry(nextExpiry);
+
+          return nextTokens;
+        });
+      }
+
+      return prev;
+    });
+  };
+
+  // Run immediately on app launch
+  checkExpiry();
+
+  // Then continue checking every minute
+  const id = setInterval(checkExpiry, 60_000);
+
+  return () => clearInterval(id);
+}, []);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const showToast = useCallback((msg) => {
