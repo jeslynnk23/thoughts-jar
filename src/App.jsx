@@ -34,9 +34,6 @@ const WHIMSICAL_NAMES = [
   "linen ghost","tuesday dream","wandering sock","foggy lantern",
 ];
 
-const APP_VERSION =
-  import.meta.env.VITE_APP_VERSION?.slice(0, 7) || "local";
-
 function load(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
   catch { return fallback; }
@@ -1866,17 +1863,6 @@ function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musi
                 color:"#3D2510",lineHeight:1.5,overflow:"visible",paddingBottom:2 }}>
                 settings
               </p>
-              <p style={{
-  fontFamily:"var(--font-body)",
-  fontSize:11,
-  color:"#A07850",
-  opacity:0.75,
-  textAlign:"center",
-  marginTop:-2,
-  marginBottom:14,
-}}>
-  thoughts jar · v{APP_VERSION}
-</p>
 
               {/* Music controls */}
               <div style={{ background:"#FBF5E8",border:"1.5px solid #E8D8C0",borderRadius:14,padding:"16px",marginBottom:0 }}>
@@ -1945,16 +1931,6 @@ function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musi
                         keep my jars
                       </button>
                     </div>
-                     <p style={{
-                fontFamily:"var(--font-body)",
-                fontSize:11,
-                color:"#A07850",
-                opacity:0.75,
-                textAlign:"center",
-                marginTop:16,
-              }}>
-                thoughts jar · version{APP_VERSION}
-              </p>
                   </div>
                 )}
               </div>
@@ -2624,7 +2600,7 @@ export default function ThoughtJar() {
               opacity: isLocked ? 0.4 : 1,
               WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
               transform: "translateX(0px)",
-              marginBottom: 18,
+              marginBottom: 28,
             }}>
             {/* Handdrawn 3D dice — matches reference: cube with rounded corners, clear pips */}
               <img
