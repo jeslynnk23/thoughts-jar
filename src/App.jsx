@@ -2447,9 +2447,9 @@ export default function ThoughtJar() {
                     },
                     {
                       label: "all thoughts",
-                      icon: (
-                        {/* List: open circles + lines matching reference */}
-                        <svg viewBox="0 0 26 26" width={20} height={20}>
+                     // List: open circles + lines matching reference
+                        icon: (
+                         <svg viewBox="0 0 26 26" width={20} height={20}>
                           <circle cx={5} cy={7}  r={3} fill="none" stroke="#A07850" strokeWidth={2}/>
                           <circle cx={5} cy={14} r={3} fill="none" stroke="#A07850" strokeWidth={2}/>
                           <circle cx={5} cy={21} r={3} fill="none" stroke="#A07850" strokeWidth={2}/>
