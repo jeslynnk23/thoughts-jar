@@ -213,15 +213,6 @@ function JarSVG({ thoughts, onJarClick, isAnimating, jarName, lidVariant = 0, on
         {labelText}
       </text>
       {/* Tiny edit hint under label — only show if onLabelClick provided */}
-      {onLabelClick && (
-        <text x={110} y={196} textAnchor="middle"
-          fontFamily="'Montserrat', 'Helvetica Neue', Arial, sans-serif"
-          fontSize="5.5" fill="#A07850" opacity={0.5}
-          onClick={e => { e.stopPropagation(); onLabelClick?.(); }}
-          style={{ cursor:"pointer" }}>
-          tap to rename
-        </text>
-      )}
       <text x={110} y={204} textAnchor="middle" fontFamily="'Montserrat', 'Helvetica Neue', Arial, sans-serif"
         fontSize="7.5" fill="#8B6040" opacity={0.85}>
         {subText}
@@ -378,12 +369,14 @@ function RetroTV({ onOpenAd }) {
 function TokenCoin({ count }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <svg viewBox="0 0 44 44" width={38} height={38}>
-        <circle cx={22} cy={22} r={20} fill="#F6C94A" stroke="#6B4226" strokeWidth={2.8} />
-        <circle cx={22} cy={22} r={15} fill="#EDAE1C" stroke="#6B4226" strokeWidth={1.5} opacity={0.6} />
-        <polygon points="22,10 24.4,18.5 33.5,18.5 26.3,23.5 28.7,32 22,27 15.3,32 17.7,23.5 10.5,18.5 19.6,18.5"
-          fill="#FDE78A" stroke="#6B4226" strokeWidth={1.2} strokeLinejoin="round" />
-      </svg>
+      <img
+          src="/icons/token.png"
+          alt="token"
+          style={{
+            width: 38,
+            height: 38,
+          }}
+        />
       <span style={{ fontFamily: "var(--font-body)", fontSize: 26, fontWeight: 700, color: "#6B4226", lineHeight: 1.3 }}>
         {count}
       </span>
@@ -1471,12 +1464,15 @@ function OnboardingFlow({ onComplete }) {
           {btn("keep the jar glowing", () => advance(4))}
         </>}
         {screen===4 && <>
-          <svg viewBox="0 0 70 88" width={70} height={88} style={{ animation:"floatUp 0.6s ease both" }}>
-            <path d="M15,27 C13,30 11,36 10,44 C9,54 9,64 10,72 C11,79 13,83 16,85 C19,87 24,88 35,88 C46,88 51,87 54,85 C57,83 59,79 60,72 C61,64 61,54 60,44 C59,36 57,30 55,27 Z" fill="#FFF8EC" stroke="#6B4226" strokeWidth={2} strokeLinejoin="round"/>
-            <path d="M22,17 C20,19 18,22 17,25 C16,26 15,27 15,27 L55,27 C55,27 54,26 53,25 C52,22 50,19 48,17 Z" fill="#FFF8EC" stroke="#6B4226" strokeWidth={2} strokeLinejoin="round"/>
-            <rect x={18} y={10} width={34} height={9} rx={3} fill="#E8C87A" stroke="#6B4226" strokeWidth={2}/>
-            <ellipse cx={35} cy={10} rx={6} ry={3} fill="#D4A840" stroke="#6B4226" strokeWidth={1.8}/>
-          </svg>
+          <img
+            src="/icons/full-jar.png"
+            alt="jar"
+            style={{
+              width: 70,
+              height: "auto",
+              animation: "floatUp 0.6s ease both",
+            }}
+          />
           <h2 style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(24px,4.5vw,38px)",color:"#3D2510",lineHeight:1.6,paddingBottom:10,overflow:"visible",display:"block",animation:"floatUp 0.6s ease 0.1s both" }}>what should we name the jar?</h2>
           <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(13px,2vw,15px)",color:"#A07850",lineHeight:1.65,animation:"floatUp 0.6s ease 0.15s both" }}>something cozy, silly, or entirely made up</p>
           <div style={{ width:"100%",display:"flex",flexDirection:"column",gap:12,animation:"floatUp 0.6s ease 0.2s both" }}>
@@ -1944,26 +1940,14 @@ const TUTORIAL_STEPS = [
   },
   {
     icon: (
-      <svg viewBox="0 0 72 68" width={56} height={52}>
-        <ellipse cx={38} cy={65} rx={22} ry={5} fill="#C9A87A" opacity={0.25}/>
-        <path d="M20,6 L52,6 L64,16 L32,16 Z" fill="#FFFDF5" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
-        <circle cx={42} cy={11} r={2.8} fill="#6B4226" opacity={0.62}/>
-        <path d="M52,6 L64,16 L64,54 L52,44 Z" fill="#E8C87A" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
-        <circle cx={60} cy={24} r={2.6} fill="#6B4226" opacity={0.7}/>
-        <circle cx={60} cy={42} r={2.6} fill="#6B4226" opacity={0.7}/>
-        <path d="M20,6 L32,16 L32,54 L20,44 Z" fill="#FFF4E0" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
-        <path d="M20,44 L32,54 L64,54 L52,44 Z" fill="#FFF0D8" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
-        <circle cx={33} cy={46} r={3} fill="#6B4226" opacity={0.82}/>
-        <circle cx={51} cy={46} r={3} fill="#6B4226" opacity={0.82}/>
-        <circle cx={42} cy={49} r={3} fill="#6B4226" opacity={0.82}/>
-        <circle cx={33} cy={52} r={3} fill="#6B4226" opacity={0.82}/>
-        <circle cx={51} cy={52} r={3} fill="#6B4226" opacity={0.82}/>
-        <path d="M20,6 L20,44 L32,54 L32,16 Z" fill="#F5ECD8" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
-        <circle cx={26} cy={20} r={2.4} fill="#6B4226" opacity={0.7}/>
-        <circle cx={26} cy={30} r={2.4} fill="#6B4226" opacity={0.7}/>
-        <circle cx={26} cy={40} r={2.4} fill="#6B4226" opacity={0.7}/>
-        <path d="M25,9 C29,7 35,7 38,9" fill="none" stroke="white" strokeWidth={1.3} strokeLinecap="round" opacity={0.55}/>
-      </svg>
+          <img
+      src="/icons/full-jar.png"
+      alt="jar"
+      style={{
+        width: 70,
+        height: "auto",
+      }}
+    />
     ),
     head: "tap the dice to rediscover",
     body: "tap the dice above the jar to pull out a random thought. you can roll as many times as you like.",
@@ -2532,35 +2516,11 @@ export default function ThoughtJar() {
               transform: "translateX(clamp(-18px,-3.5vw,-6px))",
             }}>
             {/* Handdrawn 3D dice — matches reference: cube with rounded corners, clear pips */}
-            <svg viewBox="0 0 70 70" width={62} height={62}>
-              {/* Shadow */}
-              <ellipse cx={40} cy={67} rx={20} ry={4} fill="#C9A87A" opacity={0.3}/>
-              {/* === FRONT face — large, white, 5 pips === */}
-              <rect x={6} y={14} width={40} height={40} rx={7}
-                fill="#FFFBF0" stroke="#6B4226" strokeWidth={3}
-                strokeLinejoin="round"/>
-              {/* Front pips: corners + centre */}
-              <circle cx={16} cy={24} r={3.5} fill="#6B4226"/>
-              <circle cx={36} cy={24} r={3.5} fill="#6B4226"/>
-              <circle cx={26} cy={34} r={3.5} fill="#6B4226"/>
-              <circle cx={16} cy={44} r={3.5} fill="#6B4226"/>
-              <circle cx={36} cy={44} r={3.5} fill="#6B4226"/>
-              {/* === TOP face — tilted parallelogram === */}
-              <path d="M6,14 L24,6 L64,6 L46,14 Z"
-                fill="#FFF8EC" stroke="#6B4226" strokeWidth={3} strokeLinejoin="round"/>
-              {/* Top pip: 1 */}
-              <circle cx={35} cy={10} r={3} fill="#6B4226" opacity={0.7}/>
-              {/* === RIGHT face — vertical parallelogram === */}
-              <path d="M46,14 L64,6 L64,46 L46,54 Z"
-                fill="#E8C87A" stroke="#6B4226" strokeWidth={3} strokeLinejoin="round"/>
-              {/* Right pips: 2 */}
-              <circle cx={57} cy={20} r={3} fill="#6B4226" opacity={0.8}/>
-              <circle cx={57} cy={40} r={3} fill="#6B4226" opacity={0.8}/>
-              {/* Shine on front */}
-              <path d="M9,17 C12,15 16,14 18,16"
-                fill="none" stroke="white" strokeWidth={1.8}
-                strokeLinecap="round" opacity={0.6}/>
-            </svg>
+              <img
+                src="/icons/dice.png"
+                alt="dice"
+                style={{ width: 62, height: 62 }}
+              />
           </button>
 
           {/* Jar + nav arrows — arrows close to jar body */}
