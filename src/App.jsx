@@ -453,35 +453,30 @@ function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList }) {
                 cursor:"pointer",boxShadow:"2px 3px 0 rgba(107,66,38,0.35)",flexShrink:0,
                 WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
               {/* Mini 3D dice — same isometric style as main dice */}
-              <svg viewBox="0 0 72 68" width={26} height={24}>
-                <path d="M20,6 L52,6 L64,16 L32,16 Z" fill="#FFFDF5" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round"/>
-                <circle cx={42} cy={11} r={2.8} fill="#6B4226" opacity={0.62}/>
-                <path d="M52,6 L64,16 L64,54 L52,44 Z" fill="#E8C87A" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round"/>
-                <circle cx={60} cy={24} r={2.6} fill="#6B4226" opacity={0.7}/>
-                <circle cx={60} cy={42} r={2.6} fill="#6B4226" opacity={0.7}/>
-                <path d="M20,6 L32,16 L32,54 L20,44 Z" fill="#FFF4E0" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round"/>
-                <path d="M20,44 L32,54 L64,54 L52,44 Z" fill="#FFF0D8" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round"/>
-                <circle cx={33} cy={46} r={3} fill="#6B4226" opacity={0.82}/>
-                <circle cx={51} cy={46} r={3} fill="#6B4226" opacity={0.82}/>
-                <circle cx={42} cy={49} r={3} fill="#6B4226" opacity={0.82}/>
-                <circle cx={33} cy={52} r={3} fill="#6B4226" opacity={0.82}/>
-                <circle cx={51} cy={52} r={3} fill="#6B4226" opacity={0.82}/>
-                <path d="M20,6 L20,44 L32,54 L32,16 Z" fill="#F5ECD8" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round"/>
-              </svg>
+              <img
+  src="/icons/dice.svg"
+  alt="dice"
+  style={{
+    width: 26,
+    height: 24,
+    pointerEvents: "none",
+  }}
+/>
             </button>
             <button onClick={e => { e.stopPropagation(); onOpenList(); }} aria-label="view all thoughts"
               style={{ background:"rgba(255,248,236,0.95)",border:"2.5px solid #6B4226",borderRadius:"50%",
                 width:46,height:46,display:"flex",alignItems:"center",justifyContent:"center",
                 cursor:"pointer",boxShadow:"2px 3px 0 rgba(107,66,38,0.35)",flexShrink:0,
                 WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
-              <svg viewBox="0 0 18 18" width={18} height={18}>
-                <circle cx={3.5} cy={5} r={2} fill="#F2A7B0" stroke="#6B4226" strokeWidth={0.8}/>
-                <circle cx={3.5} cy={9} r={2} fill="#A8BFDF" stroke="#6B4226" strokeWidth={0.8}/>
-                <circle cx={3.5} cy={13} r={2} fill="#F6E27A" stroke="#6B4226" strokeWidth={0.8}/>
-                <line x1={7.5} y1={5} x2={17} y2={5} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
-                <line x1={7.5} y1={9} x2={16} y2={9} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
-                <line x1={7.5} y1={13} x2={16.5} y2={13} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
-              </svg>
+              <img
+  src="/icons/list-no-border.svg"
+  alt="list"
+  style={{
+    width: 22,
+    height: 22,
+    pointerEvents: "none",
+  }}
+/>
             </button>
           </div>
 
@@ -1465,7 +1460,7 @@ function OnboardingFlow({ onComplete }) {
         </>}
         {screen===4 && <>
           <img
-            src="/icons/full-jar.png"
+            src="/icons/dice.svg"
             alt="jar"
             style={{
               width: 70,
@@ -1935,7 +1930,7 @@ const TUTORIAL_STEPS = [
   {
     icon: (
           <img
-      src="/icons/full-jar.png"
+      src="/icons/full-jar.svg"
       alt="jar"
       style={{
         width: 70,
@@ -1948,18 +1943,14 @@ const TUTORIAL_STEPS = [
   },
   {
     icon: (
-      <svg viewBox="0 0 56 56" width={52} height={52}>
-        <rect x={4} y={4} width={48} height={48} rx={12} fill="#FFF8EC" stroke="#6B4226" strokeWidth={2.5}/>
-        <circle cx={16} cy={20} rx={0} r={5} fill="#F2A7B0" stroke="#6B4226" strokeWidth={1.4}/>
-        <circle cx={16} cy={34} rx={0} r={5} fill="#A8BFDF" stroke="#6B4226" strokeWidth={1.4}/>
-        <circle cx={16} cy={48} rx={0} r={0}/>
-        <line x1={26} y1={20} x2={48} y2={20} stroke="#6B4226" strokeWidth={2} strokeLinecap="round"/>
-        <line x1={26} y1={34} x2={44} y2={34} stroke="#6B4226" strokeWidth={2} strokeLinecap="round"/>
-        <ellipse cx={16} cy={20} rx={5} ry={5} fill="#F2A7B0" stroke="#6B4226" strokeWidth={1.4}/>
-        <ellipse cx={16} cy={34} rx={5} ry={5} fill="#A8BFDF" stroke="#6B4226" strokeWidth={1.4}/>
-        <ellipse cx={16} cy={48} rx={5} ry={5} fill="#F6E27A" stroke="#6B4226" strokeWidth={1.4}/>
-        <line x1={26} y1={48} x2={46} y2={48} stroke="#6B4226" strokeWidth={2} strokeLinecap="round"/>
-      </svg>
+      <img
+  src="/icons/list.svg"
+  alt="list"
+  style={{
+    width: 52,
+    height: 52,
+  }}
+/>
     ),
     head: "see all your thoughts",
     body: "tap the list icon on the right to view every thought across all your jars. mark things done or remove them from there.",
@@ -1967,7 +1958,37 @@ const TUTORIAL_STEPS = [
   {
     icon: (
       <img
-  src="/icons/list.svg"
+  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+  <img
+    src="/icons/full-jar.svg"
+    alt="jar"
+    style={{ width: 38, height: 48 }}
+  />
+
+  <svg viewBox="0 0 36 18" width={36} height={18}>
+    <path
+      d="M3 9 H29"
+      fill="none"
+      stroke="#6B4226"
+      strokeWidth={3}
+      strokeLinecap="round"
+    />
+    <path
+      d="M22 3 L31 9 L22 15"
+      fill="none"
+      stroke="#6B4226"
+      strokeWidth={3}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+
+  <img
+    src="/icons/full-jar.svg"
+    alt="jar"
+    style={{ width: 38, height: 48 }}
+  />
+</div>
   alt="list"
   style={{
     width: 52,
