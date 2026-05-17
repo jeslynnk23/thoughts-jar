@@ -2561,8 +2561,8 @@ export default function ThoughtJar() {
         {/* Main content — maximises central screen zone between header, right bar and input */}
         <main style={{ display:"flex",flexDirection:"column",alignItems:"center",
           gap:"clamp(6px,1.2vh,14px)",width:"100%",maxWidth:480,
-          marginTop:"clamp(28px,4.5vh,48px)",
-          paddingBottom:"clamp(24px,4vh,48px)",
+          marginTop:"clamp(18px,3vh,34px)",
+          paddingBottom:"clamp(36px,5vh,60px)",
           position:"relative" }}>
 
           {/* Dice icon — above jar. Handdrawn 3D dice matching TV illustration style */}
@@ -2607,7 +2607,7 @@ export default function ThoughtJar() {
 
             {/* Jar — maximises central space, left-shifted to balance right icon column */}
             <div style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
-              transform:"translate(clamp(-16px,-3vw,-5px), -34px)",
+              transform:"translateX(clamp(-16px,-3vw,-5px))",
               transition:"opacity 0.5s ease, filter 0.5s ease",
               opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none",
               animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
