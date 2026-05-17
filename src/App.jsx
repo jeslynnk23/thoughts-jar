@@ -1933,6 +1933,18 @@ function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musi
 
 // ─── TUTORIAL OVERLAY ────────────────────────────────────────────────────────
 
+const PRELOAD_ICON_PATHS = [
+  "/icons/dice.svg",
+  "/icons/list.svg",
+  "/icons/full-jar.svg",
+  "/icons/token.svg",
+];
+
+PRELOAD_ICON_PATHS.forEach(src => {
+  const img = new Image();
+  img.src = src;
+});
+
 const TUTORIAL_STEPS = [
   {
     icon: (
@@ -2607,7 +2619,7 @@ export default function ThoughtJar() {
 
             {/* Jar — maximises central space, left-shifted to balance right icon column */}
             <div style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
-              transform:"translate(clamp(-16px,-3vw,-5px), -44px)",
+              transform:"translate(0px, -44px)",
               transition:"opacity 0.5s ease, filter 0.5s ease",
               opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none",
               animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
