@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 88" role="img" aria-label="add jar">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="2" stdDeviation="1.4" flood-color="#6B4226" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)" stroke="#6B4226" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="8" width="72" height="72" rx="17" fill="#FFF8EC" stroke-width="2.6"/>
+    <path d="M31 28c-2 4-3 10-3 18 0 9 1 16 3 21 2 4 7 5 18 5s16-1 18-5c2-5 3-12 3-21 0-8-1-14-3-18z" fill="#FFFDF6" stroke-width="2.4"/>
+    <path d="M34 22c-2 2-3 4-4 6h38c-1-2-2-4-4-6z" fill="#FFFDF6" stroke-width="2.4"/>
+    <rect x="31" y="16" width="36" height="8" rx="3" fill="#E8C46B" stroke-width="2.4"/>
+    <ellipse cx="49" cy="16" rx="8" ry="3.7" fill="#D9A84A" stroke-width="2.1"/>
+    <path d="M34 35c-1.4 7-1.3 17 .1 25" fill="none" stroke="#FFFFFF" stroke-width="2.4" opacity=".75"/>
+    <ellipse cx="43" cy="58" rx="9.5" ry="7.5" fill="#F3A0AD" stroke-width="2.2"/>
+    <ellipse cx="55" cy="58" rx="9.5" ry="7.5" fill="#A8C4E4" stroke-width="2.2"/>
+    <circle cx="49" cy="62" r="10" fill="#F6DA73" stroke-width="2.2"/>
+    <circle cx="78" cy="18" r="12" fill="#F2A7B0" stroke-width="2.6"/>
+    <path d="M78 12v12M72 18h12" stroke-width="2.8" fill="none"/>
+  </g>
+</svg>
