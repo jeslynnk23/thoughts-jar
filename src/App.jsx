@@ -127,7 +127,7 @@ function JarSVG({ thoughts, onJarClick, isAnimating, jarName, lidVariant = 0 }) 
         maxWidth: 380, cursor: "pointer",
         filter: isAnimating ? "drop-shadow(0 0 18px #F4B18355)" : "none",
         transition: "filter 0.4s ease, transform 0.3s cubic-bezier(0.34,1.56,0.64,1)",
-        transform: isAnimating ? "scale(1.03)" : "scale(1)",
+        transform: "scale(1)",
         transformOrigin: "center bottom",
       }}
       onClick={onJarClick} role="button" aria-label="click jar to reveal a thought">
