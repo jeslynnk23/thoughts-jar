@@ -34,6 +34,9 @@ const WHIMSICAL_NAMES = [
   "linen ghost","tuesday dream","wandering sock","foggy lantern",
 ];
 
+const APP_VERSION =
+  import.meta.env.VITE_APP_VERSION?.slice(0, 7) || "local";
+
 function load(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
   catch { return fallback; }
@@ -336,10 +339,22 @@ function RetroTV({ onOpenAd }) {
   const lines = staticPatterns[staticFrame];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-      <div style={{ fontFamily: "var(--font-hand)", fontSize: 12, color: "#C87A50", opacity: 0.8, whiteSpace: "nowrap" }}>
-        earn tokens!
-      </div>
+    <div style={{
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: 2,
+  transform: "translateY(-10px)",
+}}>
+      <div style={{
+  fontFamily: "var(--font-hand)",
+  fontSize: 13,
+  color: "#8B4A2F",
+  opacity: 0.95,
+  whiteSpace: "nowrap",
+}}>
+  earn tokens!
+</div>
       <svg viewBox="0 0 96 88" width={70} height={64} onClick={handleTVClick}
         style={{ cursor: "pointer", transition: "transform 0.15s", transform: isFlickering ? "scale(1.04)" : "scale(1)" }}>
         <rect x={6} y={14} width={76} height={60} rx={7} fill="#D4C5B0" stroke="#6B4226" strokeWidth={2.5} />
@@ -1919,6 +1934,16 @@ function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musi
                         keep my jars
                       </button>
                     </div>
+                     <p style={{
+                fontFamily:"var(--font-body)",
+                fontSize:11,
+                color:"#A07850",
+                opacity:0.75,
+                textAlign:"center",
+                marginTop:16,
+              }}>
+                thoughts jar · v{APP_VERSION}
+              </p>
                   </div>
                 )}
               </div>
