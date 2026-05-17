@@ -2587,7 +2587,8 @@ export default function ThoughtJar() {
               padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
               opacity: isLocked ? 0.4 : 1,
               WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
-              transform: "translateX(clamp(-18px,-3.5vw,-6px))",
+              transform: "translateX(0px)",
+              marginBottom: 18,
             }}>
             {/* Handdrawn 3D dice — matches reference: cube with rounded corners, clear pips */}
               <img
@@ -2606,6 +2607,7 @@ export default function ThoughtJar() {
               onClick={goPrev} disabled={!canGoPrev || isLocked}
               aria-label="previous jar"
               style={{
+                transform:"translateY(-34px)",
                 background:"none", border:"none", cursor: canGoPrev&&!isLocked ? "pointer" : "default",
                 padding:"0 2px", flexShrink:0, opacity: canGoPrev&&!isLocked ? 1 : 0.2,
                 WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
@@ -2635,6 +2637,7 @@ export default function ThoughtJar() {
               onClick={goNext} disabled={!canGoNext || isLocked}
               aria-label="next jar"
               style={{
+                transform:"translateY(-34px)",
                 background:"none", border:"none", cursor: canGoNext&&!isLocked ? "pointer" : "default",
                 padding:"0 2px", flexShrink:0, opacity: canGoNext&&!isLocked ? 1 : 0.2,
                 WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
