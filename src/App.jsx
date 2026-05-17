@@ -2434,7 +2434,6 @@ export default function ThoughtJar() {
                   {[
                     {
                       label: "info",
-                      icon: (
                         // Info: circle + i letterform matching reference
                         icon: (
                           <svg viewBox="0 0 24 28" width={16} height={19}>
