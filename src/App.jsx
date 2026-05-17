@@ -2637,7 +2637,28 @@ export default function ThoughtJar() {
               transition:"opacity 0.5s ease, filter 0.5s ease",
               opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none",
               animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
-              <style>{`@keyframes jarShake{0%,100%{transform:translateX(clamp(-16px,-3vw,-5px))}15%{transform:translateX(calc(clamp(-16px,-3vw,-5px) - 8px)) rotate(-1.5deg)}30%{transform:translateX(calc(clamp(-16px,-3vw,-5px) + 7px)) rotate(1.5deg)}45%{transform:translateX(calc(clamp(-16px,-3vw,-5px) - 5px)) rotate(-1deg)}60%{transform:translateX(calc(clamp(-16px,-3vw,-5px) + 4px)) rotate(0.8deg)}75%{transform:translateX(calc(clamp(-16px,-3vw,-5px) - 2px))}}`}</style>
+              <style>{`
+  @keyframes jarShake {
+    0%, 100% {
+      transform: translate(0px, -64px);
+    }
+    15% {
+      transform: translate(-8px, -64px) rotate(-1.5deg);
+    }
+    30% {
+      transform: translate(7px, -64px) rotate(1.5deg);
+    }
+    45% {
+      transform: translate(-5px, -64px) rotate(-1deg);
+    }
+    60% {
+      transform: translate(4px, -64px) rotate(0.8deg);
+    }
+    75% {
+      transform: translate(-2px, -64px);
+    }
+  }
+`}</style>
               <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
                 isAnimating={isJarAnimating} jarName={activeJar?.name}
                 lidVariant={(activeJar?.id ?? 0) % 5}
