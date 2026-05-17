@@ -1866,6 +1866,17 @@ function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musi
                 color:"#3D2510",lineHeight:1.5,overflow:"visible",paddingBottom:2 }}>
                 settings
               </p>
+              <p style={{
+  fontFamily:"var(--font-body)",
+  fontSize:11,
+  color:"#A07850",
+  opacity:0.75,
+  textAlign:"center",
+  marginTop:-2,
+  marginBottom:14,
+}}>
+  thoughts jar · v{APP_VERSION}
+</p>
 
               {/* Music controls */}
               <div style={{ background:"#FBF5E8",border:"1.5px solid #E8D8C0",borderRadius:14,padding:"16px",marginBottom:0 }}>
@@ -1942,7 +1953,7 @@ function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musi
                 textAlign:"center",
                 marginTop:16,
               }}>
-                thoughts jar · v{APP_VERSION}
+                thoughts jar · version{APP_VERSION}
               </p>
                   </div>
                 )}
@@ -2646,7 +2657,7 @@ export default function ThoughtJar() {
 
             {/* Jar — maximises central space, left-shifted to balance right icon column */}
             <div style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
-              transform:"translate(0px, -58px)",
+              transform:"translate(0px, -64px)",
               transition:"opacity 0.5s ease, filter 0.5s ease",
               opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none",
               animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
