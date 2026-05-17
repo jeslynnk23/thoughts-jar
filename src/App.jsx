@@ -424,65 +424,83 @@ function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList }) {
 
   return (
     <div style={{ position:"fixed",inset:0,background:"rgba(107,66,38,0.15)",backdropFilter:"blur(4px)",
-      display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,padding:"1.5rem" }} onClick={onClose}>
-      <div style={{ position:"relative",cursor:"default",display:"flex",flexDirection:"column",alignItems:"center" }}
+      display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,padding:"1.2rem" }} onClick={onClose}>
+      <style>{`@keyframes blobShake{0%,100%{transform:translateX(0) rotate(0deg)}15%{transform:translateX(-8px) rotate(-2deg)}30%{transform:translateX(7px) rotate(2deg)}45%{transform:translateX(-6px) rotate(-1.5deg)}60%{transform:translateX(5px) rotate(1deg)}75%{transform:translateX(-3px) rotate(-0.5deg)}90%{transform:translateX(2px) rotate(0.3deg)}}`}</style>
+      <div style={{ position:"relative",cursor:"default",display:"flex",flexDirection:"column",alignItems:"center",
+        width:"min(92vw, 420px)" }}
         onClick={e => e.stopPropagation()}>
-        <div style={{ position:"relative",width:"min(92vw, 420px)",
+
+        {/* Blob with icons pinned to top-right corner */}
+        <div style={{ position:"relative",width:"100%",
           animation: shaking ? "blobShake 0.45s ease" : "none" }}>
-          <style>{`@keyframes blobShake{0%,100%{transform:translateX(0) rotate(0deg)}15%{transform:translateX(-8px) rotate(-2deg)}30%{transform:translateX(7px) rotate(2deg)}45%{transform:translateX(-6px) rotate(-1.5deg)}60%{transform:translateX(5px) rotate(1deg)}75%{transform:translateX(-3px) rotate(-0.5deg)}90%{transform:translateX(2px) rotate(0.3deg)}}`}</style>
           <svg viewBox="0 0 360 290" width="100%"
             style={{ display:"block", filter:"drop-shadow(4px 6px 0px rgba(107,66,38,0.28))" }}>
             <path d={blobPath} fill={thought.completed ? "#D4C5B0" : blobColor} stroke="#6B4226" strokeWidth="3" strokeLinejoin="round" />
             <path d={blobPath} fill="white" opacity={0.12} transform="scale(0.82) translate(32, 26)" />
           </svg>
+
+          {/* Dice + list icons — pinned top-right, following blob curve */}
+          <div style={{ position:"absolute", top:"12%", right:"6%",
+            display:"flex", flexDirection:"column", gap:8 }}>
+            <button onClick={handleReroll} aria-label="roll again"
+              style={{ background:"rgba(255,248,236,0.92)",border:"2px solid #6B4226",borderRadius:"50%",
+                width:38,height:38,display:"flex",alignItems:"center",justifyContent:"center",
+                cursor:"pointer",boxShadow:"2px 3px 0 rgba(107,66,38,0.35)",flexShrink:0,
+                WebkitTapHighlightColor:"transparent" }}>
+              {/* Mini 3D dice — same isometric style as main dice */}
+              <svg viewBox="0 0 72 68" width={20} height={19}>
+                <path d="M20,6 L52,6 L64,16 L32,16 Z" fill="#FFFDF5" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round"/>
+                <circle cx={42} cy={11} r={2.8} fill="#6B4226" opacity={0.62}/>
+                <path d="M52,6 L64,16 L64,54 L52,44 Z" fill="#E8C87A" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round"/>
+                <circle cx={60} cy={24} r={2.6} fill="#6B4226" opacity={0.7}/>
+                <circle cx={60} cy={42} r={2.6} fill="#6B4226" opacity={0.7}/>
+                <path d="M20,6 L32,16 L32,54 L20,44 Z" fill="#FFF4E0" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round"/>
+                <path d="M20,44 L32,54 L64,54 L52,44 Z" fill="#FFF0D8" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round"/>
+                <circle cx={33} cy={46} r={3} fill="#6B4226" opacity={0.82}/>
+                <circle cx={51} cy={46} r={3} fill="#6B4226" opacity={0.82}/>
+                <circle cx={42} cy={49} r={3} fill="#6B4226" opacity={0.82}/>
+                <circle cx={33} cy={52} r={3} fill="#6B4226" opacity={0.82}/>
+                <circle cx={51} cy={52} r={3} fill="#6B4226" opacity={0.82}/>
+                <path d="M20,6 L20,44 L32,54 L32,16 Z" fill="#F5ECD8" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round"/>
+              </svg>
+            </button>
+            <button onClick={onOpenList} aria-label="view all thoughts"
+              style={{ background:"rgba(255,248,236,0.92)",border:"2px solid #6B4226",borderRadius:"50%",
+                width:38,height:38,display:"flex",alignItems:"center",justifyContent:"center",
+                cursor:"pointer",boxShadow:"2px 3px 0 rgba(107,66,38,0.35)",flexShrink:0,
+                WebkitTapHighlightColor:"transparent" }}>
+              <svg viewBox="0 0 18 18" width={14} height={14}>
+                <circle cx={3.5} cy={5} r={2} fill="#F2A7B0" stroke="#6B4226" strokeWidth={0.8}/>
+                <circle cx={3.5} cy={9} r={2} fill="#A8BFDF" stroke="#6B4226" strokeWidth={0.8}/>
+                <circle cx={3.5} cy={13} r={2} fill="#F6E27A" stroke="#6B4226" strokeWidth={0.8}/>
+                <line x1={7.5} y1={5} x2={17} y2={5} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
+                <line x1={7.5} y1={9} x2={16} y2={9} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
+                <line x1={7.5} y1={13} x2={16.5} y2={13} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+
+          {/* Thought text — centred inside blob */}
           <div style={{ position:"absolute",inset:0,display:"flex",flexDirection:"column",
-            alignItems:"center",justifyContent:"center",padding:"2.5rem 2.8rem",textAlign:"center" }}>
-            <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(16px,3.1vw,20px)",
-              color:"#6B4226",opacity:0.7,marginBottom:8,letterSpacing:1,lineHeight:1.6,paddingBottom:2,overflow:"visible" }}>
+            alignItems:"center",justifyContent:"center",padding:"2rem 3.5rem 2rem 2rem",textAlign:"center" }}>
+            <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(14px,2.8vw,18px)",
+              color:"#6B4226",opacity:0.7,marginBottom:6,letterSpacing:1,lineHeight:1.5,overflow:"visible" }}>
               {thought.completed ? "a completed thought" : "a thought from the jar"}
             </p>
-            <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(22px,5.5vw,32px)",
-              color:"#3D2510",lineHeight:1.6,paddingBottom:4,overflow:"visible",marginBottom:8,wordBreak:"break-word",hyphens:"auto",
+            <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(20px,5vw,30px)",
+              color:"#3D2510",lineHeight:1.5,overflow:"visible",marginBottom:6,wordBreak:"break-word",hyphens:"auto",
               textDecoration: thought.completed ? "line-through" : "none", opacity: thought.completed ? 0.6 : 1 }}>
               {thought.text}
             </p>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(10px,1.8vw,12px)",color:"#6B4226",opacity:0.6 }}>
+            <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(10px,1.8vw,12px)",color:"#6B4226",opacity:0.55 }}>
               {formattedDate}
             </p>
           </div>
         </div>
-        <div style={{ display:"flex",gap:8,marginTop:16,flexWrap:"wrap",justifyContent:"center" }}>
-          {/* Re-roll dice */}
-          <button onClick={handleReroll} aria-label="randomize again"
-            title="roll again"
-            style={{ background:"#FFF8EC",border:"2.5px solid #6B4226",borderRadius:50,
-              width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",
-              cursor:"pointer",boxShadow:"2px 3px 0 #6B4226",flexShrink:0 }}>
-            <svg viewBox="0 0 32 32" width={22} height={22}>
-              <rect x={3} y={3} width={26} height={26} rx={6}
-                fill="#FFF8EC" stroke="#6B4226" strokeWidth={2.2} strokeLinejoin="round"/>
-              <circle cx={10} cy={10} r={2.5} fill="#6B4226" opacity={0.85}/>
-              <circle cx={22} cy={10} r={2.5} fill="#6B4226" opacity={0.85}/>
-              <circle cx={16} cy={16} r={2.5} fill="#6B4226" opacity={0.85}/>
-              <circle cx={10} cy={22} r={2.5} fill="#6B4226" opacity={0.85}/>
-              <circle cx={22} cy={22} r={2.5} fill="#6B4226" opacity={0.85}/>
-            </svg>
-          </button>
-          {/* Open list */}
-          <button onClick={onOpenList} aria-label="view all thoughts"
-            title="see all thoughts"
-            style={{ background:"#FFF8EC",border:"2.5px solid #6B4226",borderRadius:50,
-              width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",
-              cursor:"pointer",boxShadow:"2px 3px 0 #6B4226",flexShrink:0 }}>
-            <svg viewBox="0 0 18 18" width={14} height={14}>
-              <circle cx={3.5} cy={5} r={2} fill="#F2A7B0" stroke="#6B4226" strokeWidth={0.8}/>
-              <circle cx={3.5} cy={9} r={2} fill="#A8BFDF" stroke="#6B4226" strokeWidth={0.8}/>
-              <circle cx={3.5} cy={13} r={2} fill="#F6E27A" stroke="#6B4226" strokeWidth={0.8}/>
-              <line x1={7.5} y1={5} x2={17} y2={5} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
-              <line x1={7.5} y1={9} x2={16} y2={9} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
-              <line x1={7.5} y1={13} x2={16.5} y2={13} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
-            </svg>
-          </button>
+
+        {/* Action buttons — single horizontal row below blob */}
+        <div style={{ display:"flex",gap:10,marginTop:14,justifyContent:"center",flexWrap:"nowrap" }}>
+
           {!thought.completed && (
             <button onClick={() => { onComplete(thought.id); onClose(); }}
               style={{ background:"#A8C5A0",border:"2.5px solid #6B4226",borderRadius:50,
@@ -1872,6 +1890,169 @@ function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musi
   );
 }
 
+// ─── TUTORIAL OVERLAY ────────────────────────────────────────────────────────
+
+const TUTORIAL_STEPS = [
+  {
+    icon: (
+      <svg viewBox="0 0 60 60" width={52} height={52}>
+        {/* Jar with plus */}
+        <path d="M12,18 C11,20 9,25 9,30 C8,37 8,44 9,49 C10,53 12,55 17,56 C22,57 26,57 30,57 C34,57 38,57 43,56 C48,55 50,53 51,49 C52,44 52,37 51,30 C51,25 49,20 48,18 Z"
+          fill="#FFF8EC" stroke="#6B4226" strokeWidth={2.2} strokeLinejoin="round"/>
+        <path d="M19,12 C18,13 17,15 16,17 C15,17.5 14,18 12,18 L48,18 C46,18 45,17.5 44,17 C43,15 42,13 41,12 Z"
+          fill="#FFF8EC" stroke="#6B4226" strokeWidth={2.2} strokeLinejoin="round"/>
+        <rect x={16} y={6} width={28} height={8} rx={3} fill="#E8C87A" stroke="#6B4226" strokeWidth={2}/>
+        <ellipse cx={30} cy={6} rx={6} ry={3} fill="#D4A840" stroke="#6B4226" strokeWidth={1.8}/>
+        <path d="M15,25 C14,32 14,39 15,44" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" opacity={0.5}/>
+        {/* Plus */}
+        <circle cx={44} cy={44} r={10} fill="#A8C5A0" stroke="#6B4226" strokeWidth={2}/>
+        <line x1={44} y1={38} x2={44} y2={50} stroke="#6B4226" strokeWidth={2.2} strokeLinecap="round"/>
+        <line x1={38} y1={44} x2={50} y2={44} stroke="#6B4226" strokeWidth={2.2} strokeLinecap="round"/>
+      </svg>
+    ),
+    head: "drop a thought in",
+    body: "type anything in the bar below — a feeling, an idea, something you want to remember. tap enter and it floats into the jar.",
+  },
+  {
+    icon: (
+      <svg viewBox="0 0 72 68" width={56} height={52}>
+        <ellipse cx={38} cy={65} rx={22} ry={5} fill="#C9A87A" opacity={0.25}/>
+        <path d="M20,6 L52,6 L64,16 L32,16 Z" fill="#FFFDF5" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
+        <circle cx={42} cy={11} r={2.8} fill="#6B4226" opacity={0.62}/>
+        <path d="M52,6 L64,16 L64,54 L52,44 Z" fill="#E8C87A" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
+        <circle cx={60} cy={24} r={2.6} fill="#6B4226" opacity={0.7}/>
+        <circle cx={60} cy={42} r={2.6} fill="#6B4226" opacity={0.7}/>
+        <path d="M20,6 L32,16 L32,54 L20,44 Z" fill="#FFF4E0" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
+        <path d="M20,44 L32,54 L64,54 L52,44 Z" fill="#FFF0D8" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
+        <circle cx={33} cy={46} r={3} fill="#6B4226" opacity={0.82}/>
+        <circle cx={51} cy={46} r={3} fill="#6B4226" opacity={0.82}/>
+        <circle cx={42} cy={49} r={3} fill="#6B4226" opacity={0.82}/>
+        <circle cx={33} cy={52} r={3} fill="#6B4226" opacity={0.82}/>
+        <circle cx={51} cy={52} r={3} fill="#6B4226" opacity={0.82}/>
+        <path d="M20,6 L20,44 L32,54 L32,16 Z" fill="#F5ECD8" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round"/>
+        <circle cx={26} cy={20} r={2.4} fill="#6B4226" opacity={0.7}/>
+        <circle cx={26} cy={30} r={2.4} fill="#6B4226" opacity={0.7}/>
+        <circle cx={26} cy={40} r={2.4} fill="#6B4226" opacity={0.7}/>
+        <path d="M25,9 C29,7 35,7 38,9" fill="none" stroke="white" strokeWidth={1.3} strokeLinecap="round" opacity={0.55}/>
+      </svg>
+    ),
+    head: "tap the dice to rediscover",
+    body: "tap the dice above the jar to pull out a random thought. you can roll as many times as you like.",
+  },
+  {
+    icon: (
+      <svg viewBox="0 0 56 56" width={52} height={52}>
+        <rect x={4} y={4} width={48} height={48} rx={12} fill="#FFF8EC" stroke="#6B4226" strokeWidth={2.5}/>
+        <circle cx={16} cy={20} rx={0} r={5} fill="#F2A7B0" stroke="#6B4226" strokeWidth={1.4}/>
+        <circle cx={16} cy={34} rx={0} r={5} fill="#A8BFDF" stroke="#6B4226" strokeWidth={1.4}/>
+        <circle cx={16} cy={48} rx={0} r={0}/>
+        <line x1={26} y1={20} x2={48} y2={20} stroke="#6B4226" strokeWidth={2} strokeLinecap="round"/>
+        <line x1={26} y1={34} x2={44} y2={34} stroke="#6B4226" strokeWidth={2} strokeLinecap="round"/>
+        <ellipse cx={16} cy={20} rx={5} ry={5} fill="#F2A7B0" stroke="#6B4226" strokeWidth={1.4}/>
+        <ellipse cx={16} cy={34} rx={5} ry={5} fill="#A8BFDF" stroke="#6B4226" strokeWidth={1.4}/>
+        <ellipse cx={16} cy={48} rx={5} ry={5} fill="#F6E27A" stroke="#6B4226" strokeWidth={1.4}/>
+        <line x1={26} y1={48} x2={46} y2={48} stroke="#6B4226" strokeWidth={2} strokeLinecap="round"/>
+      </svg>
+    ),
+    head: "see all your thoughts",
+    body: "tap the list icon on the right to view every thought across all your jars. mark things done or remove them from there.",
+  },
+  {
+    icon: (
+      <svg viewBox="0 0 88 56" width={68} height={44}>
+        {/* Left arrow */}
+        <path d="M18,5 C16,7 6,26 4,28 C6,30 16,47 18,51"
+          fill="none" stroke="#6B4226" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round"/>
+        {/* Mini jar */}
+        <path d="M34,10 C33,12 31,16 30,20 C29,25 29,32 30,38 C31,41 33,43 36,44 C39,45 42,45 44,45 C46,45 49,45 52,44 C55,43 57,41 58,38 C59,32 59,25 58,20 C57,16 55,12 54,10 Z"
+          fill="#FFF8EC" stroke="#6B4226" strokeWidth={2} strokeLinejoin="round"/>
+        <path d="M37,6 C36,7 35,9 34,10 L54,10 C53,9 52,7 51,6 Z"
+          fill="#FFF8EC" stroke="#6B4226" strokeWidth={2}/>
+        <rect x={35} y={2} width={18} height={5} rx={2} fill="#E8C87A" stroke="#6B4226" strokeWidth={1.8}/>
+        {/* Right arrow */}
+        <path d="M70,5 C72,7 82,26 84,28 C82,30 72,47 70,51"
+          fill="none" stroke="#6B4226" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+    head: "move between jars",
+    body: "use the arrows on either side of the jar to navigate between your jars. you can have up to 5 jars.",
+  },
+  {
+    icon: (
+      <svg viewBox="0 0 64 64" width={52} height={52}>
+        {/* Blob */}
+        <path d="M32,6 C48,4 58,14 58,28 C58,44 46,60 32,58 C18,56 6,46 6,30 C6,14 16,8 32,6 Z"
+          fill="#F2A7B0" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round"/>
+        {/* Checkmark */}
+        <path d="M20,32 L28,42 L46,22"
+          fill="none" stroke="#6B4226" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+    head: "mark it done",
+    body: "when a thought pops open, you can mark it complete or put it back. completed thoughts stay in the jar with a little strikethrough.",
+  },
+];
+
+function TutorialOverlay({ onDone }) {
+  const [step, setStep] = useState(0);
+  const total = TUTORIAL_STEPS.length;
+  const current = TUTORIAL_STEPS[step];
+  const isLast = step === total - 1;
+
+  return (
+    <div style={{ position:"fixed",inset:0,background:"rgba(61,37,16,0.5)",
+      backdropFilter:"blur(6px)",display:"flex",alignItems:"center",
+      justifyContent:"center",zIndex:900,padding:"1.5rem" }}>
+      <div style={{ background:"#FFFDF5",border:"3px solid #6B4226",borderRadius:24,
+        width:"min(92vw,400px)",padding:"2rem 1.8rem 1.6rem",
+        boxShadow:"6px 8px 0 #C9A87A",display:"flex",flexDirection:"column",gap:20 }}>
+
+        {/* Progress dots */}
+        <div style={{ display:"flex",gap:6,justifyContent:"center" }}>
+          {TUTORIAL_STEPS.map((_, i) => (
+            <div key={i} style={{ width: i===step?20:7, height:7, borderRadius:50,
+              background: i===step ? "#E85D3A" : i<step ? "#A8C5A0" : "#D4C5B0",
+              border:"1.5px solid #6B4226", transition:"all 0.3s ease" }}/>
+          ))}
+        </div>
+
+        {/* Icon */}
+        <div style={{ display:"flex",justifyContent:"center" }}>
+          {current.icon}
+        </div>
+
+        {/* Content */}
+        <div style={{ textAlign:"center" }}>
+          <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(20px,4vw,26px)",
+            color:"#3D2510",lineHeight:1.5,overflow:"visible",paddingBottom:4,marginBottom:8 }}>
+            {current.head}
+          </p>
+          <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(13px,2vw,15px)",
+            color:"#6B5040",lineHeight:1.75 }}>
+            {current.body}
+          </p>
+        </div>
+
+        {/* Buttons */}
+        <div style={{ display:"flex",gap:10,alignItems:"center" }}>
+          <button onClick={onDone}
+            style={{ background:"transparent",border:"none",cursor:"pointer",
+              fontFamily:"var(--font-body)",fontSize:13,color:"#A07850",
+              padding:"8px 0",flexShrink:0,opacity:0.75 }}>
+            skip
+          </button>
+          <button onClick={() => isLast ? onDone() : setStep(s => s+1)}
+            style={{ flex:1,background:"#E85D3A",border:"2.5px solid #6B4226",borderRadius:50,
+              padding:"12px 0",fontFamily:"var(--font-body)",fontSize:15,fontWeight:500,
+              color:"white",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226" }}>
+            {isLast ? "let's go" : "next →"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── MAIN APP ────────────────────────────────────────────────────────────────
 
 export default function ThoughtJar() {
@@ -1911,8 +2092,8 @@ export default function ThoughtJar() {
   const [showNewJar, setShowNewJar]   = useState(false);
   const [showInfo, setShowInfo]       = useState(false);
   const [infoInitPage, setInfoInitPage] = useState("note");
-  const [showHomeScreen, setShowHomeScreen] = useState(false);
   const [showDecPicker, setShowDecPicker] = useState(false);
+  const [showTutorial, setShowTutorial]   = useState(false);
   const toastTimer = useRef(null);
 
   const [nickname, setNickname]   = useState(() => load(NICKNAME_KEY, null));
@@ -1979,11 +2160,8 @@ export default function ThoughtJar() {
     setTokenExpiry(expiry);
     setStarterRemaining(r => Math.max(0, r - 1));
     didInitAccess.current = true;
-    // Auto-show the How To Use tutorial after first onboarding
-    setTimeout(() => {
-      setInfoInitPage("howto");
-      setShowInfo(true);
-    }, 600);
+    // Auto-show guided tutorial after first onboarding
+    setTimeout(() => { setShowTutorial(true); }, 700);
   }, []);
 
   const handleAddThought = useCallback((text) => {
@@ -2119,7 +2297,6 @@ export default function ThoughtJar() {
               <InfoButton onClick={() => setShowInfo(true)} />
               <ListIcon onClick={() => setShowList(true)} />
               <NewJarButton onClick={() => setShowNewJar(true)} />
-              <HomeScreenButton onClick={() => setShowHomeScreen(true)} />
             </div>
           </div>
         </header>
@@ -2135,14 +2312,14 @@ export default function ThoughtJar() {
           <circle cx={15} cy={130} r={2} fill="#C87A50" />
         </svg>
 
-        {/* Main content — structured to fill central space cleanly */}
+        {/* Main content — maximises central screen zone between header, right bar and input */}
         <main style={{ display:"flex",flexDirection:"column",alignItems:"center",
-          gap:"clamp(4px,1vh,10px)",width:"100%",maxWidth:500,
-          marginTop:"clamp(56px,8.5vh,80px)",
-          paddingBottom:"clamp(20px,3vh,40px)",
+          gap:"clamp(2px,0.6vh,8px)",width:"100%",maxWidth:480,
+          marginTop:"clamp(72px,11vh,96px)",
+          paddingBottom:"clamp(16px,2.5vh,32px)",
           position:"relative" }}>
 
-          {/* Dice icon — above the jar, shifted left to balance right-side icons */}
+          {/* Dice icon — above jar. Handdrawn 3D dice matching TV illustration style */}
           <button
             onClick={handleJarClick}
             disabled={isLocked}
@@ -2152,29 +2329,56 @@ export default function ThoughtJar() {
               padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
               opacity: isLocked ? 0.4 : 1,
               WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
-              transform: "translateX(clamp(-22px,-4vw,-8px))",
-              marginBottom: 2,
+              transform: "translateX(clamp(-18px,-3.5vw,-6px))",
             }}>
-            {/* Handdrawn 3D dice — isometric, warm illustration style matching TV */}
-            <svg viewBox="0 0 72 72" width={54} height={54}>
-              <ellipse cx={38} cy={67} rx={18} ry={4} fill="#C9A87A" opacity={0.28}/>
-              <path d="M46,18 L62,27 L62,51 L46,60 Z"
-                fill="#E8C87A" stroke="#6B4226" strokeWidth={2.2} strokeLinejoin="round"/>
-              <path d="M22,8 L46,18 L46,60 L22,50 Z"
-                fill="#FFF8EC" stroke="#6B4226" strokeWidth={2.2} strokeLinejoin="round"/>
-              <path d="M10,27 L22,8 L46,18 L62,27 L62,51 L46,60 L22,50 L10,51 Z"
-                fill="#FFF0D8" stroke="#6B4226" strokeWidth={2.2} strokeLinejoin="round"/>
-              <circle cx={22} cy={32} r={3} fill="#6B4226" opacity={0.82}/>
-              <circle cx={38} cy={32} r={3} fill="#6B4226" opacity={0.82}/>
-              <circle cx={30} cy={39} r={3} fill="#6B4226" opacity={0.82}/>
-              <circle cx={22} cy={46} r={3} fill="#6B4226" opacity={0.82}/>
-              <circle cx={38} cy={46} r={3} fill="#6B4226" opacity={0.82}/>
-              <circle cx={30} cy={12} r={2.4} fill="#6B4226" opacity={0.7}/>
-              <circle cx={40} cy={16} r={2.4} fill="#6B4226" opacity={0.7}/>
-              <circle cx={53} cy={31} r={2.4} fill="#6B4226" opacity={0.65}/>
-              <circle cx={57} cy={39} r={2.4} fill="#6B4226" opacity={0.65}/>
-              <circle cx={53} cy={47} r={2.4} fill="#6B4226" opacity={0.65}/>
-              <path d="M26,10 C28,8 32,8 34,10" fill="none" stroke="white" strokeWidth={1.2} strokeLinecap="round" opacity={0.55}/>
+            <svg viewBox="0 0 72 68" width={60} height={56}>
+              {/* Ground shadow */}
+              <ellipse cx={38} cy={65} rx={22} ry={5} fill="#C9A87A" opacity={0.25}/>
+
+              {/* === TOP FACE === warm cream, parallelogram tilted */}
+              <path d="M20,6 L52,6 L64,16 L32,16 Z"
+                fill="#FFFDF5" stroke="#6B4226" strokeWidth={2.5}
+                strokeLinejoin="round" strokeLinecap="round"/>
+              {/* Top face — 1 dot (centre) */}
+              <circle cx={42} cy={11} r={2.8} fill="#6B4226" opacity={0.62}/>
+
+              {/* === RIGHT FACE === amber, parallelogram right side */}
+              <path d="M52,6 L64,16 L64,54 L52,44 Z"
+                fill="#E8C87A" stroke="#6B4226" strokeWidth={2.5}
+                strokeLinejoin="round" strokeLinecap="round"/>
+              {/* Right face — 2 dots */}
+              <circle cx={60} cy={24} r={2.6} fill="#6B4226" opacity={0.7}/>
+              <circle cx={60} cy={42} r={2.6} fill="#6B4226" opacity={0.7}/>
+
+              {/* === FRONT FACE === main visible face, warm off-white square */}
+              <path d="M20,6 L32,16 L32,54 L20,44 Z"
+                fill="#FFF4E0" stroke="#6B4226" strokeWidth={2.5}
+                strokeLinejoin="round" strokeLinecap="round"/>
+
+              {/* FRONT-BOTTOM face — the large main face of the dice */}
+              <path d="M20,44 L32,54 L64,54 L52,44 Z"
+                fill="#FFF0D8" stroke="#6B4226" strokeWidth={2.5}
+                strokeLinejoin="round" strokeLinecap="round"/>
+              {/* Bottom face — 5 pips in X pattern (most visible face) */}
+              <circle cx={33} cy={46} r={3} fill="#6B4226" opacity={0.82}/>
+              <circle cx={51} cy={46} r={3} fill="#6B4226" opacity={0.82}/>
+              <circle cx={42} cy={49} r={3} fill="#6B4226" opacity={0.82}/>
+              <circle cx={33} cy={52} r={3} fill="#6B4226" opacity={0.82}/>
+              <circle cx={51} cy={52} r={3} fill="#6B4226" opacity={0.82}/>
+
+              {/* Left side strip — connects top to bottom-front */}
+              <path d="M20,6 L20,44 L32,54 L32,16 Z"
+                fill="#F5ECD8" stroke="#6B4226" strokeWidth={2.5}
+                strokeLinejoin="round" strokeLinecap="round"/>
+              {/* Left face — 3 dots */}
+              <circle cx={26} cy={20} r={2.4} fill="#6B4226" opacity={0.7}/>
+              <circle cx={26} cy={30} r={2.4} fill="#6B4226" opacity={0.7}/>
+              <circle cx={26} cy={40} r={2.4} fill="#6B4226" opacity={0.7}/>
+
+              {/* Shine on top face */}
+              <path d="M25,9 C29,7 35,7 38,9"
+                fill="none" stroke="white" strokeWidth={1.3}
+                strokeLinecap="round" opacity={0.55}/>
             </svg>
           </button>
 
@@ -2198,9 +2402,9 @@ export default function ThoughtJar() {
               </svg>
             </button>
 
-            {/* The Jar — taller via maxWidth increase, slight left offset */}
-            <div style={{ flex:"1 1 auto", maxWidth:"min(360px,76vw)", minWidth:0,
-              transform:"translateX(clamp(-12px,-2vw,-3px))",
+            {/* Jar — maximises central space, left-shifted to balance right icon column */}
+            <div style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
+              transform:"translateX(clamp(-16px,-3vw,-5px))",
               transition:"opacity 0.5s ease, filter 0.5s ease",
               opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none" }}>
               <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
@@ -2238,11 +2442,11 @@ export default function ThoughtJar() {
                 : "tap the dice or jar to rediscover a thought"}
           </p>
 
-          {/* TV — absolutely positioned, right side, vertically centred in jar area */}
+          {/* TV — right edge, clears input bar comfortably */}
           <div className="tv-widget" style={{
             position:"absolute",
             right:0,
-            bottom:"clamp(120px,20vh,150px)",
+            bottom:"clamp(96px,16vh,130px)",
             flexDirection:"column",alignItems:"center",
             opacity:0.88,zIndex:2 }}>
             <RetroTV onOpenAd={handleOpenAd} />
@@ -2265,8 +2469,6 @@ export default function ThoughtJar() {
         musicMuted={musicMuted} setMusicMuted={setMusicMuted}
         musicVolume={musicVolume} setMusicVolume={setMusicVolume}
         initialPage={infoInitPage} />}
-      {showHomeScreen && <HomeScreenModal onClose={() => setShowHomeScreen(false)} />}
-
       {showList && (
         <ThoughtsListModal jars={jars} onClose={() => setShowList(false)}
           onComplete={handleComplete} onDelete={handleDelete}
@@ -2292,6 +2494,7 @@ export default function ThoughtJar() {
 
       {tvAdOpen && <TVAdPopup onClose={handleCloseAd} onEarnToken={handleEarnToken} />}
       <Toast message={toast.message} visible={toast.visible} />
+      {showTutorial && <TutorialOverlay onDone={() => setShowTutorial(false)} />}
       <Analytics />
     </>
   );
