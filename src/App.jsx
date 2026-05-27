@@ -2188,6 +2188,20 @@ export default function ThoughtJar() {
   const { muted: musicMuted, setMuted: setMusicMuted,
           volume: musicVolume, setVolume: setMusicVolume } = useBackgroundMusic();
 
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.width = "100%";
+
+    return () => {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.width = "";
+    };
+  }, []);
+
   // ── Jars state: array of { id, name, thoughts[] }
   // Migrate legacy single-jar data on first load
   const [jars, setJars] = useState(() => {
