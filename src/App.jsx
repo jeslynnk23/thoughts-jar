@@ -2417,11 +2417,25 @@ export default function ThoughtJar() {
       )}
       {isInPWA && !showHSPrompt && showOnboarding && <OnboardingFlow onComplete={handleOnboardingComplete} />}
 
-      <div className="clip-x app-root" style={{ minHeight:"100vh",width:"100%",background:"#FBF5E8",display:"flex",
-        flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",
-        padding:"2rem 1.5rem",fontFamily:"var(--font-body)",
-        opacity: showOnboarding ? 0 : 1, transition:"opacity 0.4s ease",
-        visibility: isInPWA ? "visible" : "hidden" }}>
+     <div className="clip-x app-root" style={{
+  minHeight:"100vh",
+  height:"100dvh",
+  maxHeight:"100dvh",
+  width:"100%",
+  background:"#FBF5E8",
+  display:"flex",
+  flexDirection:"column",
+  alignItems:"center",
+  justifyContent:"center",
+  position:"relative",
+  overflow:"hidden",
+  overscrollBehavior:"none",
+  padding:"2rem 1.5rem",
+  fontFamily:"var(--font-body)",
+  opacity: showOnboarding ? 0 : 1,
+  transition:"opacity 0.4s ease",
+  visibility: isInPWA ? "visible" : "hidden"
+}}>
 
         {/* Dot grid background */}
         <svg style={{ position:"absolute",inset:0,width:"100%",height:"100%",opacity:0.06,pointerEvents:"none" }}>
