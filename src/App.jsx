@@ -920,6 +920,46 @@ function AdIllustration({ icon }) {
     </svg>
   );
 }
+function AdSenseTVAd() {
+  useEffect(() => {
+    const scriptId = "adsbygoogle-script";
+
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement("script");
+      script.id = scriptId;
+      script.async = true;
+      script.src =
+        "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9881259880719466";
+      script.crossOrigin = "anonymous";
+      document.head.appendChild(script);
+    }
+
+    const timer = setTimeout(() => {
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch (e) {
+        console.warn("AdSense load skipped:", e);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <ins
+      className="adsbygoogle"
+      style={{
+        display: "block",
+        width: "100%",
+        height: "100%",
+      }}
+      data-ad-client="ca-pub-9881259880719466"
+      data-ad-slot="4678959689"
+      data-ad-format="auto"
+      data-full-width-responsive="true"
+    />
+  );
+}
 
 const AD_DURATION = 15;
 
@@ -970,19 +1010,37 @@ function TVAdPopup({ onClose, onEarnToken }) {
             </div>
           </div>
 
-          <div style={{ background:ad.bg,padding:"28px 24px 22px",display:"flex",flexDirection:"column",
-            alignItems:"center",gap:10,borderBottom:"2.5px solid #6B4226" }}>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#6B4226",opacity:0.7,letterSpacing:1 }}>
-              {ad.label}
-            </p>
-            <AdIllustration icon={ad.icon} />
-            <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:28,color:"#3D2510",textAlign:"center",lineHeight:1.6,paddingBottom:6,overflow:"visible" }}>
-              {ad.brand}
-            </p>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#6B4226",opacity:0.75,textAlign:"center",fontStyle:"italic" }}>
-              {ad.tagline}
-            </p>
-          </div>
+          <div style={{
+  background:"#3D2510",
+  padding:"18px",
+  borderBottom:"2.5px solid #6B4226",
+}}>
+  <div style={{
+    width:"100%",
+    aspectRatio:"4 / 3",
+    background:"#FFFDF5",
+    border:"3px solid #6B4226",
+    borderRadius:14,
+    overflow:"hidden",
+    display:"flex",
+    alignItems:"center",
+    justifyContent:"center",
+  }}>
+    <AdSenseTVAd />
+  </div>
+
+  <p style={{
+    fontFamily:"var(--font-body)",
+    fontSize:10,
+    color:"#F6C94A",
+    opacity:0.75,
+    textAlign:"center",
+    marginTop:8,
+    letterSpacing:0.8,
+  }}>
+    advertisement
+  </p>
+</div>
 
           <div style={{ padding:"18px 24px 22px",display:"flex",flexDirection:"column",gap:14 }}>
             <div>
