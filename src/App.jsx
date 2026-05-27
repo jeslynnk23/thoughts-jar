@@ -2210,7 +2210,7 @@ export default function ThoughtJar() {
   });
 
   const [activeJarIndex, setActiveJarIndex] = useState(() => load(ACTIVE_JAR, 0));
-  const [tokens, setTokens]       = useState(() => load(TOKEN_KEY, STARTER_TOKENS - 1));
+  const [tokens, setTokens] = useState(() => load(TOKEN_KEY, 3));
   const [revealedThought, setRevealedThought] = useState(null);
   const [isJarAnimating, setIsJarAnimating]   = useState(false);
   const [toast, setToast]         = useState({ message: "", visible: false });
@@ -2234,10 +2234,9 @@ export default function ThoughtJar() {
   const [showHSPrompt, setShowHSPrompt] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(() => !load(INTRO_KEY, false));
   const [tokenExpiry, setTokenExpiry]       = useState(() => load(EXPIRY_KEY, null));
-  const [starterRemaining, setStarterRemaining] = useState(() => load(STARTER_KEY, STARTER_TOKENS));
 
   const isAccessActive = tokenExpiry && Date.now() < new Date(tokenExpiry).getTime();
-  const isLocked = !showOnboarding && !isAccessActive && starterRemaining <= 0;
+  const isLocked = !showOnboarding && tokens <= 0;
 
   // Derived active jar (clamp index in case jar was removed)
   const safeIdx  = Math.min(activeJarIndex, Math.max(0, jars.length - 1));
@@ -2248,19 +2247,7 @@ export default function ThoughtJar() {
   useEffect(() => { save(JARS_KEY, jars); }, [jars]);
   useEffect(() => { save(TOKEN_KEY, tokens); }, [tokens]);
   useEffect(() => { save(EXPIRY_KEY, tokenExpiry); }, [tokenExpiry]);
-  useEffect(() => { save(STARTER_KEY, starterRemaining); }, [starterRemaining]);
   useEffect(() => { save(ACTIVE_JAR, safeIdx); }, [safeIdx]);
-
-  const didInitAccess = useRef(false);
-  useEffect(() => {
-    if (showOnboarding || didInitAccess.current) return;
-    didInitAccess.current = true;
-    if (!isAccessActive && starterRemaining > 0) {
-      const expiry = new Date(Date.now() + ACCESS_HOURS * 60 * 60 * 1000).toISOString();
-      setTokenExpiry(expiry);
-      setStarterRemaining(r => r - 1);
-    }
-  }, [showOnboarding, isAccessActive, starterRemaining]);
 
   useEffect(() => {
   const checkExpiry = () => {
@@ -2329,8 +2316,7 @@ export default function ThoughtJar() {
     setJars(prev => prev.map((jar, i) => i === 0 ? { ...jar, name: chosenNickname } : jar));
     const expiry = new Date(Date.now() + ACCESS_HOURS * 60 * 60 * 1000).toISOString();
     setTokenExpiry(expiry);
-    setStarterRemaining(r => Math.max(0, r - 1));
-    didInitAccess.current = true;
+    
     // Auto-show guided tutorial after first onboarding
     setTimeout(() => { setShowTutorial(true); }, 700);
   }, []);
