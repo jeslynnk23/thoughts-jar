@@ -961,11 +961,27 @@ function AdSenseTVAd() {
   );
 }
 
+const COZY_BROADCASTS = [
+  "someone somewhere is probably making tea right now.",
+  "today feels like folded laundry and quiet music.",
+  "the little blob thinks tomorrow might be softer.",
+  "a thought floated by but decided not to stay.",
+  "some feelings are meant to be held gently.",
+  "tiny weather report: emotionally cloudy with warm light.",
+  "maybe resting is also a form of progress.",
+  "the tv crackles softly in the corner of the room.",
+];
+
 const AD_DURATION = 15;
 
 function TVAdPopup({ onClose, onEarnToken }) {
   const adIndex  = useRef(Math.floor(Math.random() * ADS.length)).current;
   const ad       = ADS[adIndex];
+  const broadcast = useRef(
+  COZY_BROADCASTS[
+    Math.floor(Math.random() * COZY_BROADCASTS.length)
+  ]
+).current;
   const [secondsLeft, setSecondsLeft] = useState(AD_DURATION);
   const [done,      setDone]      = useState(false);
   const [rewarded,  setRewarded]  = useState(false);
@@ -1010,6 +1026,32 @@ function TVAdPopup({ onClose, onEarnToken }) {
             </div>
           </div>
 
+          <div style={{
+  padding:"22px 22px 16px",
+  background:"#FBF5E8",
+  borderBottom:"1.5px dashed #E0C898",
+  textAlign:"center",
+}}>
+  <p className="fh" style={{
+    fontFamily:"var(--font-hand)",
+    fontSize:24,
+    color:"#3D2510",
+    lineHeight:1.5,
+    marginBottom:8,
+  }}>
+    tonight’s tiny broadcast ✦
+  </p>
+
+  <p style={{
+    fontFamily:"var(--font-body)",
+    fontSize:14,
+    color:"#6B5040",
+    lineHeight:1.7,
+  }}>
+    {broadcast}
+  </p>
+</div>
+          
           <div style={{
   background:"#3D2510",
   padding:"18px",
