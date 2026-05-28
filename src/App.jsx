@@ -962,14 +962,45 @@ function AdSenseTVAd() {
 }
 
 const COZY_BROADCASTS = [
-  "someone somewhere is probably making tea right now.",
-  "today feels like folded laundry and quiet music.",
-  "the little blob thinks tomorrow might be softer.",
-  "a thought floated by but decided not to stay.",
-  "some feelings are meant to be held gently.",
-  "tiny weather report: emotionally cloudy with warm light.",
-  "maybe resting is also a form of progress.",
-  "the tv crackles softly in the corner of the room.",
+  "someone somewhere is probably making tea right now, standing quietly in their kitchen while the rest of the world keeps rushing without them.",
+
+  "today feels like folded laundry, warm lamps, and the strange comfort of finally putting your phone down for a little while.",
+
+  "the little blob thinks tomorrow might be softer. not perfect, not magical — just a little easier to carry than today was.",
+
+  "a thought floated by earlier tonight but decided not to stay. some feelings only visit briefly before drifting somewhere gentler.",
+
+  "tiny weather report: emotionally cloudy with warm lighting, low social battery, and a small chance of unexpectedly feeling okay again.",
+
+  "someone out there is probably staring at their ceiling right now, wondering if they’re doing enough. maybe surviving today was already enough.",
+
+  "the room is quieter tonight. the kind of quiet where you can suddenly hear your own thoughts breathing a little slower.",
+
+  "there is no rush to become the final version of yourself. even flowers spend awhile as seeds underground before anyone sees them bloom.",
+
+  "today’s broadcast is sponsored by soft blankets, unfinished to-do lists, and the strange bravery of continuing anyway.",
+
+  "the little tv picked up a signal from somewhere far away. it says a tiny part of tomorrow is already rooting for you.",
+
+  "some jars fill quickly, others take time. neither means your thoughts mattered any less while they were growing.",
+
+  "maybe healing is not becoming a brand new person. maybe it is simply learning how to hold your own heart more gently than before.",
+
+  "a sleepy blob wandered across the screen carrying a thought too heavy for one night alone. luckily, jars are good at holding things for awhile.",
+
+  "there are people who loved older versions of you, and there will be people who love the future versions too. you do not have to stay frozen to remain lovable.",
+
+  "tiny midnight forecast: overthinking with occasional moments of clarity, followed by emotional support music playing faintly in another room.",
+
+  "sometimes the most meaningful days are the ones that leave almost no evidence behind except a slightly calmer nervous system.",
+
+  "the little jar noticed you came back again today. that probably means some small part of you still believes tomorrow is worth reaching.",
+
+  "nothing dramatic happened today, and maybe that is its own kind of miracle. quiet days count too.",
+
+  "some thoughts are not meant to be solved immediately. some are only asking for somewhere safe to rest for the night.",
+
+  "the tv crackles softly in the corner of the room while tiny stars flicker behind the static. everything feels far away, but not lonely.",
 ];
 
 const AD_DURATION = 15;
@@ -1039,7 +1070,7 @@ function TVAdPopup({ onClose, onEarnToken }) {
     lineHeight:1.5,
     marginBottom:8,
   }}>
-    tonight’s tiny broadcast ✦
+    tonights tiny broadcast
   </p>
 
   <p style={{
