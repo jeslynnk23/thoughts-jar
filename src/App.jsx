@@ -350,7 +350,7 @@ function RetroTV({ onOpenAd }) {
   opacity: 0.95,
   whiteSpace: "nowrap",
 }}>
-  today’s broadcast ✦
+  earn tokens!
 </div>
       <svg viewBox="0 0 96 88" width={70} height={64} onClick={handleTVClick}
         style={{ cursor: "pointer", transition: "transform 0.15s", transform: isFlickering ? "scale(1.04)" : "scale(1)" }}>
@@ -920,6 +920,9 @@ function AdIllustration({ icon }) {
     </svg>
   );
 }
+function AdSenseTVAd() {
+  useEffect(() => {
+    const scriptId = "adsbygoogle-script";
 
     if (!document.getElementById(scriptId)) {
       const script = document.createElement("script");
@@ -1000,108 +1003,165 @@ const COZY_BROADCASTS = [
   "the tv crackles softly in the corner of the room while tiny stars flicker behind the static. everything feels far away, but not lonely.",
 ];
 
-function TVAdPopup({ onClose }) {
+const AD_DURATION = 15;
+
+function TVAdPopup({ onClose, onEarnToken }) {
+  const adIndex  = useRef(Math.floor(Math.random() * ADS.length)).current;
+  const ad       = ADS[adIndex];
   const broadcast = useRef(
-    COZY_BROADCASTS[
-      Math.floor(Math.random() * COZY_BROADCASTS.length)
-    ]
-  ).current;
+  COZY_BROADCASTS[
+    Math.floor(Math.random() * COZY_BROADCASTS.length)
+  ]
+).current;
+  const [secondsLeft, setSecondsLeft] = useState(AD_DURATION);
+  const [done,      setDone]      = useState(false);
+  const [rewarded,  setRewarded]  = useState(false);
+  const [showCoin,  setShowCoin]  = useState(false);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    timerRef.current = setInterval(() => {
+      setSecondsLeft(s => {
+        if (s <= 1) { clearInterval(timerRef.current); setDone(true); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timerRef.current);
+  }, []);
+
+  const handleClaim = () => {
+    if (!done || rewarded) return;
+    setRewarded(true); setShowCoin(true); onEarnToken();
+  };
+  const progress = ((AD_DURATION - secondsLeft) / AD_DURATION) * 100;
 
   return (
-    <div
-      style={{
-        position:"fixed",
-        inset:0,
-        background:"rgba(61,37,16,0.45)",
-        backdropFilter:"blur(5px)",
-        zIndex:300,
-        display:"flex",
-        alignItems:"center",
-        justifyContent:"center",
-        padding:"1.5rem",
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background:"#FBF5E8",
-          border:"3px solid #6B4226",
-          borderRadius:20,
-          width:"min(92vw,420px)",
-          boxShadow:"6px 8px 0 #C9A87A",
-          overflow:"hidden",
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div
-          style={{
-            background:"#3D2510",
-            padding:"8px 18px",
-            display:"flex",
-            alignItems:"center",
-            justifyContent:"space-between",
-          }}
-        >
-          <span
-            className="fh"
-            style={{
-              fontFamily:"var(--font-hand)",
-              fontSize:24,
-              color:"#F6C94A",
-              letterSpacing:1,
-              lineHeight:1.6,
-            }}
-          >
-            ch. 7 — tiny broadcast
-          </span>
+    <>
+      <div style={{ position:"fixed",inset:0,background:"rgba(61,37,16,0.45)",backdropFilter:"blur(5px)",
+        zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:"1.5rem" }}
+        onClick={done && rewarded ? onClose : undefined}>
+        <div style={{ background:"#FBF5E8",border:"3px solid #6B4226",borderRadius:20,
+          width:"min(92vw,420px)",boxShadow:"6px 8px 0 #C9A87A" }}
+          onClick={e => e.stopPropagation()}>
 
-          <button
-            onClick={onClose}
-            aria-label="close broadcast"
-            style={{
-              background:"transparent",
-              border:"none",
-              color:"#F6C94A",
-              fontSize:22,
-              cursor:"pointer",
-            }}
-          >
-            ×
-          </button>
-        </div>
+          <div style={{ background:"#3D2510",padding:"8px 18px",display:"flex",
+            alignItems:"center",justifyContent:"space-between",
+            borderRadius:"16px 16px 0 0" }}>
+            <span className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:24,color:"#F6C94A",letterSpacing:1,
+              lineHeight:1.6,paddingBottom:4,overflow:"visible",display:"inline-block" }}>
+              ch. 7 — cozy tv
+            </span>
+            <div style={{ display:"flex",gap:6,alignItems:"center" }}>
+              <div style={{ width:8,height:8,borderRadius:"50%",background:"#E85D3A" }} />
+              <span style={{ fontFamily:"var(--font-body)",fontSize:10,color:"#F6C94A",opacity:0.8 }}>live</span>
+            </div>
+          </div>
 
-        <div
-          style={{
-            padding:"28px 24px",
-            textAlign:"center",
-          }}
-        >
-          <p
-            className="fh"
-            style={{
-              fontFamily:"var(--font-hand)",
-              fontSize:26,
-              color:"#3D2510",
-              lineHeight:1.55,
-              marginBottom:12,
-            }}
-          >
-            today’s tiny broadcast ✦
-          </p>
+          <div style={{
+  padding:"22px 22px 16px",
+  background:"#FBF5E8",
+  borderBottom:"1.5px dashed #E0C898",
+  textAlign:"center",
+}}>
+  <p className="fh" style={{
+    fontFamily:"var(--font-hand)",
+    fontSize:24,
+    color:"#3D2510",
+    lineHeight:1.5,
+    marginBottom:8,
+  }}>
+    tonights tiny broadcast
+  </p>
 
-          <p
-            style={{
-              fontFamily:"var(--font-body)",
-              fontSize:15,
-              color:"#6B5040",
-              lineHeight:1.8,
-            }}
-          >
-            {broadcast}
-          </p>
+  <p style={{
+    fontFamily:"var(--font-body)",
+    fontSize:14,
+    color:"#6B5040",
+    lineHeight:1.7,
+  }}>
+    {broadcast}
+  </p>
+</div>
+          
+          <div style={{
+  background:"#3D2510",
+  padding:"18px",
+  borderBottom:"2.5px solid #6B4226",
+}}>
+  <div style={{
+    width:"100%",
+    aspectRatio:"4 / 3",
+    background:"#FFFDF5",
+    border:"3px solid #6B4226",
+    borderRadius:14,
+    overflow:"hidden",
+    display:"flex",
+    alignItems:"center",
+    justifyContent:"center",
+  }}>
+    <AdSenseTVAd />
+  </div>
+
+  <p style={{
+    fontFamily:"var(--font-body)",
+    fontSize:10,
+    color:"#F6C94A",
+    opacity:0.75,
+    textAlign:"center",
+    marginTop:8,
+    letterSpacing:0.8,
+  }}>
+    advertisement
+  </p>
+</div>
+
+          <div style={{ padding:"18px 24px 22px",display:"flex",flexDirection:"column",gap:14 }}>
+            <div>
+              <div style={{ display:"flex",justifyContent:"space-between",marginBottom:6,alignItems:"center" }}>
+                <span style={{ fontFamily:"var(--font-body)",fontSize:11,color:"#A07850" }}>
+                  {done ? "ready to claim!" : "watch to earn a token"}
+                </span>
+                <span style={{ fontFamily:"var(--font-body)",fontSize:16,fontWeight:500,
+                  color: done ? "#4A8C50" : "#C87A50",transition:"color 0.4s" }}>
+                  {done ? "done!" : `${secondsLeft}s`}
+                </span>
+              </div>
+              <div style={{ height:10,background:"#E8D8C0",borderRadius:50,border:"1.5px solid #6B4226",overflow:"hidden" }}>
+                <div style={{ height:"100%",width:`${progress}%`,background: done ? "#A8C5A0" : "#F6C94A",
+                  borderRadius:50,transition:"width 1s linear, background 0.4s" }} />
+              </div>
+            </div>
+            <div style={{ display:"flex",gap:10 }}>
+              {!rewarded ? (
+                <button onClick={handleClaim} disabled={!done}
+                  style={{ flex:1,background: done ? "#E85D3A" : "#D4C5B0",border:"2.5px solid #6B4226",
+                    borderRadius:50,padding:"11px 0",fontFamily:"var(--font-body)",fontSize:15,fontWeight:500,
+                    color: done ? "white" : "#A09080",cursor: done ? "pointer" : "not-allowed",
+                    boxShadow: done ? "3px 4px 0 #6B4226" : "none",transition:"background 0.3s, box-shadow 0.3s",
+                    whiteSpace:"nowrap" }}>
+                  {done ? "claim token" : "watching..."}
+                </button>
+              ) : (
+                <button onClick={onClose}
+                  style={{ flex:1,background:"#A8C5A0",border:"2.5px solid #6B4226",borderRadius:50,
+                    padding:"11px 0",fontFamily:"var(--font-body)",fontSize:15,fontWeight:500,
+                    color:"#3D2510",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226",whiteSpace:"nowrap" }}>
+                  token earned
+                </button>
+              )}
+              <button onClick={onClose} aria-label="close"
+                style={{ background:"transparent",border:"2px solid #C9A87A",borderRadius:"50%",
+                  width:44,height:44,flexShrink:0,fontFamily:"var(--font-body)",fontSize:16,fontWeight:500,
+                  color:"#A07850",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",
+                  lineHeight:1.3 }}>
+                X
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+      {showCoin && <FloatingCoin onDone={() => setShowCoin(false)} />}
+    </>
   );
 }
 
@@ -2263,7 +2323,7 @@ export default function ThoughtJar() {
   const [tokenExpiry, setTokenExpiry]       = useState(() => load(EXPIRY_KEY, null));
 
   const isAccessActive = tokenExpiry && Date.now() < new Date(tokenExpiry).getTime();
-  const isLocked = false;
+  const isLocked = !showOnboarding && tokens <= 0;
 
   // Derived active jar (clamp index in case jar was removed)
   const safeIdx  = Math.min(activeJarIndex, Math.max(0, jars.length - 1));
@@ -2873,7 +2933,7 @@ export default function ThoughtJar() {
         onOpenList={() => { setRevealedThought(null); setShowList(true); }}
       />
 
-      {tvAdOpen && <TVAdPopup onClose={handleCloseAd} />}
+      {tvAdOpen && <TVAdPopup onClose={handleCloseAd} onEarnToken={handleEarnToken} />}
       <Toast message={toast.message} visible={toast.visible} />
       {showTutorial && <TutorialOverlay onDone={() => setShowTutorial(false)} />}
       <Analytics />
