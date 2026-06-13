@@ -10,9 +10,6 @@ const PASTEL_COLORS = [
 ];
 
 const JARS_KEY    = "tj-jars";
-const TOKEN_KEY   = "tj-tokens";
-const EXPIRY_KEY  = "tj-expiry";
-const STARTER_KEY = "tj-starter";
 const INTRO_KEY   = "tj-intro";
 const NICKNAME_KEY= "tj-nickname";
 const ACTIVE_JAR  = "tj-activeJar";
@@ -20,10 +17,7 @@ const HS_PROMPT_KEY= "tj-hsPromptSeen";
 const MUSIC_KEY    = "tj-musicMuted";
 const MUSIC_VOL_KEY= "tj-musicVol";
 
-const STARTER_TOKENS = 7;
-const ACCESS_HOURS   = 24;
 const JAR_CAPACITY   = 25;
-const MAX_JARS       = 5;
 
 const WHIMSICAL_NAMES = [
   "sleepy pebble","tiny comet","noodle cloud","moss muffin",
@@ -306,7 +300,7 @@ useEffect(() => {
 
 // ─── RETRO TV ───────────────────────────────────────────────────────────────
 
-function RetroTV({ onOpenAd }) {
+function RetroTV({ onOpenBroadcast }) {
   const [isFlickering, setIsFlickering] = useState(false);
   const [staticFrame, setStaticFrame]   = useState(0);
   const flickerTimer = useRef(null);
@@ -322,7 +316,7 @@ function RetroTV({ onOpenAd }) {
         clearInterval(flickerTimer.current);
         setIsFlickering(false);
         setStaticFrame(0);
-        onOpenAd?.();
+        onOpenBroadcast?.();
       }
     }, 80);
   };
@@ -350,7 +344,7 @@ function RetroTV({ onOpenAd }) {
   opacity: 0.95,
   whiteSpace: "nowrap",
 }}>
-  earn tokens!
+  today’s broadcast ✦
 </div>
       <svg viewBox="0 0 96 88" width={70} height={64} onClick={handleTVClick}
         style={{ cursor: "pointer", transition: "transform 0.15s", transform: isFlickering ? "scale(1.04)" : "scale(1)" }}>
@@ -373,47 +367,6 @@ function RetroTV({ onOpenAd }) {
         <rect x={52} y={72} width={9} height={10} rx={3} fill="#B8A88A" stroke="#6B4226" strokeWidth={2} />
       </svg>
     </div>
-  );
-}
-
-// ─── TOKEN COIN ─────────────────────────────────────────────────────────────
-
-function TokenCoin({ count }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <img
-  src="/icons/token.svg"
-  alt="token"
-  style={{
-    width: 38,
-    height: 38,
-  }}
-/>
-      <span style={{ fontFamily: "var(--font-body)", fontSize: 26, fontWeight: 700, color: "#6B4226", lineHeight: 1.3 }}>
-        {count}
-      </span>
-    </div>
-  );
-}
-
-// ─── LIST ICON ──────────────────────────────────────────────────────────────
-
-function ListIcon({ onClick }) {
-  return (
-    <button onClick={onClick} aria-label="view all thoughts"
-      style={{ background:"#FFF8EC",border:"2px solid #C9A87A",borderRadius:"50%",
-        width:44,height:44,cursor:"pointer",display:"flex",alignItems:"center",
-        justifyContent:"center",flexShrink:0,WebkitTapHighlightColor:"transparent",
-        touchAction:"manipulation" }}>
-      <img
-  src="/icons/list-no-border.svg"
-  alt="list"
-  style={{
-    width: 18,
-    height: 18,
-  }}
-/>
-    </button>
   );
 }
 
@@ -543,10 +496,9 @@ function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList }) {
 
 // ─── JAR FULL MODAL ──────────────────────────────────────────────────────────
 
-function JarFullModal({ tokens, onConfirm, onCancel, onOpenTV, atJarLimit = false }) {
+function JarFullModal({ onConfirm, onCancel }) {
   const [jarName, setJarName] = useState("");
   const [suggestion, setSuggestion] = useState(() => WHIMSICAL_NAMES[Math.floor(Math.random() * WHIMSICAL_NAMES.length)]);
-  const canAfford = tokens >= 1;
 
   return (
     <div style={{ position:"fixed",inset:0,background:"rgba(107,66,38,0.22)",backdropFilter:"blur(5px)",
@@ -565,39 +517,14 @@ function JarFullModal({ tokens, onConfirm, onCancel, onOpenTV, atJarLimit = fals
   justifyContent:"space-between",
 }}
 onClick={e => e.stopPropagation()}>
-        {atJarLimit ? (
-          <>
-            <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(22px,4vw,30px)",
-              color:"#3D2510",marginBottom:10,lineHeight:1.6,paddingBottom:4,overflow:"visible",display:"block" }}>
-              your collection is full for now
-            </p>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:14,color:"#A07850",lineHeight:1.75,marginBottom:8 }}>
-              you already have 5 jars — maybe there are still little things waiting to be rediscovered in the ones you have.
-            </p>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#B89070",lineHeight:1.65,marginBottom:20,fontStyle:"italic" }}>
-              revisit one, complete a few thoughts, and a new jar will feel even more special when the time comes.
-            </p>
-            <button onClick={onCancel}
-              style={{ width:"100%",background:"#E8C87A",border:"2.5px solid #6B4226",borderRadius:50,
-                padding:"11px 0",fontFamily:"var(--font-body)",fontSize:15,fontWeight:500,
-                color:"#3D2510",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226" }}>
-              back to my jars
-            </button>
-          </>
-        ) : (
-          <>
         <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(22px,4vw,30px)",
           color:"#3D2510",marginBottom:10,lineHeight:1.6,paddingBottom:4,overflow:"visible",display:"block" }}>
           create a new jar
         </p>
         <p style={{ fontFamily:"var(--font-body)",fontSize:14,color:"#A07850",lineHeight:1.65,marginBottom:18 }}>
-          {canAfford
-            ? "a new jar costs 1 token. give it a name and keep going."
-            : "you need 1 token to open a new jar. watch a cozy broadcast to earn one."}
+          give it a name and keep going.
         </p>
-        {canAfford ? (
-          <>
-            <input value={jarName} onChange={e => {
+        <input value={jarName} onChange={e => {
                 setJarName(e.target.value);
                 if (e.target.value.trim().toLowerCase() === suggestion.toLowerCase()) {
                   let next; let t=0;
@@ -644,7 +571,7 @@ onClick={e => e.stopPropagation()}>
                 style={{ flex:1,background:"#E85D3A",border:"2.5px solid #6B4226",borderRadius:50,
                   padding:"11px 0",fontFamily:"var(--font-body)",fontSize:15,fontWeight:500,
                   color:"white",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226" }}>
-                open new jar (1 token)
+                open new jar
               </button>
               <button onClick={onCancel}
                 style={{ background:"transparent",border:"2px solid #C9A87A",borderRadius:"50%",
@@ -654,26 +581,6 @@ onClick={e => e.stopPropagation()}>
                 X
               </button>
             </div>
-          </>
-        ) : (
-          <div style={{ display:"flex",gap:10 }}>
-            <button onClick={onOpenTV}
-              style={{ flex:1,background:"#E85D3A",border:"2.5px solid #6B4226",borderRadius:50,
-                padding:"11px 0",fontFamily:"var(--font-body)",fontSize:15,fontWeight:500,
-                color:"white",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226" }}>
-              turn on cozy tv
-            </button>
-            <button onClick={onCancel}
-              style={{ background:"transparent",border:"2px solid #C9A87A",borderRadius:"50%",
-                width:44,height:44,flexShrink:0,fontFamily:"var(--font-body)",fontSize:16,
-                fontWeight:500,color:"#A07850",cursor:"pointer",display:"flex",
-                alignItems:"center",justifyContent:"center" }}>
-              X
-            </button>
-          </div>
-        )}
-          </> 
-        )}
       </div>
     </div>
   );
@@ -864,102 +771,7 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
   );
 }
 
-// ─── TV AD POPUP ─────────────────────────────────────────────────────────────
-
-function FloatingCoin({ onDone }) {
-  useEffect(() => { const t = setTimeout(onDone, 1200); return () => clearTimeout(t); }, [onDone]);
-  return (
-    <div style={{ position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",
-      zIndex:500,pointerEvents:"none",animation:"coinFloat 1.2s cubic-bezier(0.22,1,0.36,1) forwards" }}>
-      <style>{`@keyframes coinFloat{0%{opacity:0;transform:translate(-50%,-50%) scale(0.4)}25%{opacity:1;transform:translate(-50%,-80%) scale(1.3)}65%{opacity:1;transform:translate(-50%,-140%) scale(1.1)}100%{opacity:0;transform:translate(-50%,-200%) scale(0.9)}}`}</style>
-      <svg viewBox="0 0 64 64" width={64} height={64}>
-        <circle cx={32} cy={32} r={30} fill="#F6C94A" stroke="#6B4226" strokeWidth={3} />
-        <circle cx={32} cy={32} r={22} fill="#EDAE1C" stroke="#6B4226" strokeWidth={1.5} opacity={0.7} />
-        <polygon points="32,16 35.5,27 47,27 38,34 41,45 32,38 23,45 26,34 17,27 28.5,27"
-          fill="#FDE78A" stroke="#6B4226" strokeWidth={1.5} strokeLinejoin="round" />
-      </svg>
-    </div>
-  );
-}
-
-const ADS = [
-  { bg:"#A8C5A0", label:"brought to you by", brand:"cozy corner candles", tagline:"hand-poured, small-batch, very sleepy", icon:"candle" },
-  { bg:"#F7C59F", label:"a message from",    brand:"nap cloud pillows",    tagline:"scientifically proven to be very soft", icon:"pillow" },
-  { bg:"#A8BFDF", label:"today's sponsor",   brand:"wandering teapot co.", tagline:"pour slowly. think less. sip more.", icon:"teapot" },
-];
-
-function AdIllustration({ icon }) {
-  if (icon === "candle") return (
-    <svg viewBox="0 0 80 90" width={80} height={90}>
-      <ellipse cx={40} cy={20} rx={7} ry={10} fill="#F6C94A" stroke="#6B4226" strokeWidth={1.5} />
-      <ellipse cx={40} cy={24} rx={3.5} ry={5} fill="#FDE78A" />
-      <line x1={40} y1={30} x2={40} y2={36} stroke="#6B4226" strokeWidth={1.8} strokeLinecap="round" />
-      <rect x={28} y={36} width={24} height={42} rx={6} fill="#FFF8EC" stroke="#6B4226" strokeWidth={2} />
-      <ellipse cx={34} cy={38} rx={3} ry={4} fill="#FFF8EC" stroke="#6B4226" strokeWidth={1.5} />
-      <ellipse cx={48} cy={40} rx={2.5} ry={3.5} fill="#FFF8EC" stroke="#6B4226" strokeWidth={1.5} />
-    </svg>
-  );
-  if (icon === "pillow") return (
-    <svg viewBox="0 0 90 70" width={90} height={70}>
-      <rect x={8} y={12} width={74} height={48} rx={20} fill="#D4A5C9" stroke="#6B4226" strokeWidth={2.5} />
-      <path d="M45,18 C38,30 38,42 45,54" fill="none" stroke="#6B4226" strokeWidth={1.5} strokeDasharray="3,3" opacity={0.4} />
-      <ellipse cx={22} cy={26} rx={8} ry={6} fill="#D4A5C9" stroke="#6B4226" strokeWidth={1.5} />
-      <ellipse cx={68} cy={26} rx={8} ry={6} fill="#D4A5C9" stroke="#6B4226" strokeWidth={1.5} />
-      <ellipse cx={22} cy={50} rx={8} ry={6} fill="#D4A5C9" stroke="#6B4226" strokeWidth={1.5} />
-      <ellipse cx={68} cy={50} rx={8} ry={6} fill="#D4A5C9" stroke="#6B4226" strokeWidth={1.5} />
-    </svg>
-  );
-  return (
-    <svg viewBox="0 0 90 80" width={90} height={80}>
-      <ellipse cx={42} cy={50} rx={30} ry={24} fill="#A8BFDF" stroke="#6B4226" strokeWidth={2.5} />
-      <path d="M70,44 C80,40 84,34 80,28" fill="none" stroke="#6B4226" strokeWidth={3} strokeLinecap="round" />
-      <path d="M14,42 C4,40 2,56 14,58" fill="none" stroke="#6B4226" strokeWidth={3} strokeLinecap="round" />
-      <ellipse cx={42} cy={27} rx={18} ry={6} fill="#A8BFDF" stroke="#6B4226" strokeWidth={2} />
-      <ellipse cx={42} cy={22} rx={5} ry={4} fill="#7B9BAA" stroke="#6B4226" strokeWidth={1.8} />
-      <path d="M76,24 C74,18 78,14 76,8" fill="none" stroke="#6B4226" strokeWidth={1.5} strokeLinecap="round" opacity={0.45} />
-    </svg>
-  );
-}
-function AdSenseTVAd() {
-  useEffect(() => {
-    const scriptId = "adsbygoogle-script";
-
-    if (!document.getElementById(scriptId)) {
-      const script = document.createElement("script");
-      script.id = scriptId;
-      script.async = true;
-      script.src =
-        "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9881259880719466";
-      script.crossOrigin = "anonymous";
-      document.head.appendChild(script);
-    }
-
-    const timer = setTimeout(() => {
-      try {
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      } catch (e) {
-        console.warn("AdSense load skipped:", e);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  return (
-    <ins
-      className="adsbygoogle"
-      style={{
-        display: "block",
-        width: "100%",
-        height: "100%",
-      }}
-      data-ad-client="ca-pub-9881259880719466"
-      data-ad-slot="4678959689"
-      data-ad-format="auto"
-      data-full-width-responsive="true"
-    />
-  );
-}
+// ─── DAILY BROADCAST ────────────────────────────────────────────────────────
 
 const COZY_BROADCASTS = [
   "someone somewhere is probably making tea right now, standing quietly in their kitchen while the rest of the world keeps rushing without them.",
@@ -978,7 +790,7 @@ const COZY_BROADCASTS = [
 
   "there is no rush to become the final version of yourself. even flowers spend awhile as seeds underground before anyone sees them bloom.",
 
-  "today’s broadcast is sponsored by soft blankets, unfinished to-do lists, and the strange bravery of continuing anyway.",
+  "today’s broadcast comes with soft blankets, unfinished to-do lists, and the strange bravery of continuing anyway.",
 
   "the little tv picked up a signal from somewhere far away. it says a tiny part of tomorrow is already rooting for you.",
 
@@ -1003,165 +815,59 @@ const COZY_BROADCASTS = [
   "the tv crackles softly in the corner of the room while tiny stars flicker behind the static. everything feels far away, but not lonely.",
 ];
 
-const AD_DURATION = 15;
-
-function TVAdPopup({ onClose, onEarnToken }) {
-  const adIndex  = useRef(Math.floor(Math.random() * ADS.length)).current;
-  const ad       = ADS[adIndex];
+function DailyBroadcastPopup({ onClose }) {
   const broadcast = useRef(
-  COZY_BROADCASTS[
-    Math.floor(Math.random() * COZY_BROADCASTS.length)
-  ]
-).current;
-  const [secondsLeft, setSecondsLeft] = useState(AD_DURATION);
-  const [done,      setDone]      = useState(false);
-  const [rewarded,  setRewarded]  = useState(false);
-  const [showCoin,  setShowCoin]  = useState(false);
-  const timerRef = useRef(null);
-
-  useEffect(() => {
-    timerRef.current = setInterval(() => {
-      setSecondsLeft(s => {
-        if (s <= 1) { clearInterval(timerRef.current); setDone(true); return 0; }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timerRef.current);
-  }, []);
-
-  const handleClaim = () => {
-    if (!done || rewarded) return;
-    setRewarded(true); setShowCoin(true); onEarnToken();
-  };
-  const progress = ((AD_DURATION - secondsLeft) / AD_DURATION) * 100;
+    COZY_BROADCASTS[Math.floor(Math.random() * COZY_BROADCASTS.length)]
+  ).current;
 
   return (
-    <>
-      <div style={{ position:"fixed",inset:0,background:"rgba(61,37,16,0.45)",backdropFilter:"blur(5px)",
-        zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:"1.5rem" }}
-        onClick={done && rewarded ? onClose : undefined}>
-        <div style={{ background:"#FBF5E8",border:"3px solid #6B4226",borderRadius:20,
-          width:"min(92vw,420px)",boxShadow:"6px 8px 0 #C9A87A" }}
-          onClick={e => e.stopPropagation()}>
+    <div style={{ position:"fixed",inset:0,background:"rgba(61,37,16,0.45)",backdropFilter:"blur(5px)",
+      zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:"1.5rem" }}
+      onClick={onClose}>
+      <div style={{ background:"#FBF5E8",border:"3px solid #6B4226",borderRadius:20,
+        width:"min(92vw,420px)",boxShadow:"6px 8px 0 #C9A87A",overflow:"hidden" }}
+        onClick={e => e.stopPropagation()}>
 
-          <div style={{ background:"#3D2510",padding:"8px 18px",display:"flex",
-            alignItems:"center",justifyContent:"space-between",
-            borderRadius:"16px 16px 0 0" }}>
-            <span className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:24,color:"#F6C94A",letterSpacing:1,
-              lineHeight:1.6,paddingBottom:4,overflow:"visible",display:"inline-block" }}>
-              ch. 7 — cozy tv
-            </span>
-            <div style={{ display:"flex",gap:6,alignItems:"center" }}>
-              <div style={{ width:8,height:8,borderRadius:"50%",background:"#E85D3A" }} />
-              <span style={{ fontFamily:"var(--font-body)",fontSize:10,color:"#F6C94A",opacity:0.8 }}>live</span>
-            </div>
-          </div>
+        <div style={{ background:"#3D2510",padding:"8px 18px",display:"flex",
+          alignItems:"center",justifyContent:"space-between" }}>
+          <span className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:24,color:"#F6C94A",letterSpacing:1,
+            lineHeight:1.6,paddingBottom:4,overflow:"visible",display:"inline-block" }}>
+            ch. 7 — tiny broadcast
+          </span>
+          <button onClick={onClose} aria-label="close broadcast"
+            style={{ background:"transparent",border:"none",color:"#F6C94A",cursor:"pointer",
+              fontFamily:"var(--font-body)",fontSize:18,padding:"2px 4px" }}>
+            X
+          </button>
+        </div>
 
-          <div style={{
-  padding:"22px 22px 16px",
-  background:"#FBF5E8",
-  borderBottom:"1.5px dashed #E0C898",
-  textAlign:"center",
-}}>
-  <p className="fh" style={{
-    fontFamily:"var(--font-hand)",
-    fontSize:24,
-    color:"#3D2510",
-    lineHeight:1.5,
-    marginBottom:8,
-  }}>
-    tonights tiny broadcast
-  </p>
-
-  <p style={{
-    fontFamily:"var(--font-body)",
-    fontSize:14,
-    color:"#6B5040",
-    lineHeight:1.7,
-  }}>
-    {broadcast}
-  </p>
-</div>
-          
-          <div style={{
-  background:"#3D2510",
-  padding:"18px",
-  borderBottom:"2.5px solid #6B4226",
-}}>
-  <div style={{
-    width:"100%",
-    aspectRatio:"4 / 3",
-    background:"#FFFDF5",
-    border:"3px solid #6B4226",
-    borderRadius:14,
-    overflow:"hidden",
-    display:"flex",
-    alignItems:"center",
-    justifyContent:"center",
-  }}>
-    <AdSenseTVAd />
-  </div>
-
-  <p style={{
-    fontFamily:"var(--font-body)",
-    fontSize:10,
-    color:"#F6C94A",
-    opacity:0.75,
-    textAlign:"center",
-    marginTop:8,
-    letterSpacing:0.8,
-  }}>
-    advertisement
-  </p>
-</div>
-
-          <div style={{ padding:"18px 24px 22px",display:"flex",flexDirection:"column",gap:14 }}>
-            <div>
-              <div style={{ display:"flex",justifyContent:"space-between",marginBottom:6,alignItems:"center" }}>
-                <span style={{ fontFamily:"var(--font-body)",fontSize:11,color:"#A07850" }}>
-                  {done ? "ready to claim!" : "watch to earn a token"}
-                </span>
-                <span style={{ fontFamily:"var(--font-body)",fontSize:16,fontWeight:500,
-                  color: done ? "#4A8C50" : "#C87A50",transition:"color 0.4s" }}>
-                  {done ? "done!" : `${secondsLeft}s`}
-                </span>
-              </div>
-              <div style={{ height:10,background:"#E8D8C0",borderRadius:50,border:"1.5px solid #6B4226",overflow:"hidden" }}>
-                <div style={{ height:"100%",width:`${progress}%`,background: done ? "#A8C5A0" : "#F6C94A",
-                  borderRadius:50,transition:"width 1s linear, background 0.4s" }} />
-              </div>
-            </div>
-            <div style={{ display:"flex",gap:10 }}>
-              {!rewarded ? (
-                <button onClick={handleClaim} disabled={!done}
-                  style={{ flex:1,background: done ? "#E85D3A" : "#D4C5B0",border:"2.5px solid #6B4226",
-                    borderRadius:50,padding:"11px 0",fontFamily:"var(--font-body)",fontSize:15,fontWeight:500,
-                    color: done ? "white" : "#A09080",cursor: done ? "pointer" : "not-allowed",
-                    boxShadow: done ? "3px 4px 0 #6B4226" : "none",transition:"background 0.3s, box-shadow 0.3s",
-                    whiteSpace:"nowrap" }}>
-                  {done ? "claim token" : "watching..."}
-                </button>
-              ) : (
-                <button onClick={onClose}
-                  style={{ flex:1,background:"#A8C5A0",border:"2.5px solid #6B4226",borderRadius:50,
-                    padding:"11px 0",fontFamily:"var(--font-body)",fontSize:15,fontWeight:500,
-                    color:"#3D2510",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226",whiteSpace:"nowrap" }}>
-                  token earned
-                </button>
-              )}
-              <button onClick={onClose} aria-label="close"
-                style={{ background:"transparent",border:"2px solid #C9A87A",borderRadius:"50%",
-                  width:44,height:44,flexShrink:0,fontFamily:"var(--font-body)",fontSize:16,fontWeight:500,
-                  color:"#A07850",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",
-                  lineHeight:1.3 }}>
-                X
-              </button>
-            </div>
+        <div style={{ padding:"30px 28px 32px",background:"#FBF5E8",textAlign:"center" }}>
+          <svg viewBox="0 0 72 68" width={68} height={64} style={{ marginBottom:14 }}>
+            <rect x={4} y={10} width={58} height={46} rx={6} fill="#D4C5B0" stroke="#6B4226" strokeWidth={2.2} />
+            <rect x={11} y={16} width={38} height={29} rx={3} fill="#7B9BAA" stroke="#6B4226" strokeWidth={1.8} />
+            <path d="M16 23 H43 M16 29 H38 M16 35 H45 M16 41 H34" stroke="white" strokeWidth={1.2} opacity={0.35} />
+            <line x1={26} y1={10} x2={18} y2={2} stroke="#6B4226" strokeWidth={2} strokeLinecap="round"/>
+            <line x1={36} y1={10} x2={44} y2={2} stroke="#6B4226" strokeWidth={2} strokeLinecap="round"/>
+            <circle cx={57} cy={27} r={4} fill="#B8A88A" stroke="#6B4226" strokeWidth={1.5}/>
+            <circle cx={57} cy={42} r={4} fill="#B8A88A" stroke="#6B4226" strokeWidth={1.5}/>
+            <rect x={16} y={56} width={7} height={8} rx={2} fill="#B8A88A" stroke="#6B4226" strokeWidth={1.5}/>
+            <rect x={40} y={56} width={7} height={8} rx={2} fill="#B8A88A" stroke="#6B4226" strokeWidth={1.5}/>
+          </svg>
+          <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:24,color:"#3D2510",
+            lineHeight:1.5,marginBottom:10 }}>
+            today’s tiny broadcast
+          </p>
+          <p style={{ fontFamily:"var(--font-body)",fontSize:14,color:"#6B5040",lineHeight:1.8 }}>
+            {broadcast}
+          </p>
+          <div style={{ display:"flex",justifyContent:"center",gap:8,marginTop:22,opacity:0.65 }}>
+            {[0,1,2].map(i => (
+              <span key={i} style={{ width:6,height:6,borderRadius:"50%",background:"#C9A87A" }} />
+            ))}
           </div>
         </div>
       </div>
-      {showCoin && <FloatingCoin onDone={() => setShowCoin(false)} />}
-    </>
+    </div>
   );
 }
 
@@ -1216,41 +922,6 @@ function Toast({ message, visible }) {
       padding:"10px 24px",borderRadius:50,pointerEvents:"none",zIndex:200,whiteSpace:"nowrap" }}
       role="status" aria-live="polite">
       {message}
-    </div>
-  );
-}
-
-// ─── LOCKED OVERLAY ──────────────────────────────────────────────────────────
-
-function LockedOverlay({ onOpenTV }) {
-  return (
-    <div style={{ position:"fixed",inset:0,background:"rgba(251,245,232,0.88)",
-      backdropFilter:"blur(6px)",display:"flex",flexDirection:"column",
-      alignItems:"center",justifyContent:"center",zIndex:400,gap:24,padding:"2rem 1.5rem",textAlign:"center" }}>
-      <svg viewBox="0 0 110 140" width={100} height={130} style={{ opacity:0.55,filter:"grayscale(0.3)" }}>
-        <ellipse cx={55} cy={137} rx={32} ry={5} fill="#C9A87A" opacity={0.15} />
-        <path d="M24,42 C21,46 18,55 17,66 C15,80 15,96 16,110 C17,122 19,130 22,134 C25,138 29,140 38,141 C46,142 50,143 55,143 C60,143 64,142 72,141 C81,140 85,138 88,134 C91,130 93,122 94,110 C95,96 95,80 93,66 C92,55 89,46 86,42 Z"
-          fill="#EDE8DA" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round" />
-        <path d="M34,28 C31,30 28,34 27,39 C25,41 25,42 24,42 L86,42 C85,42 85,41 83,39 C82,34 79,30 76,28 Z"
-          fill="#EDE8DA" stroke="#6B4226" strokeWidth={2.5} strokeLinejoin="round" />
-        <rect x={28} y={17} width={54} height={13} rx={4} fill="#D4C5A0" stroke="#6B4226" strokeWidth={2.5} />
-        <ellipse cx={55} cy={17} rx={8} ry={4} fill="#C4A840" stroke="#6B4226" strokeWidth={2} />
-        <text x={68} y={75} fontFamily="'MyFreehandFont5'" fontSize={18} fill="#6B4226" opacity={0.4}>z</text>
-        <text x={76} y={60} fontFamily="'MyFreehandFont5'" fontSize={13} fill="#6B4226" opacity={0.3}>z</text>
-        <text x={82} y={48} fontFamily="'MyFreehandFont5'" fontSize={10} fill="#6B4226" opacity={0.2}>z</text>
-      </svg>
-      <h2 style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(26px,5vw,38px)",color:"#3D2510",lineHeight:1.6,paddingBottom:6,overflow:"visible",display:"block" }}>
-        the jar is resting
-      </h2>
-      <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(13px,2vw,15px)",color:"#A07850",lineHeight:1.7,maxWidth:340 }}>
-        turn on cozy tv to keep the jar glowing — a short broadcast unlocks another day.
-      </p>
-      <button onClick={onOpenTV}
-        style={{ background:"#E85D3A",border:"2.5px solid #6B4226",borderRadius:50,
-          padding:"12px 36px",fontFamily:"var(--font-body)",fontSize:15,fontWeight:500,
-          color:"white",cursor:"pointer",boxShadow:"4px 5px 0 #6B4226" }}>
-        turn on cozy tv
-      </button>
     </div>
   );
 }
@@ -1583,24 +1254,8 @@ function OnboardingFlow({ onComplete }) {
           {btn("got it", () => advance(3))}
         </>}
         {screen===3 && <>
-          {/* Token coin + TV side by side — shows the relationship visually */}
-          <div style={{ display:"flex",alignItems:"center",gap:18,animation:"floatUp 0.6s ease both" }}>
-            {/* Coin */}
-            <img
-  src="/icons/token.svg"
-  alt="token"
-  style={{
-    width: 86,
-    height: 86,
-    flexShrink: 0,
-  }}
-/>
-            {/* Arrow */}
-            <svg viewBox="0 0 28 18" width={22} height={14}>
-              <path d="M2,9 L20,9 M14,3 L22,9 L14,15" fill="none" stroke="#C9A87A" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            {/* Mini TV */}
-            <svg viewBox="0 0 72 68" width={68} height={64}>
+          <div style={{ animation:"floatUp 0.6s ease both" }}>
+            <svg viewBox="0 0 72 68" width={88} height={82}>
               <rect x={4} y={10} width={58} height={46} rx={6} fill="#D4C5B0" stroke="#6B4226" strokeWidth={2.2} />
               <rect x={11} y={16} width={38} height={29} rx={3} fill="#7B9BAA" stroke="#6B4226" strokeWidth={1.8} />
               <rect x={11} y={16} width={38} height={29} rx={3} fill="white" opacity={0.12} />
@@ -1614,13 +1269,12 @@ function OnboardingFlow({ onComplete }) {
               <rect x={40} y={56} width={7} height={8} rx={2} fill="#B8A88A" stroke="#6B4226" strokeWidth={1.5}/>
             </svg>
           </div>
-          <h2 style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(28px,5vw,42px)",color:"#3D2510",lineHeight:1.6,paddingBottom:10,overflow:"visible",display:"block",animation:"floatUp 0.6s ease 0.1s both" }}>keeping the jar glowing</h2>
+          <h2 style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(28px,5vw,42px)",color:"#3D2510",lineHeight:1.6,paddingBottom:10,overflow:"visible",display:"block",animation:"floatUp 0.6s ease 0.1s both" }}>a tiny daily broadcast</h2>
           <div style={{ display:"flex",flexDirection:"column",gap:12,animation:"floatUp 0.6s ease 0.2s both" }}>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(14px,2.2vw,16px)",color:"#A07850",lineHeight:1.7 }}>you'll start with <strong style={{ color:"#3D2510" }}>7 free days</strong> on us — our little welcome gift.</p>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(14px,2.2vw,16px)",color:"#A07850",lineHeight:1.7 }}>after that, watching a short cozy broadcast on the little tv unlocks another day with the jar.</p>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(13px,2vw,15px)",color:"#B89070",lineHeight:1.6,fontStyle:"italic" }}>no accounts, no pressure — just a quiet little exchange that keeps this place alive.</p>
+            <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(14px,2.2vw,16px)",color:"#A07850",lineHeight:1.7 }}>tap the little tv whenever you want a cozy message for the day.</p>
+            <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(13px,2vw,15px)",color:"#B89070",lineHeight:1.6,fontStyle:"italic" }}>just a quiet signal from somewhere soft.</p>
           </div>
-          {btn("keep the jar glowing", () => advance(4))}
+          {btn("tune in later", () => advance(4))}
         </>}
         {screen===4 && <>
           <img
@@ -1684,140 +1338,6 @@ function OnboardingFlow({ onComplete }) {
   );
 }
 
-// ─── INFO BUTTON ────────────────────────────────────────────────────────────
-
-function InfoButton({ onClick }) {
-  return (
-    <button onClick={onClick} aria-label="about thought jar"
-      style={{ background:"#FFF8EC",border:"2px solid #C9A87A",borderRadius:"50%",
-        width:44,height:44,cursor:"pointer",display:"flex",alignItems:"center",
-        justifyContent:"center",flexShrink:0,WebkitTapHighlightColor:"transparent",
-        touchAction:"manipulation" }}>
-      <svg viewBox="0 0 20 20" width={14} height={14}>
-        <circle cx={10} cy={10} r={9} fill="none" stroke="#A07850" strokeWidth={1.8}/>
-        <line x1={10} y1={8.5} x2={10} y2={14} stroke="#A07850" strokeWidth={2} strokeLinecap="round"/>
-        <circle cx={10} cy={6} r={1.2} fill="#A07850"/>
-      </svg>
-    </button>
-  );
-}
-
-// ─── NEW JAR BUTTON ──────────────────────────────────────────────────────────
-
-function NewJarButton({ onClick }) {
-  return (
-    <button onClick={onClick} aria-label="create new jar"
-      style={{ background:"#FFF8EC",border:"2px solid #C9A87A",borderRadius:"50%",
-        width:44,height:44,cursor:"pointer",display:"flex",alignItems:"center",
-        justifyContent:"center",flexShrink:0,WebkitTapHighlightColor:"transparent",
-        touchAction:"manipulation" }}>
-      <svg viewBox="0 0 20 20" width={15} height={15}>
-        {/* Mini jar body */}
-        <path d="M4,8 C3,9 3,11 3,13 C3,15 4,16 6,16.5 C7.5,17 9,17 10,17 C11,17 12.5,17 14,16.5 C16,16 17,15 17,13 C17,11 17,9 16,8 Z"
-          fill="none" stroke="#A07850" strokeWidth={1.5} strokeLinejoin="round"/>
-        {/* Jar neck */}
-        <path d="M6.5,5.5 L6,8 L14,8 L13.5,5.5 Z" fill="none" stroke="#A07850" strokeWidth={1.5} strokeLinejoin="round"/>
-        {/* Lid */}
-        <rect x={6} y={3.5} width={8} height={2.5} rx={1} fill="none" stroke="#A07850" strokeWidth={1.3}/>
-        {/* Plus sign overlay */}
-        <line x1={10} y1={10} x2={10} y2={14.5} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
-        <line x1={7.8} y1={12.2} x2={12.2} y2={12.2} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
-      </svg>
-    </button>
-  );
-}
-
-// ─── HOME SCREEN BUTTON ─────────────────────────────────────────────────────
-
-function HomeScreenButton({ onClick }) {
-  return (
-    <button onClick={onClick} aria-label="add to home screen"
-      style={{ background:"#FFF8EC",border:"2px solid #C9A87A",borderRadius:"50%",
-        width:44,height:44,cursor:"pointer",display:"flex",alignItems:"center",
-        justifyContent:"center",flexShrink:0,
-        WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
-      <svg viewBox="0 0 20 20" width={15} height={15}>
-        {/* Phone outline */}
-        <rect x={4} y={1} width={12} height={17} rx={2.5} fill="none" stroke="#A07850" strokeWidth={1.5}/>
-        {/* Home button dot */}
-        <circle cx={10} cy={15.5} r={1} fill="#A07850"/>
-        {/* Plus sign on screen */}
-        <line x1={10} y1={5.5} x2={10} y2={11} stroke="#A07850" strokeWidth={1.4} strokeLinecap="round"/>
-        <line x1={7.2} y1={8.2} x2={12.8} y2={8.2} stroke="#A07850" strokeWidth={1.4} strokeLinecap="round"/>
-      </svg>
-    </button>
-  );
-}
-
-// ─── HOME SCREEN MODAL ───────────────────────────────────────────────────────
-
-function HomeScreenModal({ onClose }) {
-  return (
-    <div style={{ position:"fixed",inset:0,background:"rgba(107,66,38,0.25)",backdropFilter:"blur(5px)",
-      display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,padding:"1.5rem" }}
-      onClick={onClose}>
-      <div style={{ background:"#FFFDF5",border:"2.5px solid #6B4226",borderRadius:20,
-        width:"min(92vw,400px)",padding:"2rem 1.8rem",boxShadow:"6px 8px 0 #C9A87A" }}
-        onClick={e => e.stopPropagation()}>
-
-        <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:18 }}>
-          <svg viewBox="0 0 24 24" width={24} height={24}>
-            <rect x={4} y={1} width={16} height={22} rx={3} fill="none" stroke="#6B4226" strokeWidth={1.8}/>
-            <circle cx={12} cy={19.5} r={1.2} fill="#6B4226"/>
-            <line x1={12} y1={7} x2={12} y2={14} stroke="#6B4226" strokeWidth={1.8} strokeLinecap="round"/>
-            <line x1={8.5} y1={10.5} x2={15.5} y2={10.5} stroke="#6B4226" strokeWidth={1.8} strokeLinecap="round"/>
-          </svg>
-          <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(18px,3.5vw,24px)",
-            color:"#3D2510",lineHeight:1.5,overflow:"visible",paddingBottom:2 }}>
-            add to home screen
-          </p>
-        </div>
-
-        <div style={{ display:"flex",flexDirection:"column",gap:16 }}>
-          {/* iPhone */}
-          <div style={{ background:"#FBF5E8",borderRadius:12,padding:"12px 14px",border:"1.5px solid #E8D8C0" }}>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#A07850",marginBottom:6,fontWeight:600,letterSpacing:0.3 }}>
-              on iphone
-            </p>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#5C3D22",lineHeight:1.7 }}>
-              open this page in <strong>safari</strong>, tap the{" "}
-              <span style={{ display:"inline-flex",alignItems:"center",gap:2,verticalAlign:"middle" }}>
-                <svg viewBox="0 0 16 16" width={14} height={14} style={{ display:"inline-block" }}>
-                  <rect x={2} y={7} width={12} height={8} rx={1.5} fill="none" stroke="#6B4226" strokeWidth={1.2}/>
-                  <line x1={8} y1={1} x2={8} y2={10} stroke="#6B4226" strokeWidth={1.2} strokeLinecap="round"/>
-                  <polyline points="5,3.5 8,1 11,3.5" fill="none" stroke="#6B4226" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </span>{" "}
-              share button, then choose <strong>add to home screen</strong>.
-            </p>
-          </div>
-
-          {/* Android */}
-          <div style={{ background:"#FBF5E8",borderRadius:12,padding:"12px 14px",border:"1.5px solid #E8D8C0" }}>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#A07850",marginBottom:6,fontWeight:600,letterSpacing:0.3 }}>
-              on android
-            </p>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#5C3D22",lineHeight:1.7 }}>
-              open this page in <strong>chrome</strong>, tap the <strong>⋮</strong> menu in the top right, then choose <strong>add to home screen</strong>.
-            </p>
-          </div>
-
-          <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#B89070",lineHeight:1.6,fontStyle:"italic",textAlign:"center" }}>
-            once added, it will feel just like a real app.
-          </p>
-        </div>
-
-        <button onClick={onClose}
-          style={{ marginTop:18,width:"100%",background:"#E8C87A",border:"2px solid #6B4226",
-            borderRadius:50,padding:"10px 0",fontFamily:"var(--font-body)",fontSize:14,
-            fontWeight:500,color:"#3D2510",cursor:"pointer",boxShadow:"2px 3px 0 #6B4226" }}>
-          got it
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ─── INFO MODAL ──────────────────────────────────────────────────────────────
 
 // Reusable mini hand-drawn heart SVG
@@ -1839,10 +1359,9 @@ function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musi
   const handleReset = () => {
     // Clear all app localStorage keys
     [
-      "tj-jars","tj-tokens","tj-expiry","tj-starter",
-      "tj-intro","tj-nickname","tj-activeJar",
+      "tj-jars","tj-intro","tj-nickname","tj-activeJar",
       "tj-hsPromptSeen","tj-musicMuted","tj-musicVol",
-      "thought-jar-thoughts","thought-jar-tokens",
+      "thought-jar-thoughts",
     ].forEach(k => localStorage.removeItem(k));
     window.location.reload();
   };
@@ -1853,8 +1372,7 @@ function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musi
     { icon: "🫙", head: "rediscovering thoughts", body: "clicking the jar also pulls a random thought — a gentle surprise from your past self." },
     { icon: "◫",  head: "viewing all thoughts", body: "tap the list icon to see every thought across all your jars. you can mark them complete or remove them there." },
     { icon: "↔",  head: "switching jars", body: "inside the list view, tap any jar card at the top to switch to that jar and see its thoughts." },
-    { icon: "✦",  head: "tokens",  body: "each token gives you one day of access. you start with 7 free days as a welcome gift." },
-    { icon: "📺", head: "cozy tv", body: "when your tokens run out, watch a short cozy broadcast on the little tv to unlock another day." },
+    { icon: "📺", head: "daily broadcast", body: "tap the little tv to open a cozy message for the day. close it with the X or by tapping outside." },
   ];
 
   return (
@@ -2032,7 +1550,7 @@ function InfoModal({ onClose, musicMuted = false, setMusicMuted = () => {}, musi
                   reset memory
                 </p>
                 <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#6B5040",lineHeight:1.65,marginBottom:14 }}>
-                  clears all your jars, thoughts, tokens, and returns the app to the beginning.
+                  clears all your jars and thoughts, and returns the app to the beginning.
                 </p>
 
                 {!resetConfirm ? (
@@ -2080,7 +1598,6 @@ const PRELOAD_ICON_PATHS = [
   "/icons/dice.svg",
   "/icons/list.svg",
   "/icons/full-jar.svg",
-  "/icons/token.svg",
 ];
 
 PRELOAD_ICON_PATHS.forEach(src => {
@@ -2165,9 +1682,9 @@ const TUTORIAL_STEPS = [
       />
     </svg>
   </div>
-),
+    ),
     head: "move between jars",
-    body: "use the arrows on either side of the jar to navigate between your jars. you can have up to 5 jars.",
+    body: "use the arrows on either side of the jar to navigate between your jars. create as many jars as you need.",
   },
   {
     icon: (
@@ -2297,33 +1814,26 @@ export default function ThoughtJar() {
   });
 
   const [activeJarIndex, setActiveJarIndex] = useState(() => load(ACTIVE_JAR, 0));
-  const [tokens, setTokens] = useState(() => load(TOKEN_KEY, 3));
   const [revealedThought, setRevealedThought] = useState(null);
   const [isJarAnimating, setIsJarAnimating]   = useState(false);
   const [toast, setToast]         = useState({ message: "", visible: false });
-  const [tvAdOpen, setTvAdOpen]   = useState(false);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [showList, setShowList]   = useState(false);
   const [showJarFull, setShowJarFull] = useState(false);
   const [showNewJar, setShowNewJar]   = useState(false);
   const [showInfo, setShowInfo]       = useState(false);
   const [infoInitPage, setInfoInitPage] = useState("note");
-  const [showDecPicker, setShowDecPicker] = useState(false);
   const [editingJarName, setEditingJarName] = useState(false);
   const [jarNameInput, setJarNameInput] = useState("");
   const [showTutorial, setShowTutorial]   = useState(false);
-  const [showTokenMenu, setShowTokenMenu] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const toastTimer = useRef(null);
 
-  const [nickname, setNickname]   = useState(() => load(NICKNAME_KEY, null));
   // Show HS prompt if not yet seen — independent of onboarding state
   // PWA gate: detect if running as installed PWA or in browser
   const [isInPWA]      = useState(() => isPWA());
   const [showHSPrompt, setShowHSPrompt] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(() => !load(INTRO_KEY, false));
-  const [tokenExpiry, setTokenExpiry]       = useState(() => load(EXPIRY_KEY, null));
-
-  const isAccessActive = tokenExpiry && Date.now() < new Date(tokenExpiry).getTime();
-  const isLocked = !showOnboarding && tokens <= 0;
 
   // Derived active jar (clamp index in case jar was removed)
   const safeIdx  = Math.min(activeJarIndex, Math.max(0, jars.length - 1));
@@ -2332,54 +1842,7 @@ export default function ThoughtJar() {
 
   // ── Persist ──────────────────────────────────────────────────────────────
   useEffect(() => { save(JARS_KEY, jars); }, [jars]);
-  useEffect(() => { save(TOKEN_KEY, tokens); }, [tokens]);
-  useEffect(() => { save(EXPIRY_KEY, tokenExpiry); }, [tokenExpiry]);
   useEffect(() => { save(ACTIVE_JAR, safeIdx); }, [safeIdx]);
-
-  useEffect(() => {
-  const checkExpiry = () => {
-    setTokenExpiry(prev => {
-      if (!prev) return prev;
-
-      const expiryTime = new Date(prev).getTime();
-      const now = Date.now();
-
-      // How many full access periods passed?
-      const diff = now - expiryTime;
-
-      if (diff >= 0) {
-        const periodsMissed =
-          Math.floor(diff / (ACCESS_HOURS * 60 * 60 * 1000)) + 1;
-
-        setTokens(t => {
-          const nextTokens = Math.max(0, t - periodsMissed);
-
-          // Set next expiry from NOW
-          const nextExpiry = new Date(
-            now + ACCESS_HOURS * 60 * 60 * 1000
-          ).toISOString();
-
-          save(TOKEN_KEY, nextTokens);
-          save(EXPIRY_KEY, nextExpiry);
-
-          setTokenExpiry(nextExpiry);
-
-          return nextTokens;
-        });
-      }
-
-      return prev;
-    });
-  };
-
-  // Run immediately on app launch
-  checkExpiry();
-
-  // Then continue checking every minute
-  const id = setInterval(checkExpiry, 60_000);
-
-  return () => clearInterval(id);
-}, []);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const showToast = useCallback((msg) => {
@@ -2397,13 +1860,10 @@ export default function ThoughtJar() {
   const handleOnboardingComplete = useCallback((chosenNickname) => {
     save(INTRO_KEY, true);
     save(NICKNAME_KEY, chosenNickname);
-    setNickname(chosenNickname);
     setShowOnboarding(false);
     // Update first jar name
     setJars(prev => prev.map((jar, i) => i === 0 ? { ...jar, name: chosenNickname } : jar));
-    const expiry = new Date(Date.now() + ACCESS_HOURS * 60 * 60 * 1000).toISOString();
-    setTokenExpiry(expiry);
-    
+
     // Auto-show guided tutorial after first onboarding
     setTimeout(() => { setShowTutorial(true); }, 700);
   }, []);
@@ -2457,19 +1917,15 @@ export default function ThoughtJar() {
   }, [activeJar?.id, handleComplete]);
 
   const handleCreateNewJar = useCallback((jarName) => {
-    if (jars.length >= MAX_JARS) { setShowNewJar(true); return; }
-    if (tokens < 1) return;
     const newJar = { id: Date.now(), name: jarName || "new jar", thoughts: [] };
     setJars(prev => {
       setActiveJarIndex(prev.length); // switch to new jar (index = current length before push)
       return [...prev, newJar];
     });
-    setTokens(t => t - 1);
     setShowJarFull(false);
     setShowNewJar(false);
-    setShowJarFull(false);
-    showToast(`"${newJar.name}" opened — 1 token used`);
-  }, [tokens, jars.length, showToast]);
+    showToast(`"${newJar.name}" opened`);
+  }, [showToast]);
 
   const handleRenameJar = useCallback((newName) => {
     if (!newName.trim()) return;
@@ -2477,14 +1933,8 @@ export default function ThoughtJar() {
     setEditingJarName(false);
   }, [safeIdx]);
 
-  const handleOpenAd    = useCallback(() => setTvAdOpen(true), []);
-  const handleCloseAd   = useCallback(() => setTvAdOpen(false), []);
-  const handleEarnToken = useCallback(() => {
-    const expiry = new Date(Date.now() + ACCESS_HOURS * 60 * 60 * 1000).toISOString();
-    setTokenExpiry(expiry);
-    setTokens(prev => prev + 1);
-    showToast("token earned — another day with the jar");
-  }, [showToast]);
+  const handleOpenBroadcast = useCallback(() => setBroadcastOpen(true), []);
+  const handleCloseBroadcast = useCallback(() => setBroadcastOpen(false), []);
 
   // Jar navigation
   const canGoPrev = safeIdx > 0;
@@ -2550,51 +2000,31 @@ export default function ThoughtJar() {
             </h1>
           </div>
 
-          {/* RIGHT: token pill — tap to open dropdown */}
+          {/* RIGHT: app menu */}
           <div style={{ position:"relative" }}>
-            {/* Pill trigger */}
             <button
-              onClick={() => setShowTokenMenu(m => !m)}
+              onClick={() => setShowMenu(m => !m)}
               aria-label="open menu"
               style={{
                 display:"flex",alignItems:"center",gap:8,
                 background:"#FFFDF0",
                 border:"2px solid #C9A87A",
                 borderRadius:50,
-                padding:"6px 12px 6px 8px",
+                padding:"8px 12px",
                 cursor:"pointer",
-                boxShadow: showTokenMenu
+                boxShadow: showMenu
                   ? "inset 1px 2px 4px rgba(107,66,38,0.12)"
                   : "2px 3px 0 #C9A87A",
                 transition:"box-shadow 0.18s ease",
                 WebkitTapHighlightColor:"transparent",
                 touchAction:"manipulation",
               }}>
-              {/* Coin */}
-              <img
-  src="/icons/token.svg"
-  alt="token"
-  style={{
-    width: 26,
-    height: 26,
-    flexShrink: 0,
-  }}
-/>
-              {/* Count + days */}
-              <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-start",gap:0 }}>
-                <span style={{ fontFamily:"var(--font-body)",fontSize:14,fontWeight:700,
-                  color:"#3D2510",lineHeight:1.2 }}>
-                  {tokens} tokens
-                </span>
-                <span style={{ fontFamily:"var(--font-body)",fontSize:10,color:"#A07850",lineHeight:1.2 }}>
-                  {tokens > 0
-                    ? `${tokens} ${tokens===1?"day":"days"} left`
-                    : "watch cozy tv to earn more"}
-                </span>
-              </div>
-              {/* Handdrawn chevron */}
+              <span style={{ fontFamily:"var(--font-body)",fontSize:14,fontWeight:600,
+                color:"#3D2510",lineHeight:1.2 }}>
+                menu
+              </span>
               <svg viewBox="0 0 18 12" width={14} height={9} style={{ flexShrink:0,
-                transform: showTokenMenu ? "rotate(180deg)" : "rotate(0deg)",
+                transform: showMenu ? "rotate(180deg)" : "rotate(0deg)",
                 transition:"transform 0.22s ease" }}>
                 <path d="M2,2 C5,5 9,8 9,9 C9,8 13,5 16,2"
                   fill="none" stroke="#A07850" strokeWidth={2.2}
@@ -2603,12 +2033,12 @@ export default function ThoughtJar() {
             </button>
 
             {/* Dropdown card */}
-            {showTokenMenu && (
+            {showMenu && (
               <>
                 {/* Click-outside backdrop */}
                 <div
                   style={{ position:"fixed",inset:0,zIndex:28 }}
-                  onClick={() => setShowTokenMenu(false)}
+                  onClick={() => setShowMenu(false)}
                 />
                 <div style={{
                   position:"absolute",top:"calc(100% + 8px)",right:0,
@@ -2620,31 +2050,6 @@ export default function ThoughtJar() {
                   overflow:"hidden",
                   zIndex:29,
                 }}>
-                  {/* Token summary row */}
-                  <div style={{ display:"flex",alignItems:"center",gap:10,
-                    padding:"14px 18px 12px",
-                    borderBottom:"1.5px dashed #E0C898" }}>
-                    <img
-  src="/icons/token.svg"
-  alt="token"
-  style={{
-    width: 36,
-    height: 36,
-    flexShrink: 0,
-  }}
-/>
-                    <div>
-                      <p style={{ fontFamily:"var(--font-body)",fontSize:18,fontWeight:700,color:"#3D2510",lineHeight:1.2 }}>
-                        {tokens} tokens
-                      </p>
-                      <p style={{ fontFamily:"var(--font-body)",fontSize:12,color:"#A07850",lineHeight:1.2 }}>
-                        {tokens > 0
-                          ? `${tokens} ${tokens===1?"day":"days"} left`
-                          : "watch cozy tv to earn more"}
-                      </p>
-                    </div>
-                  </div>
-
                   {/* Menu items */}
                   {[
                     {
@@ -2658,7 +2063,7 @@ export default function ThoughtJar() {
                             strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                       ),
-                      action: () => { setShowTokenMenu(false); setShowInfo(true); },
+                      action: () => { setShowMenu(false); setShowInfo(true); },
                     },
                     {
                       label: "all thoughts",
@@ -2673,7 +2078,7 @@ export default function ThoughtJar() {
   }}
 />
                       ),
-                      action: () => { setShowTokenMenu(false); setShowList(true); },
+                      action: () => { setShowMenu(false); setShowList(true); },
                     },
                     {
                       label: "new jar",
@@ -2687,7 +2092,7 @@ export default function ThoughtJar() {
                           <line x1={7.8} y1={12.2} x2={12.2} y2={12.2} stroke="#A07850" strokeWidth={1.5} strokeLinecap="round"/>
                         </svg>
                       ),
-                      action: () => { setShowTokenMenu(false); setShowNewJar(true); },
+                      action: () => { setShowMenu(false); setShowNewJar(true); },
                     },
                   ].map((item, i, arr) => (
                     <button key={item.label}
@@ -2737,12 +2142,10 @@ export default function ThoughtJar() {
           {/* Dice icon — above jar. Handdrawn 3D dice matching TV illustration style */}
           <button
             onClick={handleJarClick}
-            disabled={isLocked}
             aria-label="roll dice for a random thought"
             style={{
-              background: "none", border: "none", cursor: isLocked ? "default" : "pointer",
+              background: "none", border: "none", cursor: "pointer",
               padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
-              opacity: isLocked ? 0.4 : 1,
               WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
               transform: "translateX(0px)",
               marginBottom: 28,
@@ -2761,12 +2164,12 @@ export default function ThoughtJar() {
 
             {/* Left arrow — tight to jar */}
             <button
-              onClick={goPrev} disabled={!canGoPrev || isLocked}
+              onClick={goPrev} disabled={!canGoPrev}
               aria-label="previous jar"
               style={{
                 transform:"translateY(-34px)",
-                background:"none", border:"none", cursor: canGoPrev&&!isLocked ? "pointer" : "default",
-                padding:"0 2px", flexShrink:0, opacity: canGoPrev&&!isLocked ? 1 : 0.2,
+                background:"none", border:"none", cursor: canGoPrev ? "pointer" : "default",
+                padding:"0 2px", flexShrink:0, opacity: canGoPrev ? 1 : 0.2,
                 WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
               }}>
               <svg viewBox="0 0 28 48" width={20} height={36}>
@@ -2780,7 +2183,6 @@ export default function ThoughtJar() {
             <div style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
               transform:"translate(0px, -64px)",
               transition:"opacity 0.5s ease, filter 0.5s ease",
-              opacity: isLocked?0.45:1, filter: isLocked?"grayscale(0.5)":"none",
               animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
               <style>{`
   @keyframes jarShake {
@@ -2812,12 +2214,12 @@ export default function ThoughtJar() {
 
             {/* Right arrow — tight to jar */}
             <button
-              onClick={goNext} disabled={!canGoNext || isLocked}
+              onClick={goNext} disabled={!canGoNext}
               aria-label="next jar"
               style={{
                 transform:"translateY(-34px)",
-                background:"none", border:"none", cursor: canGoNext&&!isLocked ? "pointer" : "default",
-                padding:"0 2px", flexShrink:0, opacity: canGoNext&&!isLocked ? 1 : 0.2,
+                background:"none", border:"none", cursor: canGoNext ? "pointer" : "default",
+                padding:"0 2px", flexShrink:0, opacity: canGoNext ? 1 : 0.2,
                 WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
               }}>
               <svg viewBox="0 0 28 48" width={20} height={36}>
@@ -2829,7 +2231,7 @@ export default function ThoughtJar() {
 
           </div>
 
-          <AddThoughtInput onAdd={handleAddThought} disabled={isLocked} />
+          <AddThoughtInput onAdd={handleAddThought} />
 
           {/* Hint text — below the input */}
           <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(12px,1.8vw,14px)",
@@ -2837,7 +2239,7 @@ export default function ThoughtJar() {
             {currentThoughts.length === 0
               ? "add a thought, and it will float inside the jar"
               : currentThoughts.length >= JAR_CAPACITY
-                ? "this jar is full — create a new one with a token"
+                ? "this jar is full — create a new one"
                 : "tap the dice or jar to rediscover a thought"}
           </p>
 
@@ -2848,21 +2250,17 @@ export default function ThoughtJar() {
             bottom:"clamp(96px,16vh,130px)",
             flexDirection:"column",alignItems:"center",
             opacity:0.88,zIndex:2 }}>
-            <RetroTV onOpenAd={handleOpenAd} />
+            <RetroTV onOpenBroadcast={handleOpenBroadcast} />
           </div>
         </main>
         {/* Footer */}
         <AppFooter />
       </div>
 
-      {isLocked && <LockedOverlay onOpenTV={handleOpenAd} />}
-
       {(showJarFull || showNewJar) && (
-        <JarFullModal tokens={tokens}
-          atJarLimit={jars.length >= MAX_JARS}
+        <JarFullModal
           onConfirm={handleCreateNewJar}
-          onCancel={() => { setShowJarFull(false); setShowNewJar(false); }}
-          onOpenTV={() => { setShowJarFull(false); setShowNewJar(false); setTvAdOpen(true); }} />
+          onCancel={() => { setShowJarFull(false); setShowNewJar(false); }} />
       )}
       {showInfo && <InfoModal onClose={() => { setShowInfo(false); setInfoInitPage("note"); }}
         musicMuted={musicMuted} setMusicMuted={setMusicMuted}
@@ -2933,7 +2331,7 @@ export default function ThoughtJar() {
         onOpenList={() => { setRevealedThought(null); setShowList(true); }}
       />
 
-      {tvAdOpen && <TVAdPopup onClose={handleCloseAd} onEarnToken={handleEarnToken} />}
+      {broadcastOpen && <DailyBroadcastPopup onClose={handleCloseBroadcast} />}
       <Toast message={toast.message} visible={toast.visible} />
       {showTutorial && <TutorialOverlay onDone={() => setShowTutorial(false)} />}
       <Analytics />
