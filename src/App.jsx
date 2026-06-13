@@ -304,9 +304,13 @@ useEffect(() => {
 }
 
 // ─── ADSENSE ─────────────────────────────────────────────────────────────────
-// Reusable AdSense slot. Script loads once per page; .push({}) fires after the
-// <ins> mounts. Debug styling (dashed border + warm background) makes each
-// container visible even before the ad network fills it.
+// Two active placements:
+//   slot 8368046380 — between-thoughts  (inside ThoughtsListModal only)
+//   slot 8862870404 — between-jars      (inside ThoughtsListModal jar strip only)
+// slot 3244883075 (completed-section) is retained in code but NOT rendered.
+//
+// Script loads once; .push({}) fires 150ms after the <ins> mounts to ensure
+// the element is fully painted before AdSense processes it.
 
 const ADSENSE_CLIENT = "ca-pub-9881259880719466";
 let adScriptInjected = false;
@@ -322,67 +326,55 @@ function loadAdSenseScript() {
   document.head.appendChild(s);
 }
 
-function AdSenseSlot({ slot, label }) {
-  const insRef  = useRef(null);
-  const pushed  = useRef(false);
+function AdSenseSlot({ slot }) {
+  const pushed = useRef(false);
 
   useEffect(() => {
-    // 1. Ensure script is in <head>
     loadAdSenseScript();
-
-    // 2. Push only once per mounted <ins> element.
-    //    React StrictMode double-invokes effects in dev; the ref guards that.
     if (pushed.current) return;
     pushed.current = true;
-
-    // 3. Push after a brief tick so the <ins> is guaranteed painted.
     const t = setTimeout(() => {
-      try {
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      } catch (_) { /* silent — dev/preview environments without ad approval */ }
-    }, 100);
-
+      try { (window.adsbygoogle = window.adsbygoogle || []).push({}); }
+      catch (_) { /* silent in dev / unapproved domains */ }
+    }, 150);
     return () => clearTimeout(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    /* DEBUG wrapper — dashed border + tinted bg confirm the slot rendered.
-       Remove the border/background/minHeight overrides when ads are verified. */
-    <div
-      style={{
-        width: "100%",
-        minHeight: 180,
-        boxSizing: "border-box",
-        border: "2px dashed #d8a85f",
-        background: "rgba(255,248,230,0.4)",
-        borderRadius: 10,
-        display: "flex",
-        flexDirection: "column",
-        padding: "6px 8px",
-        margin: "4px 0",
-      }}
-    >
-      {/* "sponsored" label */}
+    <div style={{
+      width: "100%",
+      maxWidth: 320,
+      margin: "20px auto",
+      boxSizing: "border-box",
+    }}>
+      {/* Sponsored label — Montserrat, subtle, low visual weight */}
       <p style={{
         fontFamily: "var(--font-body)",
         fontSize: 9,
-        color: "#C9A87A",
-        letterSpacing: 0.8,
+        color: "#B8997A",
+        letterSpacing: 1,
         textTransform: "uppercase",
         margin: "0 0 4px",
-        opacity: 0.8,
+        opacity: 0.65,
       }}>
-        {label || "sponsored"}
+        Sponsored
       </p>
-      <ins
-        ref={insRef}
-        className="adsbygoogle"
-        style={{ display: "block", width: "100%", flex: 1 }}
-        data-ad-client={ADSENSE_CLIENT}
-        data-ad-slot={slot}
-        data-ad-format="auto"
-        data-full-width-responsive="true"
-      />
+      {/* Ad container — constrained height so it never dominates the screen */}
+      <div style={{
+        width: "100%",
+        minHeight: 100,
+        maxHeight: 150,
+        overflow: "hidden",
+      }}>
+        <ins
+          className="adsbygoogle"
+          style={{ display: "block", width: "100%", height: "100%" }}
+          data-ad-client={ADSENSE_CLIENT}
+          data-ad-slot={slot}
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        />
+      </div>
     </div>
   );
 }
@@ -664,70 +656,73 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
             fontWeight: filterJar==="all"?600:400, whiteSpace:"nowrap" }}>all jars</span>
         </button>
 
+        {/* Between-jars ad — inside the horizontal jar strip, after the 2nd jar.
+            Only renders when there are ≥4 jars. Never covers jar buttons.
+            Rendered as a flex child inside the strip so it scrolls with the jars. */}
         {jars.map((jar, idx) => {
           const variant = jar.id % 5;
           const fillPct = jar.thoughts.length / 25;
           const isActive = filterJar === jar.id;
           const isCurrentJar = jar.id === activeJarId;
-          // Lid fill colors per variant
           const lidColors = ["#E8C87A","#F2A7B0","#A8C5A0","#F6E27A","#D4A5C9"];
           const lidColor = lidColors[variant];
           return (
-            <button key={jar.id} onClick={() => handleTabClick(jar.id)}
-              style={{ background: isActive ? "#FFF8EC" : "transparent",
-                border:"2px solid " + (isActive ? "#6B4226" : "#D4C5B0"),
-                borderRadius:14,padding:"8px 10px",cursor:"pointer",flexShrink:0,
-                display:"flex",flexDirection:"column",alignItems:"center",gap:4,
-                boxShadow: isActive ? "2px 3px 0 #C9A87A" : "none",
-                position:"relative",transition:"all 0.15s" }}>
-              {/* Active jar dot */}
-              {isCurrentJar && (
-                <span style={{ position:"absolute",top:4,right:4,width:6,height:6,
-                  borderRadius:"50%",background:"#E85D3A",border:"1px solid #6B4226" }} />
+            <React.Fragment key={jar.id}>
+              <button onClick={() => handleTabClick(jar.id)}
+                style={{ background: isActive ? "#FFF8EC" : "transparent",
+                  border:"2px solid " + (isActive ? "#6B4226" : "#D4C5B0"),
+                  borderRadius:14,padding:"8px 10px",cursor:"pointer",flexShrink:0,
+                  display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+                  boxShadow: isActive ? "2px 3px 0 #C9A87A" : "none",
+                  position:"relative",transition:"all 0.15s" }}>
+                {isCurrentJar && (
+                  <span style={{ position:"absolute",top:4,right:4,width:6,height:6,
+                    borderRadius:"50%",background:"#E85D3A",border:"1px solid #6B4226" }} />
+                )}
+                <svg viewBox="0 0 38 48" width={38} height={48}>
+                  <path d="M6,14 C5,16 4,19 4,23 C3,28 3,34 4,39 C5,42 7,44 11,45 C15,46 18,46 19,46 C20,46 23,46 27,45 C31,44 33,42 34,39 C35,34 35,28 34,23 C34,19 33,16 32,14 Z"
+                    fill="#FFF8EC" stroke="#6B4226" strokeWidth={2} strokeLinejoin="round"/>
+                  {fillPct > 0 && (
+                    <clipPath id={`fill-${jar.id}`}>
+                      <path d="M6,14 C5,16 4,19 4,23 C3,28 3,34 4,39 C5,42 7,44 11,45 C15,46 18,46 19,46 C20,46 23,46 27,45 C31,44 33,42 34,39 C35,34 35,28 34,23 C34,19 33,16 32,14 Z" />
+                    </clipPath>
+                  )}
+                  {fillPct > 0 && (
+                    <rect x={3} y={Math.max(14, 45 - fillPct * 30)} width={34} height={32}
+                      fill="#FDE8C8" opacity={0.5} clipPath={`url(#fill-${jar.id})`} />
+                  )}
+                  <path d="M12,9 C11,10 9,12 9,14 L29,14 C29,12 27,10 26,9 Z"
+                    fill="#FFF8EC" stroke="#6B4226" strokeWidth={1.8} strokeLinejoin="round"/>
+                  <rect x={9} y={5} width={20} height={6} rx={2} fill={lidColor} stroke="#6B4226" strokeWidth={1.8}/>
+                  <ellipse cx={19} cy={5} rx={4} ry={2} fill={lidColor} stroke="#6B4226" strokeWidth={1.5}
+                    style={{ filter:"brightness(0.88)" }}/>
+                </svg>
+                <span style={{ fontFamily:"var(--font-body)",fontSize:10,color: isActive?"#3D2510":"#A07850",
+                  fontWeight: isActive?600:400,
+                  maxWidth:52,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                  {jar.name}
+                </span>
+                <span style={{ fontFamily:"var(--font-body)",fontSize:9,color:"#B89070" }}>
+                  {jar.thoughts.length}/25
+                </span>
+              </button>
+
+              {/* Between-jars ad: after the 2nd jar (idx === 1), only when ≥4 jars exist */}
+              {jars.length >= 4 && idx === 1 && (
+                <div style={{
+                  flexShrink: 0,
+                  width: 160,
+                  alignSelf: "center",
+                  display: "flex",
+                  alignItems: "center",
+                }}>
+                  <AdSenseSlot slot="8862870404" />
+                </div>
               )}
-              {/* Mini jar SVG with lid variant + fill level */}
-              <svg viewBox="0 0 38 48" width={38} height={48}>
-                {/* Jar body */}
-                <path d="M6,14 C5,16 4,19 4,23 C3,28 3,34 4,39 C5,42 7,44 11,45 C15,46 18,46 19,46 C20,46 23,46 27,45 C31,44 33,42 34,39 C35,34 35,28 34,23 C34,19 33,16 32,14 Z"
-                  fill="#FFF8EC" stroke="#6B4226" strokeWidth={2} strokeLinejoin="round"/>
-                {/* Fill level */}
-                {fillPct > 0 && (
-                  <clipPath id={`fill-${jar.id}`}>
-                    <path d="M6,14 C5,16 4,19 4,23 C3,28 3,34 4,39 C5,42 7,44 11,45 C15,46 18,46 19,46 C20,46 23,46 27,45 C31,44 33,42 34,39 C35,34 35,28 34,23 C34,19 33,16 32,14 Z" />
-                  </clipPath>
-                )}
-                {fillPct > 0 && (
-                  <rect x={3} y={Math.max(14, 45 - fillPct * 30)} width={34} height={32}
-                    fill="#FDE8C8" opacity={0.5} clipPath={`url(#fill-${jar.id})`} />
-                )}
-                {/* Neck */}
-                <path d="M12,9 C11,10 9,12 9,14 L29,14 C29,12 27,10 26,9 Z"
-                  fill="#FFF8EC" stroke="#6B4226" strokeWidth={1.8} strokeLinejoin="round"/>
-                {/* Lid */}
-                <rect x={9} y={5} width={20} height={6} rx={2} fill={lidColor} stroke="#6B4226" strokeWidth={1.8}/>
-                {/* Lid knob */}
-                <ellipse cx={19} cy={5} rx={4} ry={2} fill={lidColor} stroke="#6B4226" strokeWidth={1.5}
-                  style={{ filter:"brightness(0.88)" }}/>
-              </svg>
-              <span style={{ fontFamily:"var(--font-body)",fontSize:10,color: isActive?"#3D2510":"#A07850",
-                fontWeight: isActive?600:400,
-                maxWidth:52,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
-                {jar.name}
-              </span>
-              <span style={{ fontFamily:"var(--font-body)",fontSize:9,color:"#B89070" }}>
-                {jar.thoughts.length}/25
-              </span>
-            </button>
+            </React.Fragment>
           );
         })}
       </div>
-
-      {/* Between-jars ad — show when there is at least 1 jar (always visible for testing) */}
-      {jars.length >= 1 && (
-        <div style={{ padding:"0 1.5rem", flexShrink:0 }}>
-          <AdSenseSlot slot="8862870404" />
-        </div>
-      )}
 
       {/* List */}
       <div style={{ flex:1,overflowY:"auto",padding:"1rem 1.5rem",display:"flex",flexDirection:"column",gap:10 }}>
@@ -790,18 +785,13 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
                 )}
               </div>
             </div>
-            {/* Between-thoughts ad: show after the 2nd thought when there are ≥3 thoughts */}
-            {displayThoughts.length >= 3 && idx === 1 && (
+            {/* Between-thoughts ad: after the 4th thought (idx === 3), only when ≥8 active thoughts */}
+            {displayThoughts.filter(t2 => !t2.completed).length >= 8 && idx === 3 && (
               <AdSenseSlot slot="8368046380" />
             )}
           </React.Fragment>
         ))}
-        {/* Completed-section ad: shown once at the bottom when there is ≥1 completed thought */}
-        {displayThoughts.some(t => t.completed) && (
-          <div style={{ marginTop:8 }}>
-            <AdSenseSlot slot="3244883075" />
-          </div>
-        )}
+        {/* thoughts-jar-completed-section (slot 3244883075) — DISABLED, not rendered */}
       </div>
     </div>
   );
@@ -3202,7 +3192,11 @@ export default function ThoughtJar() {
   const [jarNameInput, setJarNameInput] = useState("");
   const [showTutorial, setShowTutorial]   = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [memoryDismissed, setMemoryDismissed] = useState(false);
+  // Memory resurfacing: track dismissed jars for the whole session.
+  // Using a Set ref (not state) so jar switches don't trigger rerenders,
+  // and dismissals persist across jar switches without resetting.
+  const dismissedMemoryJars = useRef(new Set());
+  const [memoryDismissedTick, setMemoryDismissedTick] = useState(0); // forces recompute after dismiss
   const [stardustActive, setStardustActive] = useState(false);
   const [showBlobTeacher, setShowBlobTeacher] = useState(false);
   const toastTimer = useRef(null);
@@ -3224,16 +3218,19 @@ export default function ThoughtJar() {
   const activeJar = jars[safeIdx] || jars[0];
   const currentThoughts = activeJar?.thoughts || [];
 
-  // Memory resurfacing — recompute whenever the active jar changes
-  // (dismissed flag also resets so a jar switch can show its own memory)
-  const memoryThought = memoryDismissed ? null : pickMemoryThought(activeJar);
+  // Memory resurfacing — recompute for the active jar.
+  // dismissedMemoryJars tracks which jar IDs have been dismissed this session.
+  // setMemoryDismissedTick bumps a counter to force this derivation to re-run after a dismiss.
+  // Switching jars does NOT reset dismissals — each jar is dismissed independently.
+  // eslint-disable-next-line no-unused-vars
+  const _tick = memoryDismissedTick; // read tick so React includes it in render deps
+  const memoryThought = (activeJar && !dismissedMemoryJars.current.has(activeJar.id))
+    ? pickMemoryThought(activeJar)
+    : null;
 
   // ── Persist ──────────────────────────────────────────────────────────────
   useEffect(() => { save(JARS_KEY, jars); }, [jars]);
   useEffect(() => { save(ACTIVE_JAR, safeIdx); }, [safeIdx]);
-
-  // Reset memory dismissed flag whenever the user switches to a different jar
-  useEffect(() => { setMemoryDismissed(false); }, [safeIdx]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const showToast = useCallback((msg) => {
@@ -3721,9 +3718,13 @@ export default function ThoughtJar() {
       {memoryThought && !revealedThought && (
         <MemoryResurface
           thought={memoryThought}
-          onDismiss={() => setMemoryDismissed(true)}
+          onDismiss={() => {
+            dismissedMemoryJars.current.add(activeJar.id);
+            setMemoryDismissedTick(n => n + 1); // trigger recompute
+          }}
           onExpand={() => {
-            setMemoryDismissed(true);
+            dismissedMemoryJars.current.add(activeJar.id);
+            setMemoryDismissedTick(n => n + 1);
             setRevealedThought(memoryThought);
           }}
         />
