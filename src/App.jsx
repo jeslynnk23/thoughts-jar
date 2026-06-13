@@ -1318,8 +1318,8 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
           100% { opacity: 0; transform: translateY(14px) scale(0.95); }
         }
         @keyframes memDrift {
-          0%, 100% { transform: translateY(0px);  }
-          50%       { transform: translateY(-5px); }
+          0%, 100% { margin-top: 0px;  }
+          50%       { margin-top: -6px; }
         }
         @keyframes memBobble {
           0%, 100% { transform: translateY(0px);  }
@@ -1343,7 +1343,11 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
         }}
       />
 
-      {/* Floating card — fixed, centered, above homepage, below ThoughtReveal (z=151) */}
+      {/* Floating card — fixed, centered, above homepage, below ThoughtReveal (z=151).
+           The outer div owns ONLY position/size — no transform other than the centering
+           translate, so no child wrapper can interfere with it on mobile.
+           Drift animation lives on the card itself via marginTop oscillation via keyframes
+           that don't touch translate, keeping the fixed centering intact. */}
       <div
         style={{
           position: "fixed",
@@ -1351,30 +1355,29 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
           top: "50%",
           transform: "translate(-50%, -50%)",
           zIndex: 151,
-          width: "min(88vw, 380px)",
+          width: "min(88vw, 360px)",
+          maxHeight: "75vh",
+          overflowY: "auto",
           pointerEvents: visible ? "auto" : "none",
+          opacity: visible ? 1 : 0,
+          transition: leaving ? "none" : "opacity 0.4s ease",
           animation: !visible
             ? "none"
             : leaving
               ? "memFadeOut 0.35s ease forwards"
               : "memFadeUp 0.65s cubic-bezier(0.22,1,0.36,1) forwards",
-          opacity: visible ? undefined : 0,
         }}
       >
-        {/* Upward drift wrapper — starts after card animates in */}
-        <div style={{
-          animation: visible && !leaving
-            ? "memDrift 6s ease-in-out 0.8s infinite"
-            : "none",
-        }}>
-
-          {/* Card */}
+          {/* Card — drift animates margin-top only, never transform, so centering is safe */}
           <div style={{
             background: "#FFFDF5",
             border: "2.5px solid #C9A87A",
             borderRadius: 24,
             boxShadow: "0 8px 32px rgba(107,66,38,0.14), 4px 5px 0 #E8D0A8",
             overflow: "hidden",
+            animation: visible && !leaving
+              ? "memDrift 6s ease-in-out 0.8s infinite"
+              : "none",
           }}>
 
             {/* Label bar */}
@@ -1506,7 +1509,6 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
             </div>
 
           </div>{/* end card */}
-        </div>{/* end drift wrapper */}
       </div>
     </>
   );
