@@ -346,6 +346,12 @@ function AdSenseSlot({ slot }) {
       maxWidth: 320,
       margin: "20px auto",
       boxSizing: "border-box",
+      /* DEBUG — subtle dashed border helps verify placement.
+         Remove border and background when ads are confirmed. */
+      border: "1.5px dashed #d8a85f",
+      background: "rgba(255,248,230,0.35)",
+      borderRadius: 10,
+      padding: "6px 8px",
     }}>
       {/* Sponsored label — Montserrat, subtle, low visual weight */}
       <p style={{
@@ -359,7 +365,7 @@ function AdSenseSlot({ slot }) {
       }}>
         Sponsored
       </p>
-      {/* Ad container — constrained height so it never dominates the screen */}
+      {/* Ad container — height capped so it never dominates */}
       <div style={{
         width: "100%",
         minHeight: 100,
@@ -656,7 +662,7 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
             fontWeight: filterJar==="all"?600:400, whiteSpace:"nowrap" }}>all jars</span>
         </button>
 
-        {/* Between-jars ad — inside the horizontal jar strip, after the 2nd jar.
+        {/* Between-jars ad: inside the horizontal jar strip, after the 2nd jar.
             Only renders when there are ≥4 jars. Never covers jar buttons.
             Rendered as a flex child inside the strip so it scrolls with the jars. */}
         {jars.map((jar, idx) => {
@@ -667,59 +673,44 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
           const lidColors = ["#E8C87A","#F2A7B0","#A8C5A0","#F6E27A","#D4A5C9"];
           const lidColor = lidColors[variant];
           return (
-            <React.Fragment key={jar.id}>
-              <button onClick={() => handleTabClick(jar.id)}
-                style={{ background: isActive ? "#FFF8EC" : "transparent",
-                  border:"2px solid " + (isActive ? "#6B4226" : "#D4C5B0"),
-                  borderRadius:14,padding:"8px 10px",cursor:"pointer",flexShrink:0,
-                  display:"flex",flexDirection:"column",alignItems:"center",gap:4,
-                  boxShadow: isActive ? "2px 3px 0 #C9A87A" : "none",
-                  position:"relative",transition:"all 0.15s" }}>
-                {isCurrentJar && (
-                  <span style={{ position:"absolute",top:4,right:4,width:6,height:6,
-                    borderRadius:"50%",background:"#E85D3A",border:"1px solid #6B4226" }} />
-                )}
-                <svg viewBox="0 0 38 48" width={38} height={48}>
-                  <path d="M6,14 C5,16 4,19 4,23 C3,28 3,34 4,39 C5,42 7,44 11,45 C15,46 18,46 19,46 C20,46 23,46 27,45 C31,44 33,42 34,39 C35,34 35,28 34,23 C34,19 33,16 32,14 Z"
-                    fill="#FFF8EC" stroke="#6B4226" strokeWidth={2} strokeLinejoin="round"/>
-                  {fillPct > 0 && (
-                    <clipPath id={`fill-${jar.id}`}>
-                      <path d="M6,14 C5,16 4,19 4,23 C3,28 3,34 4,39 C5,42 7,44 11,45 C15,46 18,46 19,46 C20,46 23,46 27,45 C31,44 33,42 34,39 C35,34 35,28 34,23 C34,19 33,16 32,14 Z" />
-                    </clipPath>
-                  )}
-                  {fillPct > 0 && (
-                    <rect x={3} y={Math.max(14, 45 - fillPct * 30)} width={34} height={32}
-                      fill="#FDE8C8" opacity={0.5} clipPath={`url(#fill-${jar.id})`} />
-                  )}
-                  <path d="M12,9 C11,10 9,12 9,14 L29,14 C29,12 27,10 26,9 Z"
-                    fill="#FFF8EC" stroke="#6B4226" strokeWidth={1.8} strokeLinejoin="round"/>
-                  <rect x={9} y={5} width={20} height={6} rx={2} fill={lidColor} stroke="#6B4226" strokeWidth={1.8}/>
-                  <ellipse cx={19} cy={5} rx={4} ry={2} fill={lidColor} stroke="#6B4226" strokeWidth={1.5}
-                    style={{ filter:"brightness(0.88)" }}/>
-                </svg>
-                <span style={{ fontFamily:"var(--font-body)",fontSize:10,color: isActive?"#3D2510":"#A07850",
-                  fontWeight: isActive?600:400,
-                  maxWidth:52,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
-                  {jar.name}
-                </span>
-                <span style={{ fontFamily:"var(--font-body)",fontSize:9,color:"#B89070" }}>
-                  {jar.thoughts.length}/25
-                </span>
-              </button>
-
-              {/* Between-jars ad: after the 2nd jar (idx === 1), only when ≥4 jars exist */}
-              {jars.length >= 4 && idx === 1 && (
-                <div style={{
-                  flexShrink: 0,
-                  width: 160,
-                  alignSelf: "center",
-                  display: "flex",
-                  alignItems: "center",
-                }}>
-                  <AdSenseSlot slot="8862870404" />
-                </div>
+            <button key={jar.id} onClick={() => handleTabClick(jar.id)}
+              style={{ background: isActive ? "#FFF8EC" : "transparent",
+                border:"2px solid " + (isActive ? "#6B4226" : "#D4C5B0"),
+                borderRadius:14,padding:"8px 10px",cursor:"pointer",flexShrink:0,
+                display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+                boxShadow: isActive ? "2px 3px 0 #C9A87A" : "none",
+                position:"relative",transition:"all 0.15s" }}>
+              {isCurrentJar && (
+                <span style={{ position:"absolute",top:4,right:4,width:6,height:6,
+                  borderRadius:"50%",background:"#E85D3A",border:"1px solid #6B4226" }} />
               )}
-            </React.Fragment>
+              <svg viewBox="0 0 38 48" width={38} height={48}>
+                <path d="M6,14 C5,16 4,19 4,23 C3,28 3,34 4,39 C5,42 7,44 11,45 C15,46 18,46 19,46 C20,46 23,46 27,45 C31,44 33,42 34,39 C35,34 35,28 34,23 C34,19 33,16 32,14 Z"
+                  fill="#FFF8EC" stroke="#6B4226" strokeWidth={2} strokeLinejoin="round"/>
+                {fillPct > 0 && (
+                  <clipPath id={`fill-${jar.id}`}>
+                    <path d="M6,14 C5,16 4,19 4,23 C3,28 3,34 4,39 C5,42 7,44 11,45 C15,46 18,46 19,46 C20,46 23,46 27,45 C31,44 33,42 34,39 C35,34 35,28 34,23 C34,19 33,16 32,14 Z" />
+                  </clipPath>
+                )}
+                {fillPct > 0 && (
+                  <rect x={3} y={Math.max(14, 45 - fillPct * 30)} width={34} height={32}
+                    fill="#FDE8C8" opacity={0.5} clipPath={`url(#fill-${jar.id})`} />
+                )}
+                <path d="M12,9 C11,10 9,12 9,14 L29,14 C29,12 27,10 26,9 Z"
+                  fill="#FFF8EC" stroke="#6B4226" strokeWidth={1.8} strokeLinejoin="round"/>
+                <rect x={9} y={5} width={20} height={6} rx={2} fill={lidColor} stroke="#6B4226" strokeWidth={1.8}/>
+                <ellipse cx={19} cy={5} rx={4} ry={2} fill={lidColor} stroke="#6B4226" strokeWidth={1.5}
+                  style={{ filter:"brightness(0.88)" }}/>
+              </svg>
+              <span style={{ fontFamily:"var(--font-body)",fontSize:10,color: isActive?"#3D2510":"#A07850",
+                fontWeight: isActive?600:400,
+                maxWidth:52,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                {jar.name}
+              </span>
+              <span style={{ fontFamily:"var(--font-body)",fontSize:9,color:"#B89070" }}>
+                {jar.thoughts.length}/25
+              </span>
+            </button>
           );
         })}
       </div>
@@ -3638,6 +3629,20 @@ export default function ThoughtJar() {
                 ? "this jar is full — create a new one"
                 : "tap the dice or jar to rediscover a thought"}
           </p>
+
+          {/* Between-jars ad — homepage only, between jar navigation and TV.
+              Condition: ≥2 jars exist. Shows once, centered, below hint text.
+              Does not cover the jar, dice, input, or TV widget. */}
+          {jars.length >= 2 && (
+            <div style={{
+              width: "100%",
+              display: "flex",
+              justifyContent: "center",
+              pointerEvents: "auto",
+            }}>
+              <AdSenseSlot slot="8862870404" />
+            </div>
+          )}
 
           {/* TV — right edge, clears input bar comfortably */}
           <div data-bt-target="tv" className="tv-widget" style={{
