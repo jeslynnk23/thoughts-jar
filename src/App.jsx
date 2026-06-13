@@ -1273,6 +1273,15 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
+    // Dismiss mobile keyboard before showing overlay — blur any focused input/textarea
+    // so the keyboard collapses and doesn't cramp or misplace the overlay.
+    const active = document.activeElement;
+    if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+      active.blur();
+      // Brief pause so the keyboard finishes closing before we fade in
+      const t = setTimeout(() => setVisible(true), 200);
+      return () => clearTimeout(t);
+    }
     const t = setTimeout(() => setVisible(true), 1400);
     return () => clearTimeout(t);
   }, []);
@@ -1426,45 +1435,47 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
             )}
           </div>
 
-          {/* Body — blob + thought text */}
+          {/* Body — blob floats above, thought text is the main visual focus */}
           <div
             onClick={expand}
             role="button"
             aria-label="view full thought"
             style={{
-              padding: "20px 20px 16px",
+              padding: "22px 22px 18px",
               cursor: "pointer",
               display: "flex",
-              alignItems: "flex-start",
-              gap: 14,
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 16,
               boxSizing: "border-box",
               WebkitTapHighlightColor: "transparent",
               touchAction: "manipulation",
             }}
           >
+            {/* Blob centered above text */}
             <div style={{
               flexShrink: 0,
               animation: "memBobble 5s ease-in-out infinite",
-              marginTop: 2,
             }}>
-              <svg viewBox="-1.3 -1.3 2.6 2.6" width={36} height={36}>
+              <svg viewBox="-1.3 -1.3 2.6 2.6" width={44} height={44}>
                 <path
                   d={BLOB_VARIANTS[thought.blobSeed % BLOB_VARIANTS.length]}
                   fill={blobColor}
                   stroke="#6B4226"
-                  strokeWidth={0.14}
+                  strokeWidth={0.13}
                   opacity={0.9}
                 />
               </svg>
             </div>
+            {/* Thought text — large, centered, readable, the main focus */}
             <p style={{
               fontFamily: "var(--font-hand)",
-              fontSize: "clamp(15px,4vw,20px)",
+              fontSize: "clamp(18px,5vw,22px)",
               color: "#3D2510",
-              lineHeight: 1.6,
+              lineHeight: 1.65,
               margin: 0,
-              flex: 1,
-              minWidth: 0,
+              width: "100%",
+              textAlign: "center",
               wordBreak: "break-word",
               overflowWrap: "break-word",
               hyphens: "auto",
@@ -1473,12 +1484,12 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
             </p>
           </div>
 
-          {/* Footer — action buttons */}
+          {/* Footer — action buttons, centered to match body layout */}
           <div style={{
             display: "flex",
             gap: 8,
-            padding: "0 16px 16px",
-            justifyContent: "flex-end",
+            padding: "4px 20px 20px",
+            justifyContent: "center",
             flexWrap: "wrap",
             boxSizing: "border-box",
           }}>
