@@ -641,7 +641,7 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
             no thoughts yet — add one to your jar!
           </p>
         )}
-        {displayThoughts.map((t, idx) => (
+        {displayThoughts.map((t) => (
           <div key={t.id}
             style={{ display:"flex",alignItems:"center",gap:12,background:"white",
               border:`2px solid ${t.completed ? "#D4C5B0" : "#E8D8C0"}`,borderRadius:16,
@@ -694,7 +694,6 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
                 )}
               </div>
             </div>
-          </div>
         ))}
       </div>
     </div>
