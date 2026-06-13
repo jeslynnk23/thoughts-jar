@@ -1,5 +1,5 @@
 import './index.css';
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Analytics } from '@vercel/analytics/react';
 
 // ─── CONSTANTS & STORAGE ────────────────────────────────────────────────────
@@ -303,87 +303,6 @@ useEffect(() => {
   return { muted, setMuted, volume, setVolume };
 }
 
-// ─── ADSENSE ─────────────────────────────────────────────────────────────────
-// Two active placements:
-//   slot 8368046380 — between-thoughts  (inside ThoughtsListModal only)
-//   slot 8862870404 — between-jars      (inside ThoughtsListModal jar strip only)
-// slot 3244883075 (completed-section) is retained in code but NOT rendered.
-//
-// Script loads once; .push({}) fires 150ms after the <ins> mounts to ensure
-// the element is fully painted before AdSense processes it.
-
-const ADSENSE_CLIENT = "ca-pub-9881259880719466";
-let adScriptInjected = false;
-
-function loadAdSenseScript() {
-  if (adScriptInjected || document.querySelector('script[data-adsense]')) return;
-  adScriptInjected = true;
-  const s = document.createElement("script");
-  s.async = true;
-  s.setAttribute("data-adsense", "true");
-  s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`;
-  s.crossOrigin = "anonymous";
-  document.head.appendChild(s);
-}
-
-function AdSenseSlot({ slot }) {
-  const pushed = useRef(false);
-
-  useEffect(() => {
-    loadAdSenseScript();
-    if (pushed.current) return;
-    pushed.current = true;
-    const t = setTimeout(() => {
-      try { (window.adsbygoogle = window.adsbygoogle || []).push({}); }
-      catch (_) { /* silent in dev / unapproved domains */ }
-    }, 150);
-    return () => clearTimeout(t);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return (
-    <div style={{
-      width: "100%",
-      maxWidth: 320,
-      margin: "20px auto",
-      boxSizing: "border-box",
-      /* DEBUG — subtle dashed border helps verify placement.
-         Remove border and background when ads are confirmed. */
-      border: "1.5px dashed #d8a85f",
-      background: "rgba(255,248,230,0.35)",
-      borderRadius: 10,
-      padding: "6px 8px",
-    }}>
-      {/* Sponsored label — Montserrat, subtle, low visual weight */}
-      <p style={{
-        fontFamily: "var(--font-body)",
-        fontSize: 9,
-        color: "#B8997A",
-        letterSpacing: 1,
-        textTransform: "uppercase",
-        margin: "0 0 4px",
-        opacity: 0.65,
-      }}>
-        Sponsored
-      </p>
-      {/* Ad container — height capped so it never dominates */}
-      <div style={{
-        width: "100%",
-        minHeight: 100,
-        maxHeight: 150,
-        overflow: "hidden",
-      }}>
-        <ins
-          className="adsbygoogle"
-          style={{ display: "block", width: "100%", height: "100%" }}
-          data-ad-client={ADSENSE_CLIENT}
-          data-ad-slot={slot}
-          data-ad-format="auto"
-          data-full-width-responsive="true"
-        />
-      </div>
-    </div>
-  );
-}
 
 // ─── THOUGHT REVEAL POPUP ───────────────────────────────────────────────────
 
@@ -723,11 +642,10 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
           </p>
         )}
         {displayThoughts.map((t, idx) => (
-          <React.Fragment key={t.id}>
-            <div
-              style={{ display:"flex",alignItems:"center",gap:12,background:"white",
-                border:`2px solid ${t.completed ? "#D4C5B0" : "#E8D8C0"}`,borderRadius:16,
-                padding:"10px 14px",opacity: t.completed ? 0.72 : 1 }}>
+          <div key={t.id}
+            style={{ display:"flex",alignItems:"center",gap:12,background:"white",
+              border:`2px solid ${t.completed ? "#D4C5B0" : "#E8D8C0"}`,borderRadius:16,
+              padding:"10px 14px",opacity: t.completed ? 0.72 : 1 }}>
               <MiniBlob color={PASTEL_COLORS[t.colorIndex ?? 0]} seed={t.blobSeed ?? 0} completed={t.completed} />
               <div style={{ flex:1,minWidth:0 }}>
                 <p style={{ fontFamily:"var(--font-body)",fontSize:14,color:"#3D2510",lineHeight:1.45,
@@ -776,13 +694,8 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
                 )}
               </div>
             </div>
-            {/* Between-thoughts ad: after the 4th thought (idx === 3), only when ≥8 active thoughts */}
-            {displayThoughts.filter(t2 => !t2.completed).length >= 8 && idx === 3 && (
-              <AdSenseSlot slot="8368046380" />
-            )}
-          </React.Fragment>
+          </div>
         ))}
-        {/* thoughts-jar-completed-section (slot 3244883075) — DISABLED, not rendered */}
       </div>
     </div>
   );
@@ -3304,42 +3217,22 @@ export default function ThoughtJar() {
     setEditingJarName(false);
   }, [safeIdx]);
 
-  // ── Jar navigation — with virtual ad slot ────────────────────────────────
-  // When there are ≥2 jars, a virtual ad slot is inserted at display position 1
-  // (between jar 0 and jar 1). The display sequence is:
-  //   [jar0 | AD | jar1 | jar2 | ...]
-  // displayCount = jars.length + (jars.length >= 2 ? 1 : 0)
-  // displayIndex is persisted as activeJarIndex but counts virtual positions.
-  // jarIndexForDisplay(di) maps a display index → real jar index:
-  //   di === 0          → jar 0
-  //   di === 1 & ad    → AD (no jar)
-  //   di > 1  & ad    → jar[di - 1]
-  //   di (no ad)       → jar[di]
-  const hasAdSlot    = jars.length >= 2;
-  const displayCount = jars.length + (hasAdSlot ? 1 : 0);
-  const displayIdx   = Math.min(activeJarIndex, Math.max(0, displayCount - 1));
-  const isAdSlot     = hasAdSlot && displayIdx === 1;
-
-  // Map display index → real jar index for non-ad slots
-  const realJarIdx   = isAdSlot ? 0 : (hasAdSlot && displayIdx > 1 ? displayIdx - 1 : displayIdx);
-  const safeIdx      = Math.min(realJarIdx, Math.max(0, jars.length - 1));
-  const activeJar    = jars[safeIdx] || jars[0];
+  // Jar navigation
+  const safeIdx  = Math.min(activeJarIndex, Math.max(0, jars.length - 1));
+  const activeJar = jars[safeIdx] || jars[0];
   const currentThoughts = activeJar?.thoughts || [];
 
-  const canGoPrev = displayIdx > 0;
-  const canGoNext = displayIdx < displayCount - 1;
+  const canGoPrev = safeIdx > 0;
+  const canGoNext = safeIdx < jars.length - 1;
   const goPrev = () => { blurKeyboard(); setActiveJarIndex(i => Math.max(0, i - 1)); };
-  const goNext = () => { blurKeyboard(); setActiveJarIndex(i => Math.min(displayCount - 1, i + 1)); };
+  const goNext = () => { blurKeyboard(); setActiveJarIndex(i => Math.min(jars.length - 1, i + 1)); };
 
-  // Persist active display index (maps back to jar via safeIdx above)
   useEffect(() => { save(ACTIVE_JAR, safeIdx); }, [safeIdx]);
 
-  // Memory resurfacing — recompute for the active jar.
-  // dismissedMemoryJars tracks which jar IDs have been dismissed this session.
-  // Switching jars does NOT reset dismissals — each jar is dismissed independently.
+  // Memory resurfacing
   // eslint-disable-next-line no-unused-vars
   const _tick = memoryDismissedTick; // read tick so React includes it in render deps
-  const memoryThought = (!isAdSlot && activeJar && !dismissedMemoryJars.current.has(activeJar.id))
+  const memoryThought = (activeJar && !dismissedMemoryJars.current.has(activeJar.id))
     ? pickMemoryThought(activeJar)
     : null;
 
@@ -3560,11 +3453,11 @@ export default function ThoughtJar() {
               />
           </button>
 
-          {/* Jar zone — or ad slot when navigating to display position 1 */}
+          {/* Jar + nav arrows — arrows close to jar body */}
           <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
             gap:"clamp(2px,0.8vw,6px)", width:"100%" }}>
 
-            {/* Left arrow */}
+            {/* Left arrow — tight to jar */}
             <button
               onClick={goPrev} disabled={!canGoPrev}
               aria-label="previous jar"
@@ -3581,49 +3474,40 @@ export default function ThoughtJar() {
               </svg>
             </button>
 
-            {/* Centre slot — jar or ad */}
-            {isAdSlot ? (
-              /* ── Between-Jars Ad Slot ─────────────────────────────────────────
-                 Sits at display position 1 (between jar 0 and jar 1).
-                 Uses the same vertical transform as the jar so it occupies the
-                 same visual zone. The jar still exists; the user navigates past
-                 this slot to reach it. Condition: jars.length >= 2.            */
-              <div style={{
-                flex: "1 1 auto",
-                maxWidth: "min(400px,80vw)",
-                minWidth: 0,
-                transform: "translate(0px, -64px)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-              }}>
-                <AdSenseSlot slot="8862870404" />
-              </div>
-            ) : (
-              /* ── Real jar ─────────────────────────────────────────────────── */
-              <div data-bt-target="jar" style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
-                transform:"translate(0px, -64px)",
-                transition:"opacity 0.5s ease, filter 0.5s ease",
-                animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
-                <style>{`
+            {/* Jar — maximises central space, left-shifted to balance right icon column */}
+            <div data-bt-target="jar" style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
+              transform:"translate(0px, -64px)",
+              transition:"opacity 0.5s ease, filter 0.5s ease",
+              animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
+              <style>{`
   @keyframes jarShake {
-    0%, 100% { transform: translate(0px, -64px); }
-    15%  { transform: translate(-8px, -64px) rotate(-1.5deg); }
-    30%  { transform: translate(7px, -64px) rotate(1.5deg); }
-    45%  { transform: translate(-5px, -64px) rotate(-1deg); }
-    60%  { transform: translate(4px, -64px) rotate(0.8deg); }
-    75%  { transform: translate(-2px, -64px); }
+    0%, 100% {
+      transform: translate(0px, -64px);
+    }
+    15% {
+      transform: translate(-8px, -64px) rotate(-1.5deg);
+    }
+    30% {
+      transform: translate(7px, -64px) rotate(1.5deg);
+    }
+    45% {
+      transform: translate(-5px, -64px) rotate(-1deg);
+    }
+    60% {
+      transform: translate(4px, -64px) rotate(0.8deg);
+    }
+    75% {
+      transform: translate(-2px, -64px);
+    }
   }
 `}</style>
-                <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
-                  isAnimating={isJarAnimating} jarName={activeJar?.name}
-                  lidVariant={(activeJar?.id ?? 0) % 5}
-                  onLabelClick={() => { setJarNameInput(activeJar?.name || ""); setEditingJarName(true); }} />
-              </div>
-            )}
+              <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
+                isAnimating={isJarAnimating} jarName={activeJar?.name}
+                lidVariant={(activeJar?.id ?? 0) % 5}
+                onLabelClick={() => { setJarNameInput(activeJar?.name || ""); setEditingJarName(true); }} />
+            </div>
 
-            {/* Right arrow */}
+            {/* Right arrow — tight to jar */}
             <button
               onClick={goNext} disabled={!canGoNext}
               aria-label="next jar"
