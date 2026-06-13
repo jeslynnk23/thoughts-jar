@@ -16,8 +16,12 @@ const ACTIVE_JAR  = "tj-activeJar";
 const HS_PROMPT_KEY= "tj-hsPromptSeen";
 const MUSIC_KEY    = "tj-musicMuted";
 const MUSIC_VOL_KEY= "tj-musicVol";
+const MEMORY_KEY   = "tj-memory"; // { jarId, thoughtId, date }
 
-const JAR_CAPACITY   = 25;
+const JAR_CAPACITY        = 25;
+const MEMORY_MIN_THOUGHTS = 4;    // jar must have at least this many thoughts
+const MEMORY_AGE_DAYS     = 3;    // prefer thoughts at least this old
+const MEMORY_SHOW_CHANCE  = 0.55; // 55% chance to show on a fresh day (feels occasional)
 
 const WHIMSICAL_NAMES = [
   "sleepy pebble","tiny comet","noodle cloud","moss muffin",
@@ -1196,6 +1200,256 @@ function CozyTV({ broadcast }) {
 }
 
 
+// ─── MEMORY RESURFACING ──────────────────────────────────────────────────────
+
+// Decide which thought (if any) to resurface for a given jar today.
+// Returns a thought object or null.
+function pickMemoryThought(jar) {
+  if (!jar || jar.thoughts.length < MEMORY_MIN_THOUGHTS) return null;
+
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const stored   = load(MEMORY_KEY, null);
+
+  // Already have a valid stored memory for this jar today — reuse it
+  if (stored && stored.date === todayKey && stored.jarId === jar.id) {
+    if (stored.thoughtId === null) return null; // explicitly decided not to show today
+    const found = jar.thoughts.find(t => t.id === stored.thoughtId);
+    return found || null;
+  }
+
+  // New day (or different jar) — decide fresh
+  // Roll the chance gate first
+  if (Math.random() > MEMORY_SHOW_CHANCE) {
+    save(MEMORY_KEY, { date: todayKey, jarId: jar.id, thoughtId: null });
+    return null;
+  }
+
+  const now = Date.now();
+  const ageThreshold = MEMORY_AGE_DAYS * 24 * 60 * 60 * 1000;
+
+  // Prefer: non-completed, old enough (has createdAt)
+  const preferred = jar.thoughts.filter(t =>
+    !t.completed &&
+    t.createdAt &&
+    (now - new Date(t.createdAt).getTime()) >= ageThreshold
+  );
+
+  // Fallback: non-completed thoughts from the first half of the array (older by position)
+  const fallback = jar.thoughts.filter(t => !t.completed);
+  const halfLen  = Math.ceil(fallback.length / 2);
+  const olderHalf = fallback.slice(0, halfLen);
+
+  const pool = preferred.length > 0 ? preferred
+    : olderHalf.length > 0 ? olderHalf
+    : fallback;
+
+  if (pool.length === 0) {
+    save(MEMORY_KEY, { date: todayKey, jarId: jar.id, thoughtId: null });
+    return null;
+  }
+
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  save(MEMORY_KEY, { date: todayKey, jarId: jar.id, thoughtId: pick.id });
+  return pick;
+}
+
+// MemoryResurface — small illustrated bubble that floats near the jar
+function MemoryResurface({ thought, onDismiss, onExpand }) {
+  const [visible, setVisible] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+
+  // Fade in after a short delay so it doesn't clash with the jar load
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 1400);
+    return () => clearTimeout(t);
+  }, []);
+
+  const handleDismiss = (e) => {
+    e.stopPropagation();
+    setLeaving(true);
+    setTimeout(onDismiss, 320);
+  };
+
+  const handleExpand = () => {
+    setLeaving(true);
+    setTimeout(onExpand, 200);
+  };
+
+  const blobColor = PASTEL_COLORS[(thought.colorIndex ?? 0) % PASTEL_COLORS.length];
+  // Truncate long thoughts for the preview
+  const preview = thought.text.length > 72
+    ? thought.text.slice(0, 70).trimEnd() + "…"
+    : thought.text;
+
+  const ago = (() => {
+    if (!thought.createdAt) return null;
+    const days = Math.floor((Date.now() - new Date(thought.createdAt).getTime()) / 86400000);
+    if (days < 1) return null;
+    if (days === 1) return "yesterday";
+    if (days < 7)  return `${days} days ago`;
+    if (days < 14) return "last week";
+    const weeks = Math.floor(days / 7);
+    if (weeks < 5) return `${weeks} weeks ago`;
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months} month${months > 1 ? "s" : ""} ago`;
+    return "a while ago";
+  })();
+
+  return (
+    <>
+      <style>{`
+        @keyframes memFloat {
+          0%   { opacity: 0; transform: translateY(14px) scale(0.94); }
+          100% { opacity: 1; transform: translateY(0)    scale(1);    }
+        }
+        @keyframes memLeave {
+          0%   { opacity: 1; transform: translateY(0)   scale(1);    }
+          100% { opacity: 0; transform: translateY(10px) scale(0.95); }
+        }
+        @keyframes memBobble {
+          0%, 100% { transform: translateY(0px);   }
+          50%       { transform: translateY(-3px);  }
+        }
+      `}</style>
+
+      {/* Wrapper — positioned in flow below the hint text */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 420,
+          animation: !visible
+            ? "none"
+            : leaving
+              ? "memLeave 0.32s ease forwards"
+              : "memFloat 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards",
+          opacity: visible ? undefined : 0,
+        }}
+      >
+        {/* Bubble card */}
+        <div
+          onClick={handleExpand}
+          role="button"
+          aria-label="view resurfaced memory"
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            background: "#FFFDF5",
+            border: "2px solid #C9A87A",
+            borderRadius: 18,
+            padding: "10px 12px 10px 12px",
+            boxShadow: "3px 4px 0 #E8D0A8",
+            cursor: "pointer",
+            position: "relative",
+            WebkitTapHighlightColor: "transparent",
+            touchAction: "manipulation",
+          }}
+        >
+          {/* Floating mini blob — animates gently */}
+          <div style={{
+            flexShrink: 0,
+            animation: "memBobble 4s ease-in-out infinite",
+            marginTop: 2,
+          }}>
+            <svg viewBox="-1.3 -1.3 2.6 2.6" width={32} height={32}>
+              <path
+                d={BLOB_VARIANTS[thought.blobSeed % BLOB_VARIANTS.length]}
+                fill={blobColor}
+                stroke="#6B4226"
+                strokeWidth={0.15}
+                opacity={0.92}
+              />
+            </svg>
+          </div>
+
+          {/* Text content */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Label row */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              marginBottom: 4,
+            }}>
+              {/* Tiny sparkle */}
+              <svg viewBox="0 0 14 14" width={11} height={11} style={{ flexShrink: 0 }}>
+                <path d="M7,1 L7.8,5.5 L12,7 L7.8,8.5 L7,13 L6.2,8.5 L2,7 L6.2,5.5 Z"
+                  fill="#C9A87A" stroke="none" opacity={0.85} />
+              </svg>
+              <span style={{
+                fontFamily: "var(--font-body)",
+                fontSize: 10,
+                color: "#A07850",
+                letterSpacing: 0.4,
+                fontStyle: "italic",
+              }}>
+                a thought floated back…
+              </span>
+              {ago && (
+                <span style={{
+                  fontFamily: "var(--font-body)",
+                  fontSize: 10,
+                  color: "#C9A87A",
+                  marginLeft: "auto",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}>
+                  {ago}
+                </span>
+              )}
+            </div>
+
+            {/* Thought text */}
+            <p style={{
+              fontFamily: "var(--font-hand)",
+              fontSize: "clamp(13px,2.4vw,16px)",
+              color: "#3D2510",
+              lineHeight: 1.55,
+              margin: 0,
+              overflow: "hidden",
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+            }}>
+              {preview}
+            </p>
+          </div>
+
+          {/* Dismiss × */}
+          <button
+            onClick={handleDismiss}
+            aria-label="dismiss memory"
+            style={{
+              flexShrink: 0,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              color: "#C9A87A",
+              fontSize: 18,
+              lineHeight: 1,
+              padding: "0 2px",
+              marginTop: -1,
+              WebkitTapHighlightColor: "transparent",
+              touchAction: "manipulation",
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Small dotted tail pointing up toward jar */}
+        <div style={{
+          width: 2,
+          height: 10,
+          borderLeft: "2px dashed #D4C5B0",
+          margin: "0 auto",
+          opacity: 0.6,
+        }} />
+      </div>
+    </>
+  );
+}
+
 // ─── ADD THOUGHT INPUT ───────────────────────────────────────────────────────
 
 function AddThoughtInput({ onAdd, disabled = false }) {
@@ -2152,6 +2406,7 @@ export default function ThoughtJar() {
   const [jarNameInput, setJarNameInput] = useState("");
   const [showTutorial, setShowTutorial]   = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [memoryDismissed, setMemoryDismissed] = useState(false);
   const toastTimer = useRef(null);
 
   // Show HS prompt if not yet seen — independent of onboarding state
@@ -2165,9 +2420,16 @@ export default function ThoughtJar() {
   const activeJar = jars[safeIdx] || jars[0];
   const currentThoughts = activeJar?.thoughts || [];
 
+  // Memory resurfacing — recompute whenever the active jar changes
+  // (dismissed flag also resets so a jar switch can show its own memory)
+  const memoryThought = memoryDismissed ? null : pickMemoryThought(activeJar);
+
   // ── Persist ──────────────────────────────────────────────────────────────
   useEffect(() => { save(JARS_KEY, jars); }, [jars]);
   useEffect(() => { save(ACTIVE_JAR, safeIdx); }, [safeIdx]);
+
+  // Reset memory dismissed flag whenever the user switches to a different jar
+  useEffect(() => { setMemoryDismissed(false); }, [safeIdx]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const showToast = useCallback((msg) => {
@@ -2564,6 +2826,18 @@ export default function ThoughtJar() {
                 ? "this jar is full — create a new one"
                 : "tap the dice or jar to rediscover a thought"}
           </p>
+
+          {/* Memory resurfacing — gentle bubble below hint, only when available */}
+          {memoryThought && !revealedThought && (
+            <MemoryResurface
+              thought={memoryThought}
+              onDismiss={() => setMemoryDismissed(true)}
+              onExpand={() => {
+                setMemoryDismissed(true);
+                setRevealedThought(memoryThought);
+              }}
+            />
+          )}
 
           {/* TV — right edge, clears input bar comfortably */}
           <div className="tv-widget" style={{
