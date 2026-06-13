@@ -1654,8 +1654,8 @@ const BLOB_TEACHER_STEPS = [
   { blob:"#A8C5A0", speech:"tap the jar to rediscover something you've written before.", target:"jar" },
   // 3 — dice
   { blob:"#A8BFDF", speech:"tap the dice for a random thought.",                   target:"dice" },
-  // 4 — TV
-  { blob:"#F4B183", speech:"the little tv shares a new daily broadcast every day.", target:"tv"  },
+  // 4 — TV — stronger dim so TV is clearly the focus
+  { blob:"#F4B183", speech:"the little tv shares a new daily broadcast every day.", target:"tv", strongDim:true },
   // 5 — memory resurfacing preview (no target; preview card shown below)
   { blob:"#D4A5C9", speech:"sometimes i'll bring old thoughts back for you.",      target:null, preview:true },
   // 6 — farewell, no highlight
@@ -1683,97 +1683,100 @@ function MemoryResurfacePreview() {
     <>
       <style>{`
         @keyframes previewFadeUp {
-          from { opacity:0; transform:translateY(12px) scale(0.96); }
+          from { opacity:0; transform:translateY(10px) scale(0.95); }
           to   { opacity:1; transform:translateY(0)    scale(1);    }
         }
         @keyframes previewBobble {
           0%,100% { transform:translateY(0px); }
-          50%      { transform:translateY(-4px); }
+          50%      { transform:translateY(-3px); }
         }
         @keyframes previewSparkle {
-          0%,100%{ opacity:0.5; transform:scale(1);   }
-          50%    { opacity:1;   transform:scale(1.35); }
+          0%,100%{ opacity:0.3; transform:scale(1);   }
+          50%    { opacity:0.6; transform:scale(1.2);  }
         }
       `}</style>
 
-      {/* Preview wrapper — mimics the real overlay card */}
+      {/* Outer wrapper: 80% opacity + slight scale-down makes preview feel secondary */}
       <div style={{
-        width:"min(82vw,300px)", margin:"4px auto 0",
-        animation:"previewFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.2s both",
+        width:"min(78vw,270px)", margin:"2px auto 0",
+        opacity:0.80,
+        transform:"scale(0.92)",
+        transformOrigin:"top center",
+        animation:"previewFadeUp 0.5s cubic-bezier(0.22,1,0.36,1) 0.25s both",
       }}>
         {/* Sparkle + blob row above card */}
         <div style={{ display:"flex", flexDirection:"row", alignItems:"flex-end",
-          gap:6, marginBottom:6, paddingLeft:4 }}>
-          {/* Tiny golden spark */}
-          <div style={{ width:8, height:8, borderRadius:"50%", background:"#F6C94A",
-            animation:"previewSparkle 2s ease-in-out infinite",
-            boxShadow:"0 0 6px 2px rgba(246,201,74,0.5)",
-            flexShrink:0, marginBottom:14 }} />
-          {/* Preview blob with speech bubble */}
-          <div style={{ display:"flex", flexDirection:"row", alignItems:"flex-end", gap:6 }}>
+          gap:5, marginBottom:5, paddingLeft:3 }}>
+          {/* Tiny golden spark — muted */}
+          <div style={{ width:7, height:7, borderRadius:"50%", background:"#F6C94A",
+            animation:"previewSparkle 2.4s ease-in-out infinite",
+            boxShadow:"0 0 4px 1px rgba(246,201,74,0.3)",
+            flexShrink:0, marginBottom:12 }} />
+          {/* Preview blob + speech bubble */}
+          <div style={{ display:"flex", flexDirection:"row", alignItems:"flex-end", gap:5 }}>
             <div style={{ position:"relative", flexShrink:0,
-              animation:"previewBobble 4s ease-in-out infinite" }}>
-              <div style={{ position:"absolute", inset:-6, borderRadius:"50%",
-                background:`radial-gradient(circle,${PREVIEW_BLOB_COLOR}44 0%,transparent 68%)`,
+              animation:"previewBobble 4.5s ease-in-out infinite" }}>
+              <div style={{ position:"absolute", inset:-5, borderRadius:"50%",
+                background:`radial-gradient(circle,${PREVIEW_BLOB_COLOR}33 0%,transparent 68%)`,
                 pointerEvents:"none" }}/>
-              <svg viewBox="-1.3 -1.3 2.6 2.6" width={44} height={44} style={{display:"block"}}>
+              <svg viewBox="-1.3 -1.3 2.6 2.6" width={38} height={38} style={{display:"block"}}>
                 <path d={BLOB_VARIANTS[2]} fill={PREVIEW_BLOB_COLOR}
-                  stroke="#6B4226" strokeWidth={0.13} opacity={0.95}/>
-                <circle cx={-0.27} cy={-0.15} r={0.12} fill="#6B4226" opacity={0.7}/>
-                <circle cx={ 0.27} cy={-0.15} r={0.12} fill="#6B4226" opacity={0.7}/>
+                  stroke="#6B4226" strokeWidth={0.13} opacity={0.88}/>
+                <circle cx={-0.27} cy={-0.15} r={0.12} fill="#6B4226" opacity={0.65}/>
+                <circle cx={ 0.27} cy={-0.15} r={0.12} fill="#6B4226" opacity={0.65}/>
                 <path d="M -0.16 0.17 Q 0 0.32 0.16 0.17"
                   fill="none" stroke="#6B4226" strokeWidth={0.1}
-                  strokeLinecap="round" opacity={0.6}/>
+                  strokeLinecap="round" opacity={0.55}/>
               </svg>
             </div>
-            {/* Speech bubble: "i found this again..." */}
+            {/* "i found this again..." speech bubble */}
             <div style={{ position:"relative", background:"#FFFDF5",
-              border:"1.8px solid #C9A87A", borderRadius:"13px 13px 13px 3px",
-              padding:"6px 10px", boxShadow:"1px 1px 0 #E8D0A8",
-              marginBottom:6, maxWidth:140 }}>
-              <div style={{ position:"absolute", left:-8, bottom:8, width:0, height:0,
-                borderTop:"5px solid transparent", borderBottom:"5px solid transparent",
-                borderRight:"8px solid #C9A87A" }}/>
-              <div style={{ position:"absolute", left:-5, bottom:9, width:0, height:0,
+              border:"1.5px solid #C9A87A", borderRadius:"12px 12px 12px 3px",
+              padding:"5px 9px", boxShadow:"1px 1px 0 #E8D0A8",
+              marginBottom:5, maxWidth:130 }}>
+              <div style={{ position:"absolute", left:-7, bottom:7, width:0, height:0,
                 borderTop:"4px solid transparent", borderBottom:"4px solid transparent",
-                borderRight:"6px solid #FFFDF5" }}/>
+                borderRight:"7px solid #C9A87A" }}/>
+              <div style={{ position:"absolute", left:-4, bottom:8, width:0, height:0,
+                borderTop:"3px solid transparent", borderBottom:"3px solid transparent",
+                borderRight:"5px solid #FFFDF5" }}/>
               <p style={{ margin:0, fontFamily:"var(--font-body)", fontStyle:"italic",
-                fontSize:11, color:"#A07850", lineHeight:1.4, whiteSpace:"nowrap" }}>
+                fontSize:10, color:"#A07850", lineHeight:1.35, whiteSpace:"nowrap" }}>
                 i found this again...
               </p>
             </div>
           </div>
         </div>
 
-        {/* Memory note card — matches real MemoryResurface card styling */}
+        {/* Memory note card — matches real card but slightly muted */}
         <div style={{
           background:"linear-gradient(160deg,#FFFEF8 0%,#FFF8EC 100%)",
-          borderRadius:"14px 17px 15px 12px",
-          border:"2px solid #D4B896",
-          boxShadow:"0 2px 0 #E8D0A8, 0 4px 0 #DFC49A, 0 6px 16px rgba(107,66,38,0.11)",
+          borderRadius:"12px 15px 13px 10px",
+          border:"1.5px solid #D4B896",
+          boxShadow:"0 2px 0 #E8D0A8, 0 3px 12px rgba(107,66,38,0.09)",
           overflow:"hidden",
         }}>
           {/* Torn-paper top edge */}
-          <svg viewBox="0 0 300 8" width="100%" height="8" preserveAspectRatio="none"
+          <svg viewBox="0 0 270 7" width="100%" height="7" preserveAspectRatio="none"
             style={{display:"block", marginBottom:-1}}>
-            <path d="M0,6 C15,2 30,7 45,5 C60,3 75,7 90,4 C105,1 120,6 135,5
-                     C150,4 165,7 180,4 C195,1 210,6 225,4 C240,2 255,6 270,4
-                     C285,2 295,6 300,5 L300,0 L0,0 Z"
-              fill="#E8D4B8" opacity="0.4"/>
+            <path d="M0,5 C13,1 26,6 39,4 C52,2 65,6 78,3 C91,0 104,5 117,4
+                     C130,3 143,6 156,3 C169,0 182,5 195,3 C208,1 221,5 234,3
+                     C247,1 260,5 270,4 L270,0 L0,0 Z"
+              fill="#E8D4B8" opacity="0.35"/>
           </svg>
           {/* Label */}
-          <div style={{ padding:"8px 12px 4px", borderBottom:"1px solid #F0E4D0",
-            display:"flex", alignItems:"center", gap:4 }}>
-            <span style={{ fontFamily:"var(--font-body)", fontSize:10, color:"#A07850",
-              fontStyle:"italic", letterSpacing:0.2 }}>✨ a thought floated back...</span>
+          <div style={{ padding:"6px 10px 3px", borderBottom:"1px solid #F0E4D0",
+            display:"flex", alignItems:"center", gap:3 }}>
+            <span style={{ fontFamily:"var(--font-body)", fontSize:9, color:"#A07850",
+              fontStyle:"italic", letterSpacing:0.15 }}>✦ a thought floated back...</span>
           </div>
           {/* Thought text */}
-          <div style={{ padding:"10px 14px 12px" }}>
-            <div style={{ fontFamily:"Georgia,serif", fontSize:28, color:"#E8D0A8",
-              lineHeight:0.5, marginBottom:6, userSelect:"none" }}>"</div>
+          <div style={{ padding:"8px 12px 10px" }}>
+            <div style={{ fontFamily:"Georgia,serif", fontSize:22, color:"#E8D0A8",
+              lineHeight:0.5, marginBottom:5, userSelect:"none" }}>"</div>
             <p style={{ margin:0, fontFamily:"var(--font-body)", fontStyle:"italic",
-              fontSize:"clamp(14px,4vw,17px)", color:"#3D2510",
-              lineHeight:1.6, textAlign:"center" }}>
+              fontSize:"clamp(12px,3.5vw,14px)", color:"#4A3018",
+              lineHeight:1.55, textAlign:"center" }}>
               {PREVIEW_THOUGHT}
             </p>
           </div>
@@ -1808,17 +1811,18 @@ function BlobTeacher({ onDone }) {
   }, [step, current.target]);
 
   // ── Elevate the target element above the dim layer while highlighted.
-  //    We inject a one-liner CSS rule that bumps its z-index to 8501, then
-  //    clean it up when the step changes. This keeps the live element 100%
-  //    visible at its true colours — no cloning, no clip-path, no artefacts.
+  //    Injecting z-index: 8504 lifts the live element above the dim (8500),
+  //    glow ring (8502), and panel (8503) so it is fully visible at original
+  //    colours. We do NOT add position:relative because some targets already
+  //    use position:absolute or transforms that must not be disturbed.
+  //    isolation:isolate creates a stacking context without moving the element.
   useEffect(() => {
     if (!current.target) return;
     const styleEl = document.createElement("style");
     styleEl.setAttribute("data-bt-highlight", "true");
     styleEl.textContent = `
       [data-bt-target="${current.target}"] {
-        position: relative;
-        z-index: 8501 !important;
+        z-index: 8504 !important;
         isolation: isolate;
       }
     `;
@@ -1849,6 +1853,8 @@ function BlobTeacher({ onDone }) {
   };
   const panelPos = computePanelPos();
 
+  const isStrongDim = !!current.strongDim;
+
   return (
     <>
       <style>{`
@@ -1866,10 +1872,18 @@ function BlobTeacher({ onDone }) {
                               100%{opacity:1;transform:translateY(0) scale(1)} }
         @keyframes btBobble   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
         @keyframes btGlowPulse {
-          0%,100%{ box-shadow: 0 0 0 4px rgba(246,201,74,0.2),
-                               0 0 18px 7px rgba(246,201,74,0.15); }
-          50%    { box-shadow: 0 0 0 6px rgba(246,201,74,0.42),
-                               0 0 30px 14px rgba(246,201,74,0.28); }
+          0%,100%{ box-shadow: 0 0 0 4px rgba(246,201,74,0.25),
+                               0 0 20px 8px rgba(246,201,74,0.18); }
+          50%    { box-shadow: 0 0 0 7px rgba(246,201,74,0.48),
+                               0 0 34px 16px rgba(246,201,74,0.32); }
+        }
+        @keyframes btGlowPulseStrong {
+          0%,100%{ box-shadow: 0 0 0 6px rgba(246,201,74,0.4),
+                               0 0 28px 12px rgba(246,201,74,0.3),
+                               0 0 48px 22px rgba(246,201,74,0.14); }
+          50%    { box-shadow: 0 0 0 9px rgba(246,201,74,0.65),
+                               0 0 40px 18px rgba(246,201,74,0.48),
+                               0 0 64px 32px rgba(246,201,74,0.22); }
         }
       `}</style>
 
@@ -1880,20 +1894,20 @@ function BlobTeacher({ onDone }) {
           position:"fixed", inset:0,
           width:"100vw", height:"100dvh",
           zIndex:8500,
-          background:"rgba(40,22,8,0.54)",
+          background: isStrongDim ? "rgba(28,14,4,0.72)" : "rgba(40,22,8,0.54)",
           animation: visible ? "btFadeIn 0.45s ease forwards" : "none",
           opacity: visible ? undefined : 0,
           pointerEvents: visible ? "auto" : "none",
+          transition:"background 0.3s ease",
         }}
       />
 
       {/* ── Golden glow ring around the highlighted element ─────────────────
-           Drawn above the dim (z-index 8501 matches the elevated element).
-           Only visual decoration — the real element behind it is already
-           elevated and fully visible via the injected CSS rule above.       ── */}
+           z-index 8502 sits above the dim (8500) but below the elevated
+           target element (8504) and the panel (8503). pointer-events:none
+           so clicks fall through to the elevated element itself.            ── */}
       {glowRect && visible && (
         <div
-          onClick={advance}
           style={{
             position:"fixed",
             top:    glowRect.top,
@@ -1901,10 +1915,14 @@ function BlobTeacher({ onDone }) {
             width:  glowRect.width,
             height: glowRect.height,
             borderRadius: 22,
-            border:"2px solid rgba(246,201,74,0.6)",
-            animation:"btGlowPulse 2.2s ease-in-out infinite",
+            border: isStrongDim
+              ? "2.5px solid rgba(246,201,74,0.85)"
+              : "2px solid rgba(246,201,74,0.6)",
+            animation: isStrongDim
+              ? "btGlowPulseStrong 2s ease-in-out infinite"
+              : "btGlowPulse 2.2s ease-in-out infinite",
             zIndex:8502,
-            pointerEvents:"auto",
+            pointerEvents:"none",  /* clicks fall through to the elevated element */
             background:"transparent",
           }}
         />
