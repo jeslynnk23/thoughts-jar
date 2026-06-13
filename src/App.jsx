@@ -1640,113 +1640,146 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
 }
 
 // ─── BLOB TEACHER ────────────────────────────────────────────────────────────
-// First-visit guided tour using the same blob character as Memory Resurfacing.
-// Highlights: soft glow ring on the target element, clean full-screen dim
-// (no clip-path / polygon — avoids diagonal rendering artefacts on mobile).
-// Font: Montserrat throughout (var(--font-body)) to match the rest of the app.
-// Step 5 plays a passive memory-resurfacing demo — no production logic touched.
+// First-visit guided tour. Highlights work by temporarily elevating the target
+// element's z-index above the dim layer via an injected <style> tag — the live
+// element stays 100% visible at its original colours. No clip-path, no polygons,
+// no rendering artefacts. Fonts: Montserrat (var(--font-body)) throughout.
 
 const BLOB_TEACHER_STEPS = [
-  // 0 — welcome
-  { blob:"#F2A7B0", speech:["hi! i'm blob.", "i'll show you around."],           target:null,  demo:false },
-  // 1 — input
-  { blob:"#F6E27A", speech:["drop thoughts here", "whenever you'd like."],        target:"input", demo:false },
+  // 0 — welcome, no highlight
+  { blob:"#F2A7B0", speech:"hi! i'm blob. i'll show you around.",                  target:null  },
+  // 1 — input field + plus button
+  { blob:"#F6E27A", speech:"drop thoughts here whenever you'd like.",              target:"input" },
   // 2 — jar
-  { blob:"#A8C5A0", speech:["tap the jar to rediscover", "something you've written."], target:"jar", demo:false },
+  { blob:"#A8C5A0", speech:"tap the jar to rediscover something you've written before.", target:"jar" },
   // 3 — dice
-  { blob:"#A8BFDF", speech:["tap the dice for", "a random thought."],             target:"dice", demo:false },
+  { blob:"#A8BFDF", speech:"tap the dice for a random thought.",                   target:"dice" },
   // 4 — TV
-  { blob:"#F4B183", speech:["the little tv shares a", "new broadcast every day."], target:"tv",  demo:false },
-  // 5 — memory resurfacing demo (passive, auto-advances)
-  { blob:"#D4A5C9", speech:["sometimes i'll bring", "old thoughts back for you."], target:null,  demo:true  },
-  // 6 — farewell
-  { blob:"#F2A7B0", speech:["that's it. this is your space.", "i'll be around."], target:null,  demo:false, last:true },
+  { blob:"#F4B183", speech:"the little tv shares a new daily broadcast every day.", target:"tv"  },
+  // 5 — memory resurfacing preview (no target; preview card shown below)
+  { blob:"#D4A5C9", speech:"sometimes i'll bring old thoughts back for you.",      target:null, preview:true },
+  // 6 — farewell, no highlight
+  { blob:"#F2A7B0", speech:"that's it. this is your space. i'll be around.",      target:null, last:true },
 ];
 
 // Measured rect of a data-bt-target element, with padding
-function getTargetRect(targetKey, pad = 20) {
+function getTargetRect(targetKey, pad = 22) {
   if (!targetKey) return null;
   const el = document.querySelector(`[data-bt-target="${targetKey}"]`);
   if (!el) return null;
   const r = el.getBoundingClientRect();
-  return { top: r.top-pad, left: r.left-pad, right: r.right+pad, bottom: r.bottom+pad,
-           width: r.width+pad*2, height: r.height+pad*2 };
+  return { top:r.top-pad, left:r.left-pad, right:r.right+pad, bottom:r.bottom+pad,
+           width:r.width+pad*2, height:r.height+pad*2 };
 }
 
-// ── MemoryDemo — purely decorative; does not touch production resurfacing ──
-const DEMO_THOUGHTS = [
-  "you've got this.",
-  "be kinder to yourself.",
-  "small steps still count.",
-  "rest is part of the work.",
-];
+// ── MemoryResurfacePreview ────────────────────────────────────────────────────
+// Static mockup of the real MemoryResurface popup — does NOT touch production
+// resurfacing logic. Shown during the onboarding step that explains the feature.
+const PREVIEW_THOUGHT = "be kinder to yourself.";
+const PREVIEW_BLOB_COLOR = "#D4A5C9";
 
-function MemoryDemo({ blobColor, onComplete }) {
-  const [phase, setPhase] = useState("glow"); // glow → lift → float → fade → done
-  const text = useRef(DEMO_THOUGHTS[Math.floor(Math.random() * DEMO_THOUGHTS.length)]).current;
-
-  useEffect(() => {
-    const seq = [
-      [500,  () => setPhase("lift")],
-      [1100, () => setPhase("float")],
-      [3200, () => setPhase("fade")],
-      [3900, () => { onComplete(); }],
-    ];
-    const timers = seq.map(([ms, fn]) => setTimeout(fn, ms));
-    return () => timers.forEach(clearTimeout);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
+function MemoryResurfacePreview() {
   return (
-    <div style={{ position:"relative", width:120, height:160, margin:"0 auto" }}>
+    <>
       <style>{`
-        @keyframes demoGlow   { 0%,100%{box-shadow:0 0 0 0 rgba(212,165,201,0)}
-                                 50%   {box-shadow:0 0 0 12px rgba(212,165,201,0.35),
-                                                   0 0 32px 16px rgba(212,165,201,0.18)} }
-        @keyframes demoLidLift{ from{transform:translateY(0)} to{transform:translateY(-10px)} }
-        @keyframes demoFloat  { 0%  {opacity:0;transform:translateY(0) scale(0.7)}
-                                 30% {opacity:1;transform:translateY(-18px) scale(1)}
-                                100%{opacity:1;transform:translateY(-60px) scale(1)} }
-        @keyframes demoFadeOut{ from{opacity:1} to{opacity:0} }
+        @keyframes previewFadeUp {
+          from { opacity:0; transform:translateY(12px) scale(0.96); }
+          to   { opacity:1; transform:translateY(0)    scale(1);    }
+        }
+        @keyframes previewBobble {
+          0%,100% { transform:translateY(0px); }
+          50%      { transform:translateY(-4px); }
+        }
+        @keyframes previewSparkle {
+          0%,100%{ opacity:0.5; transform:scale(1);   }
+          50%    { opacity:1;   transform:scale(1.35); }
+        }
       `}</style>
 
-      {/* Mini jar outline */}
-      <svg viewBox="0 0 80 100" width={80} height={100}
-        style={{ position:"absolute", left:"50%", top:40, transform:"translateX(-50%)",
-          animation: phase==="glow" ? "demoGlow 1.2s ease-in-out infinite" : "none",
-          borderRadius:8 }}>
-        {/* Lid */}
-        <g style={{ animation: phase==="lift"||phase==="float"||phase==="fade"
-          ? "demoLidLift 0.5s ease forwards" : "none" }}>
-          <rect x={10} y={8} width={60} height={14} rx={6}
-            fill="#E8C87A" stroke="#6B4226" strokeWidth={2}/>
-        </g>
-        {/* Body */}
-        <path d="M12,26 C8,32 6,48 6,60 C6,76 10,86 18,90 C26,94 54,94 62,90 C70,86 74,76 74,60 C74,48 72,32 68,26 Z"
-          fill="#FFFBF0" stroke="#6B4226" strokeWidth={2}/>
-        {/* Blob peek inside */}
-        <ellipse cx={40} cy={75} rx={14} ry={11} fill="#D4A5C9" stroke="#6B4226" strokeWidth={1.5}/>
-      </svg>
-
-      {/* Floating thought bubble */}
-      {(phase==="float"||phase==="fade") && (
-        <div style={{
-          position:"absolute", left:"50%", top:0,
-          transform:"translateX(-50%)",
-          animation: phase==="fade" ? "demoFadeOut 0.7s ease forwards"
-                                    : "demoFloat 2.2s ease forwards",
-          background:"#FFFDF5",
-          border:"1.8px solid #C9A87A",
-          borderRadius:"14px 14px 14px 4px",
-          padding:"7px 12px",
-          boxShadow:"2px 2px 0 #E8D0A8",
-          whiteSpace:"nowrap",
-        }}>
-          <span style={{ fontFamily:"var(--font-body)", fontSize:12, color:"#A07850", fontStyle:"italic" }}>
-            {text}
-          </span>
+      {/* Preview wrapper — mimics the real overlay card */}
+      <div style={{
+        width:"min(82vw,300px)", margin:"4px auto 0",
+        animation:"previewFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.2s both",
+      }}>
+        {/* Sparkle + blob row above card */}
+        <div style={{ display:"flex", flexDirection:"row", alignItems:"flex-end",
+          gap:6, marginBottom:6, paddingLeft:4 }}>
+          {/* Tiny golden spark */}
+          <div style={{ width:8, height:8, borderRadius:"50%", background:"#F6C94A",
+            animation:"previewSparkle 2s ease-in-out infinite",
+            boxShadow:"0 0 6px 2px rgba(246,201,74,0.5)",
+            flexShrink:0, marginBottom:14 }} />
+          {/* Preview blob with speech bubble */}
+          <div style={{ display:"flex", flexDirection:"row", alignItems:"flex-end", gap:6 }}>
+            <div style={{ position:"relative", flexShrink:0,
+              animation:"previewBobble 4s ease-in-out infinite" }}>
+              <div style={{ position:"absolute", inset:-6, borderRadius:"50%",
+                background:`radial-gradient(circle,${PREVIEW_BLOB_COLOR}44 0%,transparent 68%)`,
+                pointerEvents:"none" }}/>
+              <svg viewBox="-1.3 -1.3 2.6 2.6" width={44} height={44} style={{display:"block"}}>
+                <path d={BLOB_VARIANTS[2]} fill={PREVIEW_BLOB_COLOR}
+                  stroke="#6B4226" strokeWidth={0.13} opacity={0.95}/>
+                <circle cx={-0.27} cy={-0.15} r={0.12} fill="#6B4226" opacity={0.7}/>
+                <circle cx={ 0.27} cy={-0.15} r={0.12} fill="#6B4226" opacity={0.7}/>
+                <path d="M -0.16 0.17 Q 0 0.32 0.16 0.17"
+                  fill="none" stroke="#6B4226" strokeWidth={0.1}
+                  strokeLinecap="round" opacity={0.6}/>
+              </svg>
+            </div>
+            {/* Speech bubble: "i found this again..." */}
+            <div style={{ position:"relative", background:"#FFFDF5",
+              border:"1.8px solid #C9A87A", borderRadius:"13px 13px 13px 3px",
+              padding:"6px 10px", boxShadow:"1px 1px 0 #E8D0A8",
+              marginBottom:6, maxWidth:140 }}>
+              <div style={{ position:"absolute", left:-8, bottom:8, width:0, height:0,
+                borderTop:"5px solid transparent", borderBottom:"5px solid transparent",
+                borderRight:"8px solid #C9A87A" }}/>
+              <div style={{ position:"absolute", left:-5, bottom:9, width:0, height:0,
+                borderTop:"4px solid transparent", borderBottom:"4px solid transparent",
+                borderRight:"6px solid #FFFDF5" }}/>
+              <p style={{ margin:0, fontFamily:"var(--font-body)", fontStyle:"italic",
+                fontSize:11, color:"#A07850", lineHeight:1.4, whiteSpace:"nowrap" }}>
+                i found this again...
+              </p>
+            </div>
+          </div>
         </div>
-      )}
-    </div>
+
+        {/* Memory note card — matches real MemoryResurface card styling */}
+        <div style={{
+          background:"linear-gradient(160deg,#FFFEF8 0%,#FFF8EC 100%)",
+          borderRadius:"14px 17px 15px 12px",
+          border:"2px solid #D4B896",
+          boxShadow:"0 2px 0 #E8D0A8, 0 4px 0 #DFC49A, 0 6px 16px rgba(107,66,38,0.11)",
+          overflow:"hidden",
+        }}>
+          {/* Torn-paper top edge */}
+          <svg viewBox="0 0 300 8" width="100%" height="8" preserveAspectRatio="none"
+            style={{display:"block", marginBottom:-1}}>
+            <path d="M0,6 C15,2 30,7 45,5 C60,3 75,7 90,4 C105,1 120,6 135,5
+                     C150,4 165,7 180,4 C195,1 210,6 225,4 C240,2 255,6 270,4
+                     C285,2 295,6 300,5 L300,0 L0,0 Z"
+              fill="#E8D4B8" opacity="0.4"/>
+          </svg>
+          {/* Label */}
+          <div style={{ padding:"8px 12px 4px", borderBottom:"1px solid #F0E4D0",
+            display:"flex", alignItems:"center", gap:4 }}>
+            <span style={{ fontFamily:"var(--font-body)", fontSize:10, color:"#A07850",
+              fontStyle:"italic", letterSpacing:0.2 }}>✨ a thought floated back...</span>
+          </div>
+          {/* Thought text */}
+          <div style={{ padding:"10px 14px 12px" }}>
+            <div style={{ fontFamily:"Georgia,serif", fontSize:28, color:"#E8D0A8",
+              lineHeight:0.5, marginBottom:6, userSelect:"none" }}>"</div>
+            <p style={{ margin:0, fontFamily:"var(--font-body)", fontStyle:"italic",
+              fontSize:"clamp(14px,4vw,17px)", color:"#3D2510",
+              lineHeight:1.6, textAlign:"center" }}>
+              {PREVIEW_THOUGHT}
+            </p>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -1754,36 +1787,47 @@ function BlobTeacher({ onDone }) {
   const [step, setStep]       = useState(0);
   const [leaving, setLeaving] = useState(false);
   const [visible, setVisible] = useState(false);
-  const [glowRect, setGlowRect] = useState(null);  // target element rect for glow ring
-  const [demoPlaying, setDemoPlaying] = useState(false);
-  const [demoKey, setDemoKey]   = useState(0);      // remount demo on re-entry
+  const [glowRect, setGlowRect] = useState(null);
 
   const current    = BLOB_TEACHER_STEPS[step];
   const isLast     = !!current.last;
+  const hasPreview = !!current.preview;
   const blobVariant = step % BLOB_VARIANTS.length;
 
-  // Fade in on first mount
+  // ── Fade in on first mount
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 80);
     return () => clearTimeout(t);
   }, []);
 
-  // Measure glow target whenever step changes (glow-only; no clip-path)
+  // ── Measure glow-ring target position when step changes
   useEffect(() => {
     if (!current.target) { setGlowRect(null); return; }
-    const t = setTimeout(() => setGlowRect(getTargetRect(current.target, 20)), 60);
+    const t = setTimeout(() => setGlowRect(getTargetRect(current.target, 22)), 80);
     return () => clearTimeout(t);
   }, [step, current.target]);
 
-  // Auto-start demo on the memory step
+  // ── Elevate the target element above the dim layer while highlighted.
+  //    We inject a one-liner CSS rule that bumps its z-index to 8501, then
+  //    clean it up when the step changes. This keeps the live element 100%
+  //    visible at its true colours — no cloning, no clip-path, no artefacts.
   useEffect(() => {
-    if (current.demo) {
-      setDemoPlaying(true);
-      setDemoKey(k => k + 1);
-    } else {
-      setDemoPlaying(false);
-    }
-  }, [step, current.demo]);
+    if (!current.target) return;
+    const styleEl = document.createElement("style");
+    styleEl.setAttribute("data-bt-highlight", "true");
+    styleEl.textContent = `
+      [data-bt-target="${current.target}"] {
+        position: relative;
+        z-index: 8501 !important;
+        isolation: isolate;
+      }
+    `;
+    document.head.appendChild(styleEl);
+    return () => {
+      const el = document.querySelector('style[data-bt-highlight]');
+      if (el) el.remove();
+    };
+  }, [step, current.target]);
 
   const advance = () => {
     if (isLast) { finish(); return; }
@@ -1793,41 +1837,17 @@ function BlobTeacher({ onDone }) {
 
   const finish = () => { save(BLOB_TEACHER_KEY, true); onDone(); };
 
-  // Panel position: below target if space exists, else above, else bottom-centred
-  const panelBottom = (() => {
-    if (!glowRect || !visible) return "10vh";
-    const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-    const spaceBelow = vh - glowRect.bottom;
-    if (spaceBelow >= 160) return null;   // use top positioning instead
-    return null;
-  })();
-
-  const panelTop = (() => {
-    if (!glowRect || !visible) return undefined;
-    const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  // ── Position the blob/bubble/button panel relative to the glow rect
+  const computePanelPos = () => {
+    if (!glowRect || !visible) return { bottom:"10vh" };
+    const vh = window.innerHeight;
     const spaceBelow = vh - glowRect.bottom;
     const spaceAbove = glowRect.top;
-    if (spaceBelow >= 160) return `${glowRect.bottom + 16}px`;
-    if (spaceAbove >= 160) return `${glowRect.top - 160}px`;
-    return undefined;
-  })();
-
-  const panelStyle = {
-    position: "fixed",
-    top:    panelTop,
-    bottom: panelTop ? undefined : "10vh",
-    left:   "50%",
-    transform: "translateX(-50%)",
-    width:  "min(88vw, 340px)",
-    maxWidth: 340,
-    zIndex: 8502,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 0,
-    boxSizing: "border-box",
-    pointerEvents: visible ? "auto" : "none",
+    if (spaceBelow >= 170) return { top: `${glowRect.bottom + 18}px` };
+    if (spaceAbove >= 170) return { bottom: `${vh - glowRect.top + 18}px` };
+    return { bottom: "10vh" };
   };
+  const panelPos = computePanelPos();
 
   return (
     <>
@@ -1845,29 +1865,32 @@ function BlobTeacher({ onDone }) {
                                70%{opacity:1;transform:translateY(-1px) scale(1.01)}
                               100%{opacity:1;transform:translateY(0) scale(1)} }
         @keyframes btBobble   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
-        @keyframes btGlowPulse{
-          0%,100%{ box-shadow: 0 0 0 3px rgba(246,201,74,0.25),
-                               0 0 16px 6px rgba(246,201,74,0.18); }
-          50%    { box-shadow: 0 0 0 5px rgba(246,201,74,0.45),
-                               0 0 28px 12px rgba(246,201,74,0.32); }
+        @keyframes btGlowPulse {
+          0%,100%{ box-shadow: 0 0 0 4px rgba(246,201,74,0.2),
+                               0 0 18px 7px rgba(246,201,74,0.15); }
+          50%    { box-shadow: 0 0 0 6px rgba(246,201,74,0.42),
+                               0 0 30px 14px rgba(246,201,74,0.28); }
         }
       `}</style>
 
-      {/* ── Smooth full-screen dim — no clip-path, no artefacts ── */}
+      {/* ── Smooth full-screen dim — plain rgba, no clip-path, zero artefacts ── */}
       <div
         onClick={advance}
         style={{
           position:"fixed", inset:0,
           width:"100vw", height:"100dvh",
           zIndex:8500,
-          background:"rgba(40,22,8,0.52)",
+          background:"rgba(40,22,8,0.54)",
           animation: visible ? "btFadeIn 0.45s ease forwards" : "none",
           opacity: visible ? undefined : 0,
           pointerEvents: visible ? "auto" : "none",
         }}
       />
 
-      {/* ── Soft glow ring around the highlighted element — drawn on top of dim ── */}
+      {/* ── Golden glow ring around the highlighted element ─────────────────
+           Drawn above the dim (z-index 8501 matches the elevated element).
+           Only visual decoration — the real element behind it is already
+           elevated and fully visible via the injected CSS rule above.       ── */}
       {glowRect && visible && (
         <div
           onClick={advance}
@@ -1877,30 +1900,42 @@ function BlobTeacher({ onDone }) {
             left:   glowRect.left,
             width:  glowRect.width,
             height: glowRect.height,
-            borderRadius: 20,
-            // Warm golden border + layered box-shadow glow
-            border:"2px solid rgba(246,201,74,0.65)",
-            animation:"btGlowPulse 2s ease-in-out infinite",
-            zIndex:8501,
+            borderRadius: 22,
+            border:"2px solid rgba(246,201,74,0.6)",
+            animation:"btGlowPulse 2.2s ease-in-out infinite",
+            zIndex:8502,
             pointerEvents:"auto",
-            // Bright inner fill so the element behind reads clearly through the dim
-            background:"rgba(255,248,220,0.08)",
+            background:"transparent",
           }}
         />
       )}
 
-      {/* ── Blob + speech + demo + buttons panel ── */}
+      {/* ── Blob + speech + preview + buttons panel ── */}
       <div
         onClick={e => e.stopPropagation()}
-        style={panelStyle}
+        style={{
+          position:"fixed",
+          ...panelPos,
+          left:"50%",
+          transform:"translateX(-50%)",
+          width:"min(88vw, 340px)",
+          maxWidth:340,
+          zIndex:8503,
+          display:"flex",
+          flexDirection:"column",
+          alignItems:"center",
+          gap:0,
+          boxSizing:"border-box",
+          pointerEvents: visible ? "auto" : "none",
+        }}
       >
         {/* Progress dots */}
         <div style={{ display:"flex", gap:6, marginBottom:16,
           animation: visible ? "btCardIn 0.5s ease 0.05s both" : "none" }}>
           {BLOB_TEACHER_STEPS.map((_, i) => (
             <div key={i} style={{
-              width: i===step ? 18 : 7, height:7, borderRadius:50,
-              background: i===step ? "#E85D3A" : i<step ? "#A8C5A0" : "#D4C5B0",
+              width:i===step?18:7, height:7, borderRadius:50,
+              background:i===step?"#E85D3A":i<step?"#A8C5A0":"#D4C5B0",
               border:"1.5px solid #6B4226", transition:"all 0.3s ease",
             }}/>
           ))}
@@ -1908,7 +1943,7 @@ function BlobTeacher({ onDone }) {
 
         {/* Blob + speech bubble row */}
         <div style={{
-          display:"flex", flexDirection:"row", alignItems:"flex-end", gap:8, marginBottom:12,
+          display:"flex", flexDirection:"row", alignItems:"flex-end", gap:8, marginBottom:10,
           animation: leaving
             ? "btBlobOut 0.24s ease forwards"
             : visible ? "btBobble 5s ease-in-out 0.8s infinite" : "none",
@@ -1932,11 +1967,11 @@ function BlobTeacher({ onDone }) {
             </svg>
           </div>
 
-          {/* Speech bubble — Montserrat, wraps naturally, HTML not SVG */}
+          {/* Speech bubble — Montserrat, HTML div, wraps naturally */}
           <div style={{
             animation: leaving ? "none" : visible
               ? "btSpeechIn 0.45s cubic-bezier(0.34,1.56,0.64,1) 0.65s both" : "none",
-            marginBottom:8, flexShrink:1, maxWidth:210,
+            marginBottom:8, flexShrink:1, maxWidth:220,
           }}>
             <div style={{
               position:"relative",
@@ -1953,65 +1988,59 @@ function BlobTeacher({ onDone }) {
               <div style={{ position:"absolute", left:-7, bottom:11, width:0, height:0,
                 borderTop:"5px solid transparent", borderBottom:"5px solid transparent",
                 borderRight:"8px solid #FFFDF5" }}/>
-              {current.speech.map((line, i) => (
-                <p key={i} style={{
-                  margin: i===0 ? 0 : "3px 0 0",
-                  fontFamily:"var(--font-body)",   /* Montserrat */
-                  fontStyle:"italic",
-                  fontSize:"clamp(11px,3.2vw,13px)",
-                  color:"#A07850",
-                  lineHeight:1.5,
-                  whiteSpace:"normal",
-                  wordBreak:"break-word",
-                }}>{line}</p>
-              ))}
+              <p style={{
+                margin:0,
+                fontFamily:"var(--font-body)",    /* Montserrat */
+                fontStyle:"italic",
+                fontSize:"clamp(11px,3.2vw,13px)",
+                color:"#A07850",
+                lineHeight:1.5,
+                whiteSpace:"normal",
+                wordBreak:"break-word",
+              }}>{current.speech}</p>
             </div>
           </div>
         </div>
 
-        {/* Memory demo — only shown on the demo step */}
-        {current.demo && demoPlaying && (
-          <MemoryDemo
-            key={demoKey}
-            blobColor={current.blob}
-            onComplete={advance}   /* auto-advances when demo finishes */
-          />
+        {/* Memory Resurfacing preview card — shown on the preview step */}
+        {hasPreview && visible && !leaving && (
+          <MemoryResurfacePreview />
         )}
 
-        {/* Action buttons — hidden during demo (it auto-advances) */}
-        {!current.demo && (
-          <div style={{
-            display:"flex", gap:8, justifyContent:"center", flexWrap:"wrap",
-            animation: visible ? "btCardIn 0.6s ease 0.3s both" : "none",
+        {/* Action buttons */}
+        <div style={{
+          display:"flex", gap:8, justifyContent:"center", flexWrap:"wrap",
+          marginTop: hasPreview ? 12 : 0,
+          animation: visible ? "btCardIn 0.6s ease 0.3s both" : "none",
+        }}>
+          <button onClick={advance} style={{
+            background:isLast?"#A8C5A0":"#E85D3A",
+            border:"2.5px solid #6B4226", borderRadius:50, padding:"10px 28px",
+            fontFamily:"var(--font-body)",    /* Montserrat */
+            fontSize:14, fontWeight:500,
+            color:isLast?"#3D2510":"white",
+            cursor:"pointer", boxShadow:"3px 4px 0 #6B4226",
+            WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
           }}>
-            <button onClick={advance} style={{
-              background: isLast ? "#A8C5A0" : "#E85D3A",
-              border:"2.5px solid #6B4226", borderRadius:50, padding:"10px 28px",
-              fontFamily:"var(--font-body)",   /* Montserrat */
-              fontSize:14, fontWeight:500,
-              color: isLast ? "#3D2510" : "white",
-              cursor:"pointer", boxShadow:"3px 4px 0 #6B4226",
-              WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
+            {isLast ? "i'm ready" : "next →"}
+          </button>
+          {!isLast && (
+            <button onClick={finish} style={{
+              background:"transparent", border:"none",
+              fontFamily:"var(--font-body)",    /* Montserrat */
+              fontSize:13, color:"#A07850",
+              cursor:"pointer", padding:"10px 8px", opacity:0.7,
+              WebkitTapHighlightColor:"transparent",
             }}>
-              {isLast ? "i'm ready" : "next →"}
+              skip
             </button>
-            {!isLast && (
-              <button onClick={finish} style={{
-                background:"transparent", border:"none",
-                fontFamily:"var(--font-body)",   /* Montserrat */
-                fontSize:13, color:"#A07850",
-                cursor:"pointer", padding:"10px 8px", opacity:0.7,
-                WebkitTapHighlightColor:"transparent",
-              }}>
-                skip
-              </button>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </>
   );
 }
+
 
 
 // ─── COMPLETION STARDUST ─────────────────────────────────────────────────────
