@@ -304,71 +304,80 @@ useEffect(() => {
 }
 
 // ─── ADSENSE ─────────────────────────────────────────────────────────────────
-// Reusable AdSense slot. Loads the adsbygoogle.js script exactly once per page
-// (guarded by a module-level flag), then calls .push({}) on the <ins> element.
-// A min-height prevents layout shift while the ad loads.
-// Safe in React StrictMode — the effect runs once on mount and never re-pushes.
+// Reusable AdSense slot. Script loads once per page; .push({}) fires after the
+// <ins> mounts. Debug styling (dashed border + warm background) makes each
+// container visible even before the ad network fills it.
 
 const ADSENSE_CLIENT = "ca-pub-9881259880719466";
-let adScriptLoaded = false;
+let adScriptInjected = false;
 
 function loadAdSenseScript() {
-  if (adScriptLoaded) return;
-  adScriptLoaded = true;
+  if (adScriptInjected || document.querySelector('script[data-adsense]')) return;
+  adScriptInjected = true;
   const s = document.createElement("script");
   s.async = true;
+  s.setAttribute("data-adsense", "true");
   s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`;
   s.crossOrigin = "anonymous";
   document.head.appendChild(s);
 }
 
 function AdSenseSlot({ slot, label }) {
-  const containerRef = useRef(null);
-  const pushed = useRef(false);
+  const insRef  = useRef(null);
+  const pushed  = useRef(false);
 
   useEffect(() => {
+    // 1. Ensure script is in <head>
     loadAdSenseScript();
-    // Only push once per mount — React StrictMode calls effects twice in dev,
-    // so the `pushed` ref guards against a double-push on the same ins element.
+
+    // 2. Push only once per mounted <ins> element.
+    //    React StrictMode double-invokes effects in dev; the ref guards that.
     if (pushed.current) return;
     pushed.current = true;
-    try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch (e) {
-      // Silently ignore — ads may not load in preview/dev environments.
-    }
+
+    // 3. Push after a brief tick so the <ins> is guaranteed painted.
+    const t = setTimeout(() => {
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch (_) { /* silent — dev/preview environments without ad approval */ }
+    }, 100);
+
+    return () => clearTimeout(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
+    /* DEBUG wrapper — dashed border + tinted bg confirm the slot rendered.
+       Remove the border/background/minHeight overrides when ads are verified. */
     <div
-      ref={containerRef}
       style={{
         width: "100%",
-        minHeight: 80,          // prevents layout shift while ad loads
+        minHeight: 180,
+        boxSizing: "border-box",
+        border: "2px dashed #d8a85f",
+        background: "rgba(255,248,230,0.4)",
+        borderRadius: 10,
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        padding: "6px 0",
-        boxSizing: "border-box",
+        padding: "6px 8px",
+        margin: "4px 0",
       }}
     >
-      {label && (
-        <p style={{
-          fontFamily: "var(--font-body)",
-          fontSize: 9,
-          color: "#C9A87A",
-          letterSpacing: 0.8,
-          textTransform: "uppercase",
-          margin: "0 0 4px",
-          opacity: 0.7,
-          alignSelf: "flex-start",
-        }}>
-          {label}
-        </p>
-      )}
+      {/* "sponsored" label */}
+      <p style={{
+        fontFamily: "var(--font-body)",
+        fontSize: 9,
+        color: "#C9A87A",
+        letterSpacing: 0.8,
+        textTransform: "uppercase",
+        margin: "0 0 4px",
+        opacity: 0.8,
+      }}>
+        {label || "sponsored"}
+      </p>
       <ins
+        ref={insRef}
         className="adsbygoogle"
-        style={{ display: "block", width: "100%" }}
+        style={{ display: "block", width: "100%", flex: 1 }}
         data-ad-client={ADSENSE_CLIENT}
         data-ad-slot={slot}
         data-ad-format="auto"
@@ -713,10 +722,10 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
         })}
       </div>
 
-      {/* Between-jars ad — only when there are 2 or more jars */}
-      {jars.length >= 2 && (
+      {/* Between-jars ad — show when there is at least 1 jar (always visible for testing) */}
+      {jars.length >= 1 && (
         <div style={{ padding:"0 1.5rem", flexShrink:0 }}>
-          <AdSenseSlot slot="8862870404" label="sponsored" />
+          <AdSenseSlot slot="8862870404" />
         </div>
       )}
 
@@ -781,18 +790,16 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
                 )}
               </div>
             </div>
-            {/* Between-thoughts ad: show after every 5th item, only when ≥5 thoughts total */}
-            {displayThoughts.length >= 5 &&
-              (idx + 1) % 5 === 0 &&
-              idx !== displayThoughts.length - 1 && (
-              <AdSenseSlot slot="8368046380" label="sponsored" />
+            {/* Between-thoughts ad: show after the 2nd thought when there are ≥3 thoughts */}
+            {displayThoughts.length >= 3 && idx === 1 && (
+              <AdSenseSlot slot="8368046380" />
             )}
           </React.Fragment>
         ))}
-        {/* Completed-section ad: shown once at the bottom when there are completed thoughts */}
-        {displayThoughts.filter(t => t.completed).length >= 1 && (
+        {/* Completed-section ad: shown once at the bottom when there is ≥1 completed thought */}
+        {displayThoughts.some(t => t.completed) && (
           <div style={{ marginTop:8 }}>
-            <AdSenseSlot slot="3244883075" label="sponsored" />
+            <AdSenseSlot slot="3244883075" />
           </div>
         )}
       </div>
