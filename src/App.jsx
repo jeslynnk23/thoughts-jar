@@ -3204,24 +3204,8 @@ export default function ThoughtJar() {
   const [showHSPrompt, setShowHSPrompt] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(() => !load(INTRO_KEY, false));
 
-  // Derived active jar (clamp index in case jar was removed)
-  const safeIdx  = Math.min(activeJarIndex, Math.max(0, jars.length - 1));
-  const activeJar = jars[safeIdx] || jars[0];
-  const currentThoughts = activeJar?.thoughts || [];
-
-  // Memory resurfacing — recompute for the active jar.
-  // dismissedMemoryJars tracks which jar IDs have been dismissed this session.
-  // setMemoryDismissedTick bumps a counter to force this derivation to re-run after a dismiss.
-  // Switching jars does NOT reset dismissals — each jar is dismissed independently.
-  // eslint-disable-next-line no-unused-vars
-  const _tick = memoryDismissedTick; // read tick so React includes it in render deps
-  const memoryThought = (activeJar && !dismissedMemoryJars.current.has(activeJar.id))
-    ? pickMemoryThought(activeJar)
-    : null;
-
   // ── Persist ──────────────────────────────────────────────────────────────
   useEffect(() => { save(JARS_KEY, jars); }, [jars]);
-  useEffect(() => { save(ACTIVE_JAR, safeIdx); }, [safeIdx]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const showToast = useCallback((msg) => {
@@ -3320,11 +3304,44 @@ export default function ThoughtJar() {
     setEditingJarName(false);
   }, [safeIdx]);
 
-  // Jar navigation
-  const canGoPrev = safeIdx > 0;
-  const canGoNext = safeIdx < jars.length - 1;
+  // ── Jar navigation — with virtual ad slot ────────────────────────────────
+  // When there are ≥2 jars, a virtual ad slot is inserted at display position 1
+  // (between jar 0 and jar 1). The display sequence is:
+  //   [jar0 | AD | jar1 | jar2 | ...]
+  // displayCount = jars.length + (jars.length >= 2 ? 1 : 0)
+  // displayIndex is persisted as activeJarIndex but counts virtual positions.
+  // jarIndexForDisplay(di) maps a display index → real jar index:
+  //   di === 0          → jar 0
+  //   di === 1 & ad    → AD (no jar)
+  //   di > 1  & ad    → jar[di - 1]
+  //   di (no ad)       → jar[di]
+  const hasAdSlot    = jars.length >= 2;
+  const displayCount = jars.length + (hasAdSlot ? 1 : 0);
+  const displayIdx   = Math.min(activeJarIndex, Math.max(0, displayCount - 1));
+  const isAdSlot     = hasAdSlot && displayIdx === 1;
+
+  // Map display index → real jar index for non-ad slots
+  const realJarIdx   = isAdSlot ? 0 : (hasAdSlot && displayIdx > 1 ? displayIdx - 1 : displayIdx);
+  const safeIdx      = Math.min(realJarIdx, Math.max(0, jars.length - 1));
+  const activeJar    = jars[safeIdx] || jars[0];
+  const currentThoughts = activeJar?.thoughts || [];
+
+  const canGoPrev = displayIdx > 0;
+  const canGoNext = displayIdx < displayCount - 1;
   const goPrev = () => { blurKeyboard(); setActiveJarIndex(i => Math.max(0, i - 1)); };
-  const goNext = () => { blurKeyboard(); setActiveJarIndex(i => Math.min(jars.length - 1, i + 1)); };
+  const goNext = () => { blurKeyboard(); setActiveJarIndex(i => Math.min(displayCount - 1, i + 1)); };
+
+  // Persist active display index (maps back to jar via safeIdx above)
+  useEffect(() => { save(ACTIVE_JAR, safeIdx); }, [safeIdx]);
+
+  // Memory resurfacing — recompute for the active jar.
+  // dismissedMemoryJars tracks which jar IDs have been dismissed this session.
+  // Switching jars does NOT reset dismissals — each jar is dismissed independently.
+  // eslint-disable-next-line no-unused-vars
+  const _tick = memoryDismissedTick; // read tick so React includes it in render deps
+  const memoryThought = (!isAdSlot && activeJar && !dismissedMemoryJars.current.has(activeJar.id))
+    ? pickMemoryThought(activeJar)
+    : null;
 
   return (
     <>
@@ -3543,11 +3560,11 @@ export default function ThoughtJar() {
               />
           </button>
 
-          {/* Jar + nav arrows — arrows close to jar body */}
+          {/* Jar zone — or ad slot when navigating to display position 1 */}
           <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
             gap:"clamp(2px,0.8vw,6px)", width:"100%" }}>
 
-            {/* Left arrow — tight to jar */}
+            {/* Left arrow */}
             <button
               onClick={goPrev} disabled={!canGoPrev}
               aria-label="previous jar"
@@ -3564,40 +3581,49 @@ export default function ThoughtJar() {
               </svg>
             </button>
 
-            {/* Jar — maximises central space, left-shifted to balance right icon column */}
-            <div data-bt-target="jar" style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
-              transform:"translate(0px, -64px)",
-              transition:"opacity 0.5s ease, filter 0.5s ease",
-              animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
-              <style>{`
+            {/* Centre slot — jar or ad */}
+            {isAdSlot ? (
+              /* ── Between-Jars Ad Slot ─────────────────────────────────────────
+                 Sits at display position 1 (between jar 0 and jar 1).
+                 Uses the same vertical transform as the jar so it occupies the
+                 same visual zone. The jar still exists; the user navigates past
+                 this slot to reach it. Condition: jars.length >= 2.            */
+              <div style={{
+                flex: "1 1 auto",
+                maxWidth: "min(400px,80vw)",
+                minWidth: 0,
+                transform: "translate(0px, -64px)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+              }}>
+                <AdSenseSlot slot="8862870404" />
+              </div>
+            ) : (
+              /* ── Real jar ─────────────────────────────────────────────────── */
+              <div data-bt-target="jar" style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
+                transform:"translate(0px, -64px)",
+                transition:"opacity 0.5s ease, filter 0.5s ease",
+                animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
+                <style>{`
   @keyframes jarShake {
-    0%, 100% {
-      transform: translate(0px, -64px);
-    }
-    15% {
-      transform: translate(-8px, -64px) rotate(-1.5deg);
-    }
-    30% {
-      transform: translate(7px, -64px) rotate(1.5deg);
-    }
-    45% {
-      transform: translate(-5px, -64px) rotate(-1deg);
-    }
-    60% {
-      transform: translate(4px, -64px) rotate(0.8deg);
-    }
-    75% {
-      transform: translate(-2px, -64px);
-    }
+    0%, 100% { transform: translate(0px, -64px); }
+    15%  { transform: translate(-8px, -64px) rotate(-1.5deg); }
+    30%  { transform: translate(7px, -64px) rotate(1.5deg); }
+    45%  { transform: translate(-5px, -64px) rotate(-1deg); }
+    60%  { transform: translate(4px, -64px) rotate(0.8deg); }
+    75%  { transform: translate(-2px, -64px); }
   }
 `}</style>
-              <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
-                isAnimating={isJarAnimating} jarName={activeJar?.name}
-                lidVariant={(activeJar?.id ?? 0) % 5}
-                onLabelClick={() => { setJarNameInput(activeJar?.name || ""); setEditingJarName(true); }} />
-            </div>
+                <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
+                  isAnimating={isJarAnimating} jarName={activeJar?.name}
+                  lidVariant={(activeJar?.id ?? 0) % 5}
+                  onLabelClick={() => { setJarNameInput(activeJar?.name || ""); setEditingJarName(true); }} />
+              </div>
+            )}
 
-            {/* Right arrow — tight to jar */}
+            {/* Right arrow */}
             <button
               onClick={goNext} disabled={!canGoNext}
               aria-label="next jar"
@@ -3629,20 +3655,6 @@ export default function ThoughtJar() {
                 ? "this jar is full — create a new one"
                 : "tap the dice or jar to rediscover a thought"}
           </p>
-
-          {/* Between-jars ad — homepage only, between jar navigation and TV.
-              Condition: ≥2 jars exist. Shows once, centered, below hint text.
-              Does not cover the jar, dice, input, or TV widget. */}
-          {jars.length >= 2 && (
-            <div style={{
-              width: "100%",
-              display: "flex",
-              justifyContent: "center",
-              pointerEvents: "auto",
-            }}>
-              <AdSenseSlot slot="8862870404" />
-            </div>
-          )}
 
           {/* TV — right edge, clears input bar comfortably */}
           <div data-bt-target="tv" className="tv-widget" style={{
