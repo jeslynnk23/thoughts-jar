@@ -1205,6 +1205,19 @@ function CozyTV({ broadcast }) {
 // Decide which thought (if any) to resurface for a given jar today.
 // Returns a thought object or null.
 function pickMemoryThought(jar) {
+  // ─── DEV TEST ONLY - remove before production ───────────────────────────
+  // To activate: localStorage.setItem("thoughtsJarTestMemoryMode", "true")
+  // To deactivate: localStorage.removeItem("thoughtsJarTestMemoryMode")
+  const isTestMode = localStorage.getItem("thoughtsJarTestMemoryMode") === "true";
+  if (isTestMode) {
+    // Bypass all production gates: min thoughts → 1, age → 0, chance → 100%
+    if (!jar || jar.thoughts.length < 1) return null;
+    const pool = jar.thoughts.filter(t => !t.completed);
+    if (pool.length === 0) return jar.thoughts[0]; // last resort: even completed
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  // ─── END DEV TEST ────────────────────────────────────────────────────────
+
   if (!jar || jar.thoughts.length < MEMORY_MIN_THOUGHTS) return null;
 
   const todayKey = new Date().toISOString().slice(0, 10);
