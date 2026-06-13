@@ -1,5 +1,5 @@
 import './index.css';
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Analytics } from '@vercel/analytics/react';
 
 // ─── CONSTANTS & STORAGE ────────────────────────────────────────────────────
@@ -301,6 +301,81 @@ useEffect(() => {
   }, [volume]);
 
   return { muted, setMuted, volume, setVolume };
+}
+
+// ─── ADSENSE ─────────────────────────────────────────────────────────────────
+// Reusable AdSense slot. Loads the adsbygoogle.js script exactly once per page
+// (guarded by a module-level flag), then calls .push({}) on the <ins> element.
+// A min-height prevents layout shift while the ad loads.
+// Safe in React StrictMode — the effect runs once on mount and never re-pushes.
+
+const ADSENSE_CLIENT = "ca-pub-9881259880719466";
+let adScriptLoaded = false;
+
+function loadAdSenseScript() {
+  if (adScriptLoaded) return;
+  adScriptLoaded = true;
+  const s = document.createElement("script");
+  s.async = true;
+  s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`;
+  s.crossOrigin = "anonymous";
+  document.head.appendChild(s);
+}
+
+function AdSenseSlot({ slot, label }) {
+  const containerRef = useRef(null);
+  const pushed = useRef(false);
+
+  useEffect(() => {
+    loadAdSenseScript();
+    // Only push once per mount — React StrictMode calls effects twice in dev,
+    // so the `pushed` ref guards against a double-push on the same ins element.
+    if (pushed.current) return;
+    pushed.current = true;
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (e) {
+      // Silently ignore — ads may not load in preview/dev environments.
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        minHeight: 80,          // prevents layout shift while ad loads
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        padding: "6px 0",
+        boxSizing: "border-box",
+      }}
+    >
+      {label && (
+        <p style={{
+          fontFamily: "var(--font-body)",
+          fontSize: 9,
+          color: "#C9A87A",
+          letterSpacing: 0.8,
+          textTransform: "uppercase",
+          margin: "0 0 4px",
+          opacity: 0.7,
+          alignSelf: "flex-start",
+        }}>
+          {label}
+        </p>
+      )}
+      <ins
+        className="adsbygoogle"
+        style={{ display: "block", width: "100%" }}
+        data-ad-client={ADSENSE_CLIENT}
+        data-ad-slot={slot}
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      />
+    </div>
+  );
 }
 
 // ─── THOUGHT REVEAL POPUP ───────────────────────────────────────────────────
@@ -638,6 +713,13 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
         })}
       </div>
 
+      {/* Between-jars ad — only when there are 2 or more jars */}
+      {jars.length >= 2 && (
+        <div style={{ padding:"0 1.5rem", flexShrink:0 }}>
+          <AdSenseSlot slot="8862870404" label="sponsored" />
+        </div>
+      )}
+
       {/* List */}
       <div style={{ flex:1,overflowY:"auto",padding:"1rem 1.5rem",display:"flex",flexDirection:"column",gap:10 }}>
         {displayThoughts.length === 0 && (
@@ -645,60 +727,74 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
             no thoughts yet — add one to your jar!
           </p>
         )}
-        {displayThoughts.map(t => (
-          <div key={t.id}
-            style={{ display:"flex",alignItems:"center",gap:12,background:"white",
-              border:`2px solid ${t.completed ? "#D4C5B0" : "#E8D8C0"}`,borderRadius:16,
-              padding:"10px 14px",opacity: t.completed ? 0.72 : 1 }}>
-            <MiniBlob color={PASTEL_COLORS[t.colorIndex ?? 0]} seed={t.blobSeed ?? 0} completed={t.completed} />
-            <div style={{ flex:1,minWidth:0 }}>
-              <p style={{ fontFamily:"var(--font-body)",fontSize:14,color:"#3D2510",lineHeight:1.45,
-                textDecoration: t.completed ? "line-through" : "none",
-                overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
-                {t.text}
-              </p>
-              <p style={{ fontFamily:"var(--font-body)",fontSize:11,color:"#A07850",marginTop:2 }}>
-                {t.jarName} · {new Date(t.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric"})}
-                {t.completed && " · done"}
-              </p>
-            </div>
-            <div style={{ display:"flex",gap:6,flexShrink:0 }}>
-              {!t.completed && (
-                <button onClick={() => onComplete(t.jarId, t.id)}
-                  title="mark complete"
-                  style={{ background:"#A8C5A0",border:"1.8px solid #6B4226",borderRadius:50,
-                    padding:"5px 10px",fontFamily:"var(--font-body)",fontSize:11,fontWeight:500,
-                    color:"#3D2510",cursor:"pointer",whiteSpace:"nowrap" }}>
-                  done
-                </button>
-              )}
-              {deleteConfirm && deleteConfirm.jarId === t.jarId && deleteConfirm.thoughtId === t.id ? (
-                <div style={{ display:"flex",gap:4 }}>
-                  <button onClick={() => { onDelete(t.jarId, t.id); setDeleteConfirm(null); }}
-                    style={{ background:"#E85D3A",border:"1.8px solid #6B4226",borderRadius:50,
+        {displayThoughts.map((t, idx) => (
+          <React.Fragment key={t.id}>
+            <div
+              style={{ display:"flex",alignItems:"center",gap:12,background:"white",
+                border:`2px solid ${t.completed ? "#D4C5B0" : "#E8D8C0"}`,borderRadius:16,
+                padding:"10px 14px",opacity: t.completed ? 0.72 : 1 }}>
+              <MiniBlob color={PASTEL_COLORS[t.colorIndex ?? 0]} seed={t.blobSeed ?? 0} completed={t.completed} />
+              <div style={{ flex:1,minWidth:0 }}>
+                <p style={{ fontFamily:"var(--font-body)",fontSize:14,color:"#3D2510",lineHeight:1.45,
+                  textDecoration: t.completed ? "line-through" : "none",
+                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                  {t.text}
+                </p>
+                <p style={{ fontFamily:"var(--font-body)",fontSize:11,color:"#A07850",marginTop:2 }}>
+                  {t.jarName} · {new Date(t.createdAt).toLocaleDateString("en-US",{month:"short",day:"numeric"})}
+                  {t.completed && " · done"}
+                </p>
+              </div>
+              <div style={{ display:"flex",gap:6,flexShrink:0 }}>
+                {!t.completed && (
+                  <button onClick={() => onComplete(t.jarId, t.id)}
+                    title="mark complete"
+                    style={{ background:"#A8C5A0",border:"1.8px solid #6B4226",borderRadius:50,
                       padding:"5px 10px",fontFamily:"var(--font-body)",fontSize:11,fontWeight:500,
-                      color:"white",cursor:"pointer" }}>
-                    yes, delete
+                      color:"#3D2510",cursor:"pointer",whiteSpace:"nowrap" }}>
+                    done
                   </button>
-                  <button onClick={() => setDeleteConfirm(null)}
-                    style={{ background:"#FBF5E8",border:"1.8px solid #C9A87A",borderRadius:50,
-                      padding:"5px 10px",fontFamily:"var(--font-body)",fontSize:11,
-                      color:"#A07850",cursor:"pointer" }}>
-                    keep
+                )}
+                {deleteConfirm && deleteConfirm.jarId === t.jarId && deleteConfirm.thoughtId === t.id ? (
+                  <div style={{ display:"flex",gap:4 }}>
+                    <button onClick={() => { onDelete(t.jarId, t.id); setDeleteConfirm(null); }}
+                      style={{ background:"#E85D3A",border:"1.8px solid #6B4226",borderRadius:50,
+                        padding:"5px 10px",fontFamily:"var(--font-body)",fontSize:11,fontWeight:500,
+                        color:"white",cursor:"pointer" }}>
+                      yes, delete
+                    </button>
+                    <button onClick={() => setDeleteConfirm(null)}
+                      style={{ background:"#FBF5E8",border:"1.8px solid #C9A87A",borderRadius:50,
+                        padding:"5px 10px",fontFamily:"var(--font-body)",fontSize:11,
+                        color:"#A07850",cursor:"pointer" }}>
+                      keep
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setDeleteConfirm({ jarId: t.jarId, thoughtId: t.id })}
+                    title="delete thought"
+                    style={{ background:"transparent",border:"1.8px solid #D4C5B0",borderRadius:"50%",
+                      width:30,height:30,cursor:"pointer",fontFamily:"var(--font-body)",fontSize:14,
+                      color:"#C9A87A",display:"flex",alignItems:"center",justifyContent:"center" }}>
+                    ×
                   </button>
-                </div>
-              ) : (
-                <button onClick={() => setDeleteConfirm({ jarId: t.jarId, thoughtId: t.id })}
-                  title="delete thought"
-                  style={{ background:"transparent",border:"1.8px solid #D4C5B0",borderRadius:"50%",
-                    width:30,height:30,cursor:"pointer",fontFamily:"var(--font-body)",fontSize:14,
-                    color:"#C9A87A",display:"flex",alignItems:"center",justifyContent:"center" }}>
-                  ×
-                </button>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+            {/* Between-thoughts ad: show after every 5th item, only when ≥5 thoughts total */}
+            {displayThoughts.length >= 5 &&
+              (idx + 1) % 5 === 0 &&
+              idx !== displayThoughts.length - 1 && (
+              <AdSenseSlot slot="8368046380" label="sponsored" />
+            )}
+          </React.Fragment>
         ))}
+        {/* Completed-section ad: shown once at the bottom when there are completed thoughts */}
+        {displayThoughts.filter(t => t.completed).length >= 1 && (
+          <div style={{ marginTop:8 }}>
+            <AdSenseSlot slot="3244883075" label="sponsored" />
+          </div>
+        )}
       </div>
     </div>
   );
