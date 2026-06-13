@@ -1205,10 +1205,10 @@ function CozyTV({ broadcast }) {
 // Decide which thought (if any) to resurface for a given jar today.
 // Returns a thought object or null.
 function pickMemoryThought(jar) {
-  // ─── DEV TEST ONLY - remove before production ───────────────────────────
-  // To activate: localStorage.setItem("thoughtsJarTestMemoryMode", "true")
-  // To deactivate: localStorage.removeItem("thoughtsJarTestMemoryMode")
-  const isTestMode = localStorage.getItem("thoughtsJarTestMemoryMode") === "true";
+  // ─── TESTING BRANCH ONLY - disable before production ────────────────────
+  // To restore manual control: replace `true` below with:
+  //   localStorage.getItem("thoughtsJarTestMemoryMode") === "true"
+  const isTestMode = true; // eslint-disable-line no-constant-condition
   if (isTestMode) {
     // Bypass all production gates: min thoughts → 1, age → 0, chance → 100%
     if (!jar || jar.thoughts.length < 1) return null;
@@ -1266,38 +1266,35 @@ function pickMemoryThought(jar) {
   return pick;
 }
 
-// MemoryResurface — small illustrated bubble that floats near the jar
+// MemoryResurface — fixed centered overlay; zero layout impact on homepage
 function MemoryResurface({ thought, onDismiss, onExpand }) {
   const [visible, setVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
-  // Fade in after a short delay so it doesn't clash with the jar load
+  // Gentle delay so it doesn't compete with the initial jar render
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 1400);
     return () => clearTimeout(t);
   }, []);
 
-  const handleDismiss = (e) => {
-    e.stopPropagation();
+  const dismiss = (e) => {
+    e?.stopPropagation();
     setLeaving(true);
-    setTimeout(onDismiss, 320);
+    setTimeout(onDismiss, 350);
   };
 
-  const handleExpand = () => {
+  const expand = (e) => {
+    e?.stopPropagation();
     setLeaving(true);
     setTimeout(onExpand, 200);
   };
 
   const blobColor = PASTEL_COLORS[(thought.colorIndex ?? 0) % PASTEL_COLORS.length];
-  // Truncate long thoughts for the preview
-  const preview = thought.text.length > 72
-    ? thought.text.slice(0, 70).trimEnd() + "…"
-    : thought.text;
 
   const ago = (() => {
     if (!thought.createdAt) return null;
     const days = Math.floor((Date.now() - new Date(thought.createdAt).getTime()) / 86400000);
-    if (days < 1) return null;
+    if (days < 1)  return null;
     if (days === 1) return "yesterday";
     if (days < 7)  return `${days} days ago`;
     if (days < 14) return "last week";
@@ -1311,153 +1308,205 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
   return (
     <>
       <style>{`
-        @keyframes memFloat {
-          0%   { opacity: 0; transform: translateY(14px) scale(0.94); }
+        @keyframes memFadeUp {
+          0%   { opacity: 0; transform: translateY(22px) scale(0.96); }
+          60%  { opacity: 1; transform: translateY(-4px) scale(1.01); }
           100% { opacity: 1; transform: translateY(0)    scale(1);    }
         }
-        @keyframes memLeave {
-          0%   { opacity: 1; transform: translateY(0)   scale(1);    }
-          100% { opacity: 0; transform: translateY(10px) scale(0.95); }
+        @keyframes memFadeOut {
+          0%   { opacity: 1; transform: translateY(0)    scale(1);    }
+          100% { opacity: 0; transform: translateY(14px) scale(0.95); }
+        }
+        @keyframes memDrift {
+          0%, 100% { transform: translateY(0px);  }
+          50%       { transform: translateY(-5px); }
         }
         @keyframes memBobble {
-          0%, 100% { transform: translateY(0px);   }
-          50%       { transform: translateY(-3px);  }
+          0%, 100% { transform: translateY(0px);  }
+          50%       { transform: translateY(-4px); }
         }
       `}</style>
 
-      {/* Wrapper — positioned in flow below the hint text */}
+      {/* Translucent backdrop — tap outside to dismiss */}
+      <div
+        onClick={dismiss}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(61,37,16,0.08)",
+          backdropFilter: "blur(1px)",
+          WebkitBackdropFilter: "blur(1px)",
+          zIndex: 150,
+          opacity: visible ? 1 : 0,
+          transition: "opacity 0.4s ease",
+          pointerEvents: visible ? "auto" : "none",
+        }}
+      />
+
+      {/* Floating card — fixed, centered, above homepage, below ThoughtReveal (z=151) */}
       <div
         style={{
-          width: "100%",
-          maxWidth: 420,
+          position: "fixed",
+          left: "50%",
+          top: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 151,
+          width: "min(88vw, 380px)",
+          pointerEvents: visible ? "auto" : "none",
           animation: !visible
             ? "none"
             : leaving
-              ? "memLeave 0.32s ease forwards"
-              : "memFloat 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards",
+              ? "memFadeOut 0.35s ease forwards"
+              : "memFadeUp 0.65s cubic-bezier(0.22,1,0.36,1) forwards",
           opacity: visible ? undefined : 0,
         }}
       >
-        {/* Bubble card */}
-        <div
-          onClick={handleExpand}
-          role="button"
-          aria-label="view resurfaced memory"
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 10,
-            background: "#FFFDF5",
-            border: "2px solid #C9A87A",
-            borderRadius: 18,
-            padding: "10px 12px 10px 12px",
-            boxShadow: "3px 4px 0 #E8D0A8",
-            cursor: "pointer",
-            position: "relative",
-            WebkitTapHighlightColor: "transparent",
-            touchAction: "manipulation",
-          }}
-        >
-          {/* Floating mini blob — animates gently */}
-          <div style={{
-            flexShrink: 0,
-            animation: "memBobble 4s ease-in-out infinite",
-            marginTop: 2,
-          }}>
-            <svg viewBox="-1.3 -1.3 2.6 2.6" width={32} height={32}>
-              <path
-                d={BLOB_VARIANTS[thought.blobSeed % BLOB_VARIANTS.length]}
-                fill={blobColor}
-                stroke="#6B4226"
-                strokeWidth={0.15}
-                opacity={0.92}
-              />
-            </svg>
-          </div>
+        {/* Upward drift wrapper — starts after card animates in */}
+        <div style={{
+          animation: visible && !leaving
+            ? "memDrift 6s ease-in-out 0.8s infinite"
+            : "none",
+        }}>
 
-          {/* Text content */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Label row */}
+          {/* Card */}
+          <div style={{
+            background: "#FFFDF5",
+            border: "2.5px solid #C9A87A",
+            borderRadius: 24,
+            boxShadow: "0 8px 32px rgba(107,66,38,0.14), 4px 5px 0 #E8D0A8",
+            overflow: "hidden",
+          }}>
+
+            {/* Label bar */}
             <div style={{
               display: "flex",
               alignItems: "center",
-              gap: 5,
-              marginBottom: 4,
+              justifyContent: "space-between",
+              padding: "10px 16px 8px",
+              borderBottom: "1.5px solid #F0E4D0",
             }}>
-              {/* Tiny sparkle */}
-              <svg viewBox="0 0 14 14" width={11} height={11} style={{ flexShrink: 0 }}>
-                <path d="M7,1 L7.8,5.5 L12,7 L7.8,8.5 L7,13 L6.2,8.5 L2,7 L6.2,5.5 Z"
-                  fill="#C9A87A" stroke="none" opacity={0.85} />
-              </svg>
-              <span style={{
-                fontFamily: "var(--font-body)",
-                fontSize: 10,
-                color: "#A07850",
-                letterSpacing: 0.4,
-                fontStyle: "italic",
-              }}>
-                a thought floated back…
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <svg viewBox="0 0 14 14" width={12} height={12} style={{ flexShrink: 0 }}>
+                  <path d="M7,1 L7.8,5.5 L12,7 L7.8,8.5 L7,13 L6.2,8.5 L2,7 L6.2,5.5 Z"
+                    fill="#C9A87A" opacity={0.9} />
+                </svg>
+                <span style={{
+                  fontFamily: "var(--font-body)",
+                  fontSize: 11,
+                  color: "#A07850",
+                  fontStyle: "italic",
+                  letterSpacing: 0.3,
+                }}>
+                  a thought floated back…
+                </span>
+              </div>
               {ago && (
                 <span style={{
                   fontFamily: "var(--font-body)",
                   fontSize: 10,
                   color: "#C9A87A",
-                  marginLeft: "auto",
+                  background: "#FBF5E8",
+                  border: "1px solid #E8D8C0",
+                  borderRadius: 50,
+                  padding: "2px 8px",
                   whiteSpace: "nowrap",
-                  flexShrink: 0,
                 }}>
                   {ago}
                 </span>
               )}
             </div>
 
-            {/* Thought text */}
-            <p style={{
-              fontFamily: "var(--font-hand)",
-              fontSize: "clamp(13px,2.4vw,16px)",
-              color: "#3D2510",
-              lineHeight: 1.55,
-              margin: 0,
-              overflow: "hidden",
-              display: "-webkit-box",
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: "vertical",
+            {/* Body — blob + thought text */}
+            <div
+              onClick={expand}
+              role="button"
+              aria-label="view full thought"
+              style={{
+                padding: "18px 20px 16px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 14,
+                WebkitTapHighlightColor: "transparent",
+                touchAction: "manipulation",
+              }}
+            >
+              <div style={{
+                flexShrink: 0,
+                animation: "memBobble 5s ease-in-out infinite",
+                marginTop: 3,
+              }}>
+                <svg viewBox="-1.3 -1.3 2.6 2.6" width={38} height={38}>
+                  <path
+                    d={BLOB_VARIANTS[thought.blobSeed % BLOB_VARIANTS.length]}
+                    fill={blobColor}
+                    stroke="#6B4226"
+                    strokeWidth={0.14}
+                    opacity={0.9}
+                  />
+                </svg>
+              </div>
+              <p style={{
+                fontFamily: "var(--font-hand)",
+                fontSize: "clamp(16px,4.2vw,22px)",
+                color: "#3D2510",
+                lineHeight: 1.6,
+                margin: 0,
+                flex: 1,
+                wordBreak: "break-word",
+                hyphens: "auto",
+              }}>
+                {thought.text}
+              </p>
+            </div>
+
+            {/* Footer — action buttons */}
+            <div style={{
+              display: "flex",
+              gap: 8,
+              padding: "0 16px 14px",
+              justifyContent: "flex-end",
             }}>
-              {preview}
-            </p>
-          </div>
+              <button
+                onClick={expand}
+                style={{
+                  background: "#A8C5A0",
+                  border: "2px solid #6B4226",
+                  borderRadius: 50,
+                  padding: "8px 18px",
+                  fontFamily: "var(--font-body)",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "#3D2510",
+                  cursor: "pointer",
+                  boxShadow: "2px 3px 0 #6B4226",
+                  WebkitTapHighlightColor: "transparent",
+                  touchAction: "manipulation",
+                }}
+              >
+                open it
+              </button>
+              <button
+                onClick={dismiss}
+                style={{
+                  background: "transparent",
+                  border: "2px solid #D4C5B0",
+                  borderRadius: 50,
+                  padding: "8px 18px",
+                  fontFamily: "var(--font-body)",
+                  fontSize: 13,
+                  color: "#A07850",
+                  cursor: "pointer",
+                  WebkitTapHighlightColor: "transparent",
+                  touchAction: "manipulation",
+                }}
+              >
+                let it rest
+              </button>
+            </div>
 
-          {/* Dismiss × */}
-          <button
-            onClick={handleDismiss}
-            aria-label="dismiss memory"
-            style={{
-              flexShrink: 0,
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              color: "#C9A87A",
-              fontSize: 18,
-              lineHeight: 1,
-              padding: "0 2px",
-              marginTop: -1,
-              WebkitTapHighlightColor: "transparent",
-              touchAction: "manipulation",
-            }}
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Small dotted tail pointing up toward jar */}
-        <div style={{
-          width: 2,
-          height: 10,
-          borderLeft: "2px dashed #D4C5B0",
-          margin: "0 auto",
-          opacity: 0.6,
-        }} />
+          </div>{/* end card */}
+        </div>{/* end drift wrapper */}
       </div>
     </>
   );
@@ -2840,18 +2889,6 @@ export default function ThoughtJar() {
                 : "tap the dice or jar to rediscover a thought"}
           </p>
 
-          {/* Memory resurfacing — gentle bubble below hint, only when available */}
-          {memoryThought && !revealedThought && (
-            <MemoryResurface
-              thought={memoryThought}
-              onDismiss={() => setMemoryDismissed(true)}
-              onExpand={() => {
-                setMemoryDismissed(true);
-                setRevealedThought(memoryThought);
-              }}
-            />
-          )}
-
           {/* TV — right edge, clears input bar comfortably */}
           <div className="tv-widget" style={{
             position:"absolute",
@@ -2925,6 +2962,18 @@ export default function ThoughtJar() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Memory resurfacing — fixed overlay, renders above homepage without affecting layout */}
+      {memoryThought && !revealedThought && (
+        <MemoryResurface
+          thought={memoryThought}
+          onDismiss={() => setMemoryDismissed(true)}
+          onExpand={() => {
+            setMemoryDismissed(true);
+            setRevealedThought(memoryThought);
+          }}
+        />
       )}
 
       <ThoughtReveal thought={revealedThought} onClose={() => setRevealedThought(null)}
