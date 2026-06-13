@@ -1266,12 +1266,12 @@ function pickMemoryThought(jar) {
   return pick;
 }
 
-// MemoryResurface — fixed centered overlay; zero layout impact on homepage
+// MemoryResurface — full-viewport flex wrapper guarantees true mobile centering.
+// Rendered OUTSIDE the app-root div (which has overflow:hidden) so nothing clips it.
 function MemoryResurface({ thought, onDismiss, onExpand }) {
   const [visible, setVisible] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
-  // Gentle delay so it doesn't compete with the initial jar render
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 1400);
     return () => clearTimeout(t);
@@ -1294,12 +1294,12 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
   const ago = (() => {
     if (!thought.createdAt) return null;
     const days = Math.floor((Date.now() - new Date(thought.createdAt).getTime()) / 86400000);
-    if (days < 1)  return null;
+    if (days < 1)   return null;
     if (days === 1) return "yesterday";
-    if (days < 7)  return `${days} days ago`;
-    if (days < 14) return "last week";
+    if (days < 7)   return `${days} days ago`;
+    if (days < 14)  return "last week";
     const weeks = Math.floor(days / 7);
-    if (weeks < 5) return `${weeks} weeks ago`;
+    if (weeks < 5)  return `${weeks} weeks ago`;
     const months = Math.floor(days / 30);
     if (months < 12) return `${months} month${months > 1 ? "s" : ""} ago`;
     return "a while ago";
@@ -1308,208 +1308,222 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
   return (
     <>
       <style>{`
-        @keyframes memFadeUp {
-          0%   { opacity: 0; transform: translateY(22px) scale(0.96); }
-          60%  { opacity: 1; transform: translateY(-4px) scale(1.01); }
-          100% { opacity: 1; transform: translateY(0)    scale(1);    }
+        @keyframes memFadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
         @keyframes memFadeOut {
-          0%   { opacity: 1; transform: translateY(0)    scale(1);    }
-          100% { opacity: 0; transform: translateY(14px) scale(0.95); }
+          from { opacity: 1; }
+          to   { opacity: 0; }
         }
-        @keyframes memDrift {
-          0%, 100% { margin-top: 0px;  }
-          50%       { margin-top: -6px; }
+        @keyframes memSlideUp {
+          0%   { opacity: 0; transform: translateY(20px) scale(0.97); }
+          70%  { opacity: 1; transform: translateY(-3px) scale(1.01); }
+          100% { opacity: 1; transform: translateY(0)    scale(1);    }
+        }
+        @keyframes memSlideOut {
+          from { opacity: 1; transform: translateY(0)    scale(1);    }
+          to   { opacity: 0; transform: translateY(16px) scale(0.96); }
         }
         @keyframes memBobble {
           0%, 100% { transform: translateY(0px);  }
           50%       { transform: translateY(-4px); }
         }
+        @keyframes memDrift {
+          0%, 100% { transform: translateY(0px);  }
+          50%       { transform: translateY(-5px); }
+        }
       `}</style>
 
-      {/* Translucent backdrop — tap outside to dismiss */}
+      {/* ── Full-viewport backdrop ──────────────────────────────────────────────
+          position:fixed + inset:0 + 100vw/100dvh gives true viewport coverage.
+          No transform on this element — nothing can offset it. Tap to dismiss. */}
       <div
         onClick={dismiss}
         style={{
           position: "fixed",
           inset: 0,
-          background: "rgba(61,37,16,0.08)",
-          backdropFilter: "blur(1px)",
-          WebkitBackdropFilter: "blur(1px)",
-          zIndex: 150,
-          opacity: visible ? 1 : 0,
-          transition: "opacity 0.4s ease",
+          width: "100vw",
+          height: "100dvh",
+          zIndex: 9999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "rgba(61,37,16,0.10)",
+          backdropFilter: "blur(2px)",
+          WebkitBackdropFilter: "blur(2px)",
+          boxSizing: "border-box",
+          animation: leaving
+            ? "memFadeOut 0.35s ease forwards"
+            : "memFadeIn 0.4s ease forwards",
+          opacity: visible ? undefined : 0,
           pointerEvents: visible ? "auto" : "none",
-        }}
-      />
-
-      {/* Floating card — fixed, centered, above homepage, below ThoughtReveal (z=151).
-           The outer div owns ONLY position/size — no transform other than the centering
-           translate, so no child wrapper can interfere with it on mobile.
-           Drift animation lives on the card itself via marginTop oscillation via keyframes
-           that don't touch translate, keeping the fixed centering intact. */}
-      <div
-        style={{
-          position: "fixed",
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%, -50%)",
-          zIndex: 151,
-          width: "min(88vw, 360px)",
-          maxHeight: "75vh",
-          overflowY: "auto",
-          pointerEvents: visible ? "auto" : "none",
-          opacity: visible ? 1 : 0,
-          transition: leaving ? "none" : "opacity 0.4s ease",
-          animation: !visible
-            ? "none"
-            : leaving
-              ? "memFadeOut 0.35s ease forwards"
-              : "memFadeUp 0.65s cubic-bezier(0.22,1,0.36,1) forwards",
         }}
       >
-          {/* Card — drift animates margin-top only, never transform, so centering is safe */}
-          <div style={{
+        {/* ── Popup card ────────────────────────────────────────────────────────
+            Centered purely by parent flexbox — no position, no translate, no margin.
+            The drift animation only moves the card within the flex container,
+            so the flex centering always stays correct. */}
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            width: "min(88vw, 360px)",
+            maxWidth: 360,
+            maxHeight: "75dvh",
+            overflowY: "auto",
+            boxSizing: "border-box",
             background: "#FFFDF5",
             border: "2.5px solid #C9A87A",
             borderRadius: 24,
-            boxShadow: "0 8px 32px rgba(107,66,38,0.14), 4px 5px 0 #E8D0A8",
-            overflow: "hidden",
-            animation: visible && !leaving
-              ? "memDrift 6s ease-in-out 0.8s infinite"
-              : "none",
+            boxShadow: "0 8px 32px rgba(107,66,38,0.18), 4px 5px 0 #E8D0A8",
+            animation: !visible
+              ? "none"
+              : leaving
+                ? "memSlideOut 0.35s ease forwards"
+                : "memSlideUp 0.65s cubic-bezier(0.22,1,0.36,1) forwards, memDrift 7s ease-in-out 1.2s infinite",
+          }}
+        >
+
+          {/* Label bar */}
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "12px 16px 10px",
+            borderBottom: "1.5px solid #F0E4D0",
+            flexWrap: "wrap",
+            gap: 6,
           }}>
-
-            {/* Label bar */}
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "10px 16px 8px",
-              borderBottom: "1.5px solid #F0E4D0",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <svg viewBox="0 0 14 14" width={12} height={12} style={{ flexShrink: 0 }}>
-                  <path d="M7,1 L7.8,5.5 L12,7 L7.8,8.5 L7,13 L6.2,8.5 L2,7 L6.2,5.5 Z"
-                    fill="#C9A87A" opacity={0.9} />
-                </svg>
-                <span style={{
-                  fontFamily: "var(--font-body)",
-                  fontSize: 11,
-                  color: "#A07850",
-                  fontStyle: "italic",
-                  letterSpacing: 0.3,
-                }}>
-                  a thought floated back…
-                </span>
-              </div>
-              {ago && (
-                <span style={{
-                  fontFamily: "var(--font-body)",
-                  fontSize: 10,
-                  color: "#C9A87A",
-                  background: "#FBF5E8",
-                  border: "1px solid #E8D8C0",
-                  borderRadius: 50,
-                  padding: "2px 8px",
-                  whiteSpace: "nowrap",
-                }}>
-                  {ago}
-                </span>
-              )}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <svg viewBox="0 0 14 14" width={12} height={12} style={{ flexShrink: 0 }}>
+                <path d="M7,1 L7.8,5.5 L12,7 L7.8,8.5 L7,13 L6.2,8.5 L2,7 L6.2,5.5 Z"
+                  fill="#C9A87A" opacity={0.9} />
+              </svg>
+              <span style={{
+                fontFamily: "var(--font-body)",
+                fontSize: 11,
+                color: "#A07850",
+                fontStyle: "italic",
+                letterSpacing: 0.3,
+              }}>
+                a thought floated back…
+              </span>
             </div>
+            {ago && (
+              <span style={{
+                fontFamily: "var(--font-body)",
+                fontSize: 10,
+                color: "#C9A87A",
+                background: "#FBF5E8",
+                border: "1px solid #E8D8C0",
+                borderRadius: 50,
+                padding: "2px 8px",
+                whiteSpace: "nowrap",
+                flexShrink: 0,
+              }}>
+                {ago}
+              </span>
+            )}
+          </div>
 
-            {/* Body — blob + thought text */}
-            <div
+          {/* Body — blob + thought text */}
+          <div
+            onClick={expand}
+            role="button"
+            aria-label="view full thought"
+            style={{
+              padding: "20px 20px 16px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 14,
+              boxSizing: "border-box",
+              WebkitTapHighlightColor: "transparent",
+              touchAction: "manipulation",
+            }}
+          >
+            <div style={{
+              flexShrink: 0,
+              animation: "memBobble 5s ease-in-out infinite",
+              marginTop: 2,
+            }}>
+              <svg viewBox="-1.3 -1.3 2.6 2.6" width={36} height={36}>
+                <path
+                  d={BLOB_VARIANTS[thought.blobSeed % BLOB_VARIANTS.length]}
+                  fill={blobColor}
+                  stroke="#6B4226"
+                  strokeWidth={0.14}
+                  opacity={0.9}
+                />
+              </svg>
+            </div>
+            <p style={{
+              fontFamily: "var(--font-hand)",
+              fontSize: "clamp(15px,4vw,20px)",
+              color: "#3D2510",
+              lineHeight: 1.6,
+              margin: 0,
+              flex: 1,
+              minWidth: 0,
+              wordBreak: "break-word",
+              overflowWrap: "break-word",
+              hyphens: "auto",
+            }}>
+              {thought.text}
+            </p>
+          </div>
+
+          {/* Footer — action buttons */}
+          <div style={{
+            display: "flex",
+            gap: 8,
+            padding: "0 16px 16px",
+            justifyContent: "flex-end",
+            flexWrap: "wrap",
+            boxSizing: "border-box",
+          }}>
+            <button
               onClick={expand}
-              role="button"
-              aria-label="view full thought"
               style={{
-                padding: "18px 20px 16px",
+                background: "#A8C5A0",
+                border: "2px solid #6B4226",
+                borderRadius: 50,
+                padding: "9px 20px",
+                fontFamily: "var(--font-body)",
+                fontSize: 13,
+                fontWeight: 500,
+                color: "#3D2510",
                 cursor: "pointer",
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 14,
+                boxShadow: "2px 3px 0 #6B4226",
                 WebkitTapHighlightColor: "transparent",
                 touchAction: "manipulation",
+                boxSizing: "border-box",
               }}
             >
-              <div style={{
-                flexShrink: 0,
-                animation: "memBobble 5s ease-in-out infinite",
-                marginTop: 3,
-              }}>
-                <svg viewBox="-1.3 -1.3 2.6 2.6" width={38} height={38}>
-                  <path
-                    d={BLOB_VARIANTS[thought.blobSeed % BLOB_VARIANTS.length]}
-                    fill={blobColor}
-                    stroke="#6B4226"
-                    strokeWidth={0.14}
-                    opacity={0.9}
-                  />
-                </svg>
-              </div>
-              <p style={{
-                fontFamily: "var(--font-hand)",
-                fontSize: "clamp(16px,4.2vw,22px)",
-                color: "#3D2510",
-                lineHeight: 1.6,
-                margin: 0,
-                flex: 1,
-                wordBreak: "break-word",
-                hyphens: "auto",
-              }}>
-                {thought.text}
-              </p>
-            </div>
+              open it
+            </button>
+            <button
+              onClick={dismiss}
+              style={{
+                background: "transparent",
+                border: "2px solid #D4C5B0",
+                borderRadius: 50,
+                padding: "9px 20px",
+                fontFamily: "var(--font-body)",
+                fontSize: 13,
+                color: "#A07850",
+                cursor: "pointer",
+                WebkitTapHighlightColor: "transparent",
+                touchAction: "manipulation",
+                boxSizing: "border-box",
+              }}
+            >
+              let it rest
+            </button>
+          </div>
 
-            {/* Footer — action buttons */}
-            <div style={{
-              display: "flex",
-              gap: 8,
-              padding: "0 16px 14px",
-              justifyContent: "flex-end",
-            }}>
-              <button
-                onClick={expand}
-                style={{
-                  background: "#A8C5A0",
-                  border: "2px solid #6B4226",
-                  borderRadius: 50,
-                  padding: "8px 18px",
-                  fontFamily: "var(--font-body)",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: "#3D2510",
-                  cursor: "pointer",
-                  boxShadow: "2px 3px 0 #6B4226",
-                  WebkitTapHighlightColor: "transparent",
-                  touchAction: "manipulation",
-                }}
-              >
-                open it
-              </button>
-              <button
-                onClick={dismiss}
-                style={{
-                  background: "transparent",
-                  border: "2px solid #D4C5B0",
-                  borderRadius: 50,
-                  padding: "8px 18px",
-                  fontFamily: "var(--font-body)",
-                  fontSize: 13,
-                  color: "#A07850",
-                  cursor: "pointer",
-                  WebkitTapHighlightColor: "transparent",
-                  touchAction: "manipulation",
-                }}
-              >
-                let it rest
-              </button>
-            </div>
-
-          </div>{/* end card */}
-      </div>
+        </div>{/* end card */}
+      </div>{/* end viewport wrapper */}
     </>
   );
 }
