@@ -298,78 +298,6 @@ useEffect(() => {
   return { muted, setMuted, volume, setVolume };
 }
 
-// ─── RETRO TV ───────────────────────────────────────────────────────────────
-
-function RetroTV({ onOpenBroadcast }) {
-  const [isFlickering, setIsFlickering] = useState(false);
-  const [staticFrame, setStaticFrame]   = useState(0);
-  const flickerTimer = useRef(null);
-
-  const handleTVClick = () => {
-    if (isFlickering) return;
-    setIsFlickering(true);
-    let frame = 0;
-    flickerTimer.current = setInterval(() => {
-      frame++;
-      setStaticFrame(frame % 4);
-      if (frame >= 8) {
-        clearInterval(flickerTimer.current);
-        setIsFlickering(false);
-        setStaticFrame(0);
-        onOpenBroadcast?.();
-      }
-    }, 80);
-  };
-
-  const staticPatterns = [
-    [[22,36,62,36],[22,44,50,44],[22,52,58,52],[22,59,48,59]],
-    [[22,38,55,38],[22,43,62,43],[22,50,44,50],[22,57,60,57]],
-    [[22,37,48,37],[22,45,62,45],[22,51,52,51],[22,58,42,58]],
-    [[22,39,60,39],[22,42,46,42],[22,53,62,53],[22,56,50,56]],
-  ];
-  const lines = staticPatterns[staticFrame];
-
-  return (
-    <div style={{
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: 2,
-  transform: "translateY(-10px)",
-}}>
-      <div style={{
-  fontFamily: "var(--font-hand)",
-  fontSize: 13,
-  color: "#8B4A2F",
-  opacity: 0.95,
-  whiteSpace: "nowrap",
-}}>
-  today’s broadcast ✦
-</div>
-      <svg viewBox="0 0 96 88" width={70} height={64} onClick={handleTVClick}
-        style={{ cursor: "pointer", transition: "transform 0.15s", transform: isFlickering ? "scale(1.04)" : "scale(1)" }}>
-        <rect x={6} y={14} width={76} height={60} rx={7} fill="#D4C5B0" stroke="#6B4226" strokeWidth={2.5} />
-        <rect x={14} y={21} width={50} height={38} rx={4}
-          fill={isFlickering ? "#A8C5B0" : "#7B9BAA"} stroke="#6B4226" strokeWidth={2} />
-        {lines.map(([x1,y1,x2,y2], i) => (
-          <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-            stroke={isFlickering ? "#E8F4E0" : "white"}
-            strokeWidth={isFlickering ? 1.5 : 1} opacity={isFlickering ? 0.55 : 0.25} />
-        ))}
-        <rect x={14} y={21} width={50} height={38} rx={4} fill="white" opacity={isFlickering ? 0.25 : 0.1} />
-        <line x1={34} y1={14} x2={22} y2={2} stroke="#6B4226" strokeWidth={2.5} strokeLinecap="round" />
-        <line x1={48} y1={14} x2={60} y2={2} stroke="#6B4226" strokeWidth={2.5} strokeLinecap="round" />
-        <circle cx={74} cy={34} r={5.5} fill="#B8A88A" stroke="#6B4226" strokeWidth={2} />
-        <circle cx={74} cy={34} r={2} fill="#6B4226" />
-        <circle cx={74} cy={54} r={5.5} fill="#B8A88A" stroke="#6B4226" strokeWidth={2} />
-        <circle cx={74} cy={54} r={2} fill="#6B4226" />
-        <rect x={20} y={72} width={9} height={10} rx={3} fill="#B8A88A" stroke="#6B4226" strokeWidth={2} />
-        <rect x={52} y={72} width={9} height={10} rx={3} fill="#B8A88A" stroke="#6B4226" strokeWidth={2} />
-      </svg>
-    </div>
-  );
-}
-
 // ─── THOUGHT REVEAL POPUP ───────────────────────────────────────────────────
 
 function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList }) {
@@ -773,103 +701,500 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
 
 // ─── DAILY BROADCAST ────────────────────────────────────────────────────────
 
+const BROADCAST_KEY     = "tj-broadcast-today";
+const BROADCAST_IDX_KEY = "tj-broadcast-history";
+
 const COZY_BROADCASTS = [
+  // gentle encouragement
+  "you don't need to solve everything today.",
+  "small steps still count.",
+  "even a little bit of effort is still effort.",
+  "you showed up. that matters more than you think.",
+  "it's okay if today was just about getting through it.",
+  "progress doesn't always look like progress while it's happening.",
+  "rest is part of the work.",
+  "you are allowed to take things slowly.",
+  "one small thing done is better than ten things left undone from exhaustion.",
+  "being gentle with yourself is a skill worth practising.",
+  "you don't have to be at full capacity to be worth something.",
+  "there is still time.",
+  "nothing is ruined.",
+  "a quiet day is still a day.",
+  "some things only need to happen once to change everything.",
+  "it's fine to need more time.",
+  "you are doing better than it feels like right now.",
+  "trying again tomorrow is a completely valid plan.",
+  "the hardest part is often just beginning, and you already did that.",
+  "not every day needs to be meaningful — ordinary days count too.",
+
+  // cozy observations
+  "somewhere right now someone is making tea and thinking of nothing in particular.",
+  "the best kind of afternoon is one with no obligations and soft lighting.",
+  "a blanket, a window, and a quiet hour can fix more than people admit.",
+  "rain sounds exist for a reason.",
+  "some rooms just feel safer than others. find those rooms.",
+  "the smell of something baking in another room is a small miracle.",
+  "late evenings have a different kind of quiet. the good kind.",
+  "there is a version of you that knows how to rest. she is in there.",
+  "a warm drink in both hands is its own kind of meditation.",
+  "nothing has to be productive to be worth doing.",
+  "slow mornings are a form of luxury that costs nothing.",
+  "sitting by a window and watching the world is a completely valid use of time.",
+  "some of the nicest moments are ones that don't get written down anywhere.",
+  "it is okay to want a cozy life. that's a real thing to want.",
+  "soft lighting makes everything feel more manageable.",
+
+  // blob messages
+  "blob would like to remind you to drink some water.",
+  "blob is proud of you for showing up.",
+  "blob says it's okay if today was weird.",
+  "blob left a little warmth on the couch cushion for you.",
+  "blob doesn't need you to be perfect. blob just likes that you're here.",
+  "blob wanted you to know: you smell nice and your handwriting is charming.",
+  "blob is floating nearby in case you need company.",
+  "blob has reviewed your day and decided you did fine, actually.",
+  "blob report: everything is a little wobbly but basically okay.",
+  "blob noticed you kept going even when it was hard. blob respects that.",
+  "blob is small and soft and thinks you deserve a snack.",
+  "blob says: the jar will still be here whenever you come back.",
+  "blob gentle reminder: breathe out slowly.",
+  "blob picked up a quiet signal today and it was specifically for you.",
+  "blob has no notes. blob thinks you're doing great.",
+
+  // Thoughts Jar universe
+  "the jar doesn't mind waiting for you.",
+  "your thoughts are safe inside the jar. they're not going anywhere.",
+  "the jar has been holding things quietly all day.",
+  "today's signal arrived safely.",
+  "the antenna picked up a very cozy signal today.",
+  "the jar knows some thoughts need longer to become clear.",
+  "the blobs inside the jar are floating around softly, just existing.",
+  "a thought dropped in today and it immediately felt at home.",
+  "the jar holds everything without judgment. that's its whole job.",
+  "the blobs are resting. they had a full day.",
+  "some thoughts just need a place to sit for a while before they make sense.",
+  "the jar fills slowly. that's how it's supposed to work.",
+  "tiny jar update: cozy in here. warm. a little crowded but in a good way.",
+  "the jar remembered all your thoughts so you don't have to carry them.",
+  "every thought you drop in is one less thing your brain has to hold alone.",
+
+  // tiny emotional reassurances
+  "you are not behind. there is no schedule.",
+  "it's okay to feel multiple things at once even when they contradict each other.",
+  "your feelings are not overreactions. they are information.",
+  "being tired is not a moral failing.",
+  "not everyone has to understand what you're going through.",
+  "you are allowed to change your mind about things.",
+  "asking for help is not the same as giving up.",
+  "it's okay if you are still figuring things out. most people are.",
+  "a hard week doesn't mean a hard life.",
+  "you are not responsible for other people's moods.",
+  "grief takes as long as it takes. there's no fast track.",
+  "you are not too sensitive. you are paying attention.",
+  "the version of you from two years ago would be quietly impressed right now.",
+  "you don't have to earn your rest.",
+  "being a work in progress is the only honest state anyone can be in.",
+
+  // whimsical notes
+  "today's forecast: mostly gentle, with scattered moments of unexpected okayness.",
+  "tiny weather report: cozy with a chance of snacks.",
+  "the little tv picked up a signal from somewhere soft and sent it here for you.",
+  "ch. 7 has been broadcasting comfort to small apartments since forever.",
+  "a message arrived from somewhere slightly warmer than here. it's for you.",
+  "signal quality: warm. content: soft. duration: as long as you need.",
+  "today's transmission comes wrapped in something that smells faintly of old books.",
+  "the static cleared and just for a moment it said: you're going to be okay.",
+  "somewhere a small creature is building a nest. things are being made cozy.",
+  "the antenna wobbled a little and then found the softest frequency.",
+  "tiny broadcast from a very small station: you are not alone in the weird.",
+  "the channel changes slowly here. there is no rush.",
+  "a cloud shaped like a question mark passed by, and then it wasn't a question anymore.",
+  "this signal travels very far to reach you. it thinks the journey is worth it.",
+
+  // rainy day messages
+  "rain makes everything feel more indoors in a good way.",
+  "a grey day is still a full day.",
+  "rainy afternoons were made for low expectations and warm socks.",
+  "the kind of tired that comes with rain is actually okay to give into.",
+  "puddles exist so that at least one small part of the world is reflecting the sky.",
+  "even the clouds are just water taking a break from being somewhere else.",
+  "bad weather is the universe's way of giving you permission to stay in.",
+  "some feelings are like rain — they pass if you don't fight them.",
+  "a good rain changes the smell of the whole world. that's not nothing.",
+  "you are allowed to like the rain even when everyone else complains about it.",
+
+  // fresh start messages
+  "tomorrow is just today with everything reset.",
+  "a new day doesn't require anything of you except showing up to it.",
+  "even a small change in the morning can make the whole day feel different.",
+  "fresh starts don't have to be dramatic to be real.",
+  "you can begin again very quietly. no announcement necessary.",
+  "every morning is technically a soft reboot.",
+  "you don't need a new year or a monday to start something gentle.",
+  "things can shift slowly and still count as changing.",
+  "not every beginning feels exciting. some feel more like relief.",
+  "you are always allowed to try again.",
+
+  // reflection prompts
+  "what was one small thing today that didn't go wrong?",
+  "is there something you've been carrying that you're ready to set down for a minute?",
+  "what would feel good to drop into the jar tonight?",
+  "is there a thought that's been floating around asking for somewhere to land?",
+  "what are you quieter about than you used to be? is that okay?",
+  "what would you tell a friend who was having your exact kind of week?",
+  "is there something small you did today that you haven't given yourself credit for?",
+  "what does rest look like for you right now, specifically?",
+  "some thoughts are hard to name. you don't have to name them today.",
+  "what is one thing the jar is holding for you that you haven't thought about in a while?",
+
+  // originals
   "someone somewhere is probably making tea right now, standing quietly in their kitchen while the rest of the world keeps rushing without them.",
-
   "today feels like folded laundry, warm lamps, and the strange comfort of finally putting your phone down for a little while.",
-
   "the little blob thinks tomorrow might be softer. not perfect, not magical — just a little easier to carry than today was.",
-
-  "a thought floated by earlier tonight but decided not to stay. some feelings only visit briefly before drifting somewhere gentler.",
-
-  "tiny weather report: emotionally cloudy with warm lighting, low social battery, and a small chance of unexpectedly feeling okay again.",
-
-  "someone out there is probably staring at their ceiling right now, wondering if they’re doing enough. maybe surviving today was already enough.",
-
-  "the room is quieter tonight. the kind of quiet where you can suddenly hear your own thoughts breathing a little slower.",
-
-  "there is no rush to become the final version of yourself. even flowers spend awhile as seeds underground before anyone sees them bloom.",
-
-  "today’s broadcast comes with soft blankets, unfinished to-do lists, and the strange bravery of continuing anyway.",
-
-  "the little tv picked up a signal from somewhere far away. it says a tiny part of tomorrow is already rooting for you.",
-
-  "some jars fill quickly, others take time. neither means your thoughts mattered any less while they were growing.",
-
-  "maybe healing is not becoming a brand new person. maybe it is simply learning how to hold your own heart more gently than before.",
-
-  "a sleepy blob wandered across the screen carrying a thought too heavy for one night alone. luckily, jars are good at holding things for awhile.",
-
-  "there are people who loved older versions of you, and there will be people who love the future versions too. you do not have to stay frozen to remain lovable.",
-
   "tiny midnight forecast: overthinking with occasional moments of clarity, followed by emotional support music playing faintly in another room.",
-
   "sometimes the most meaningful days are the ones that leave almost no evidence behind except a slightly calmer nervous system.",
-
   "the little jar noticed you came back again today. that probably means some small part of you still believes tomorrow is worth reaching.",
-
   "nothing dramatic happened today, and maybe that is its own kind of miracle. quiet days count too.",
-
   "some thoughts are not meant to be solved immediately. some are only asking for somewhere safe to rest for the night.",
-
-  "the tv crackles softly in the corner of the room while tiny stars flicker behind the static. everything feels far away, but not lonely.",
 ];
 
-function DailyBroadcastPopup({ onClose }) {
-  const broadcast = useRef(
-    COZY_BROADCASTS[Math.floor(Math.random() * COZY_BROADCASTS.length)]
-  ).current;
+// Pick today's broadcast — stable per calendar day, cycles through all messages
+function getDailyBroadcast() {
+  const todayKey = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const stored = load(BROADCAST_KEY, null);
+  if (stored && stored.date === todayKey) return stored.message;
+
+  // Build a shuffled cycle so messages don't repeat until all seen
+  let history = load(BROADCAST_IDX_KEY, []);
+  const total = COZY_BROADCASTS.length;
+  history = history.filter(i => i < total);
+  if (history.length >= total) history = [];
+
+  const remaining = Array.from({ length: total }, (_, i) => i).filter(i => !history.includes(i));
+  const pick = remaining[Math.floor(Math.random() * remaining.length)];
+  const message = COZY_BROADCASTS[pick];
+
+  save(BROADCAST_IDX_KEY, [...history, pick]);
+  save(BROADCAST_KEY, { date: todayKey, message });
+  return message;
+}
+
+// ─── RETRO TV (cozy illustrated) ────────────────────────────────────────────
+
+// The TV widget: illustrated hand-drawn style, click to expand broadcast in-place
+function CozyTV({ broadcast }) {
+  const [expanded, setExpanded] = useState(false);
+  const [isFlickering, setIsFlickering] = useState(false);
+  const [staticFrame, setStaticFrame] = useState(0);
+  const flickerTimer = useRef(null);
+
+  const handleTVClick = () => {
+    if (isFlickering || expanded) return;
+    setIsFlickering(true);
+    let frame = 0;
+    flickerTimer.current = setInterval(() => {
+      frame++;
+      setStaticFrame(frame % 4);
+      if (frame >= 7) {
+        clearInterval(flickerTimer.current);
+        setIsFlickering(false);
+        setStaticFrame(0);
+        setExpanded(true);
+      }
+    }, 90);
+  };
+
+  const handleClose = (e) => {
+    e.stopPropagation();
+    setExpanded(false);
+  };
+
+  const staticPatterns = [
+    [[14,24,46,24],[14,30,38,30],[14,36,44,36],[14,41,34,41]],
+    [[14,25,40,25],[14,29,46,29],[14,34,36,34],[14,40,43,40]],
+    [[14,24,36,24],[14,31,46,31],[14,37,40,37],[14,42,34,42]],
+    [[14,26,44,26],[14,30,36,30],[14,36,46,36],[14,42,38,42]],
+  ];
+  const staticLines = staticPatterns[staticFrame];
+
+  // Short preview text (first ~36 chars)
+  const preview = broadcast.length > 36 ? broadcast.slice(0, 36).trimEnd() + "…" : broadcast;
 
   return (
-    <div style={{ position:"fixed",inset:0,background:"rgba(61,37,16,0.45)",backdropFilter:"blur(5px)",
-      zIndex:300,display:"flex",alignItems:"center",justifyContent:"center",padding:"1.5rem" }}
-      onClick={onClose}>
-      <div style={{ background:"#FBF5E8",border:"3px solid #6B4226",borderRadius:20,
-        width:"min(92vw,420px)",boxShadow:"6px 8px 0 #C9A87A",overflow:"hidden" }}
-        onClick={e => e.stopPropagation()}>
+    <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:0 }}>
+      {/* Label above TV */}
+      <div style={{
+        fontFamily:"var(--font-hand)",
+        fontSize:12,
+        color:"#8B4A2F",
+        opacity: expanded ? 0 : 0.9,
+        whiteSpace:"nowrap",
+        marginBottom:3,
+        transition:"opacity 0.2s",
+        pointerEvents:"none",
+      }}>
+        today's broadcast ✦
+      </div>
 
-        <div style={{ background:"#3D2510",padding:"8px 18px",display:"flex",
-          alignItems:"center",justifyContent:"space-between" }}>
-          <span className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:24,color:"#F6C94A",letterSpacing:1,
-            lineHeight:1.6,paddingBottom:4,overflow:"visible",display:"inline-block" }}>
-            ch. 7 — tiny broadcast
-          </span>
-          <button onClick={onClose} aria-label="close broadcast"
-            style={{ background:"transparent",border:"none",color:"#F6C94A",cursor:"pointer",
-              fontFamily:"var(--font-body)",fontSize:18,padding:"2px 4px" }}>
-            X
-          </button>
-        </div>
+      {/* TV body */}
+      <div
+        onClick={handleTVClick}
+        style={{
+          cursor: expanded ? "default" : "pointer",
+          position:"relative",
+          transition:"transform 0.18s cubic-bezier(0.34,1.56,0.64,1)",
+          transform: isFlickering ? "scale(1.05)" : "scale(1)",
+        }}
+        aria-label="open today's broadcast"
+        role="button"
+      >
+        {/* Hand-drawn TV SVG — cream casing, warm felt-y aesthetic */}
+        <svg
+          viewBox="0 0 110 100"
+          width={expanded ? 0 : 88}
+          height={expanded ? 0 : 80}
+          style={{
+            display: expanded ? "none" : "block",
+            filter:"drop-shadow(3px 4px 0px rgba(107,66,38,0.22))",
+            overflow:"visible",
+          }}
+        >
+          {/* Soft drop shadow blob under TV */}
+          <ellipse cx={55} cy={97} rx={34} ry={5} fill="#C9A87A" opacity={0.18} />
 
-        <div style={{ padding:"30px 28px 32px",background:"#FBF5E8",textAlign:"center" }}>
-          <svg viewBox="0 0 72 68" width={68} height={64} style={{ marginBottom:14 }}>
-            <rect x={4} y={10} width={58} height={46} rx={6} fill="#D4C5B0" stroke="#6B4226" strokeWidth={2.2} />
-            <rect x={11} y={16} width={38} height={29} rx={3} fill="#7B9BAA" stroke="#6B4226" strokeWidth={1.8} />
-            <path d="M16 23 H43 M16 29 H38 M16 35 H45 M16 41 H34" stroke="white" strokeWidth={1.2} opacity={0.35} />
-            <line x1={26} y1={10} x2={18} y2={2} stroke="#6B4226" strokeWidth={2} strokeLinecap="round"/>
-            <line x1={36} y1={10} x2={44} y2={2} stroke="#6B4226" strokeWidth={2} strokeLinecap="round"/>
-            <circle cx={57} cy={27} r={4} fill="#B8A88A" stroke="#6B4226" strokeWidth={1.5}/>
-            <circle cx={57} cy={42} r={4} fill="#B8A88A" stroke="#6B4226" strokeWidth={1.5}/>
-            <rect x={16} y={56} width={7} height={8} rx={2} fill="#B8A88A" stroke="#6B4226" strokeWidth={1.5}/>
-            <rect x={40} y={56} width={7} height={8} rx={2} fill="#B8A88A" stroke="#6B4226" strokeWidth={1.5}/>
-          </svg>
-          <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:24,color:"#3D2510",
-            lineHeight:1.5,marginBottom:10 }}>
-            today’s tiny broadcast
-          </p>
-          <p style={{ fontFamily:"var(--font-body)",fontSize:14,color:"#6B5040",lineHeight:1.8 }}>
-            {broadcast}
-          </p>
-          <div style={{ display:"flex",justifyContent:"center",gap:8,marginTop:22,opacity:0.65 }}>
-            {[0,1,2].map(i => (
-              <span key={i} style={{ width:6,height:6,borderRadius:"50%",background:"#C9A87A" }} />
-            ))}
+          {/* TV casing — warm cream, slightly wobbly hand-drawn rect */}
+          <path
+            d="M8,22 C7,20 8,16 12,15 L98,15 C102,15 103,19 103,22 L103,84 C103,88 100,90 96,90 L14,90 C10,90 7,88 8,84 Z"
+            fill="#F5ECD7"
+            stroke="#6B4226"
+            strokeWidth={2.2}
+            strokeLinejoin="round"
+          />
+          {/* Casing inner shadow — top edge warmth */}
+          <path
+            d="M12,18 L98,18 C101,18 102,20 102,22 L102,26 C94,24 16,24 8,26 L8,22 C8,20 9,18 12,18 Z"
+            fill="#E8D8B8"
+            opacity={0.5}
+          />
+
+          {/* Screen bezel */}
+          <rect x={14} y={20} width={64} height={50} rx={5}
+            fill="#3D2A1A" stroke="#6B4226" strokeWidth={1.8} />
+
+          {/* Screen glow — the actual screen area */}
+          <rect x={17} y={23} width={58} height={44} rx={3}
+            fill={isFlickering ? "#8FBBA8" : "#6A8FA0"} />
+
+          {/* Screen content: static lines when idle, or message preview */}
+          {!isFlickering ? (
+            <>
+              {/* Idle: scanlines + tiny blob on screen */}
+              <line x1={21} y1={30} x2={71} y2={30} stroke="white" strokeWidth={0.8} opacity={0.18} />
+              <line x1={21} y1={36} x2={71} y2={36} stroke="white" strokeWidth={0.8} opacity={0.18} />
+              <line x1={21} y1={42} x2={71} y2={42} stroke="white" strokeWidth={0.8} opacity={0.18} />
+              <line x1={21} y1={48} x2={71} y2={48} stroke="white" strokeWidth={0.8} opacity={0.18} />
+              <line x1={21} y1={54} x2={71} y2={54} stroke="white" strokeWidth={0.8} opacity={0.18} />
+              <line x1={21} y1={60} x2={71} y2={60} stroke="white" strokeWidth={0.8} opacity={0.18} />
+              {/* Tiny broadcast label on screen */}
+              <text x={46} y={39} textAnchor="middle"
+                fontFamily="'Montserrat',Arial,sans-serif" fontSize={5}
+                fill="white" opacity={0.55} letterSpacing={0.3}>
+                ch. 7
+              </text>
+              {/* Tiny blob on screen */}
+              <path d="M46,44 C49,42 53,44 52,48 C51,52 47,53 44,51 C41,49 41,46 43,44 C44,43 45,45 46,44 Z"
+                fill="#F2A7B0" opacity={0.7} />
+              <text x={46} y={57} textAnchor="middle"
+                fontFamily="'Montserrat',Arial,sans-serif" fontSize={4.5}
+                fill="white" opacity={0.5}>
+                tap to tune in
+              </text>
+            </>
+          ) : (
+            /* Flickering static */
+            staticLines.map(([x1,y1,x2,y2], i) => (
+              <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
+                stroke="#E8F4E0" strokeWidth={1.8} opacity={0.6} />
+            ))
+          )}
+
+          {/* Screen glare */}
+          <path d="M19,25 C22,24 28,24 30,27 C27,30 21,30 19,27 Z"
+            fill="white" opacity={0.22} />
+
+          {/* Right side panel — knobs + speaker */}
+          {/* Speaker grille dots */}
+          <circle cx={87} cy={30} r={1.2} fill="#C9A87A" opacity={0.7} />
+          <circle cx={87} cy={34} r={1.2} fill="#C9A87A" opacity={0.7} />
+          <circle cx={87} cy={38} r={1.2} fill="#C9A87A" opacity={0.7} />
+          <circle cx={91} cy={30} r={1.2} fill="#C9A87A" opacity={0.7} />
+          <circle cx={91} cy={34} r={1.2} fill="#C9A87A" opacity={0.7} />
+          <circle cx={91} cy={38} r={1.2} fill="#C9A87A" opacity={0.7} />
+          <circle cx={95} cy={30} r={1.2} fill="#C9A87A" opacity={0.7} />
+          <circle cx={95} cy={34} r={1.2} fill="#C9A87A" opacity={0.7} />
+          <circle cx={95} cy={38} r={1.2} fill="#C9A87A" opacity={0.7} />
+
+          {/* Dial knobs */}
+          <circle cx={88} cy={53} r={5.5} fill="#E8D0A8" stroke="#6B4226" strokeWidth={1.8} />
+          <circle cx={88} cy={53} r={2} fill="#C9A87A" />
+          <line x1={88} y1={50} x2={88} y2={48} stroke="#6B4226" strokeWidth={1.2} strokeLinecap="round" />
+
+          <circle cx={88} cy={67} r={4.5} fill="#E8D0A8" stroke="#6B4226" strokeWidth={1.8} />
+          <circle cx={88} cy={67} r={1.6} fill="#C9A87A" />
+
+          {/* Feet / legs */}
+          <rect x={20} y={89} width={10} height={6} rx={3} fill="#E8D0A8" stroke="#6B4226" strokeWidth={1.8} />
+          <rect x={70} y={89} width={10} height={6} rx={3} fill="#E8D0A8" stroke="#6B4226" strokeWidth={1.8} />
+
+          {/* Antennas — slightly wonky */}
+          <line x1={36} y1={15} x2={28} y2={2} stroke="#6B4226" strokeWidth={2} strokeLinecap="round" />
+          <line x1={54} y1={15} x2={64} y2={3} stroke="#6B4226" strokeWidth={2} strokeLinecap="round" />
+          {/* Antenna tips */}
+          <circle cx={28} cy={2} r={2} fill="#F2A7B0" stroke="#6B4226" strokeWidth={1.2} />
+          <circle cx={64} cy={3} r={2} fill="#A8BFDF" stroke="#6B4226" strokeWidth={1.2} />
+        </svg>
+
+        {/* ── EXPANDED STATE: TV grows to show full broadcast ── */}
+        {expanded && (
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width:"min(88vw,340px)",
+              background:"#F5ECD7",
+              border:"2.5px solid #6B4226",
+              borderRadius:18,
+              boxShadow:"5px 6px 0 #C9A87A, 0 2px 18px rgba(107,66,38,0.13)",
+              overflow:"hidden",
+              animation:"tvExpand 0.28s cubic-bezier(0.34,1.56,0.64,1) both",
+            }}
+          >
+            <style>{`
+              @keyframes tvExpand {
+                from { opacity:0; transform:scale(0.88) translateY(8px); }
+                to   { opacity:1; transform:scale(1) translateY(0); }
+              }
+            `}</style>
+
+            {/* TV top bar with antennas */}
+            <div style={{ position:"relative",background:"#F5ECD7",paddingTop:14,paddingBottom:2,display:"flex",justifyContent:"center" }}>
+              {/* Antennas */}
+              <svg viewBox="0 0 120 22" width={120} height={22} style={{ position:"absolute",top:0,left:"50%",transform:"translateX(-50%)" }}>
+                <line x1={48} y1={20} x2={36} y2={2} stroke="#6B4226" strokeWidth={2} strokeLinecap="round" />
+                <line x1={72} y1={20} x2={84} y2={2} stroke="#6B4226" strokeWidth={2} strokeLinecap="round" />
+                <circle cx={36} cy={2} r={2.5} fill="#F2A7B0" stroke="#6B4226" strokeWidth={1.2} />
+                <circle cx={84} cy={2} r={2.5} fill="#A8BFDF" stroke="#6B4226" strokeWidth={1.2} />
+              </svg>
+            </div>
+
+            {/* Screen — the broadcast display area */}
+            <div style={{
+              margin:"0 12px 12px",
+              background:"#2C1E12",
+              borderRadius:10,
+              padding:"16px 18px 18px",
+              border:"2px solid #6B4226",
+              position:"relative",
+              overflow:"hidden",
+            }}>
+              {/* Scanline overlay */}
+              <div style={{
+                position:"absolute",inset:0,
+                backgroundImage:"repeating-linear-gradient(transparent,transparent 3px,rgba(0,0,0,0.08) 3px,rgba(0,0,0,0.08) 4px)",
+                pointerEvents:"none",borderRadius:8,
+              }} />
+              {/* Screen glare */}
+              <div style={{
+                position:"absolute",top:6,left:8,width:36,height:16,
+                background:"rgba(255,255,255,0.07)",borderRadius:"50%",
+                transform:"rotate(-15deg)",pointerEvents:"none",
+              }} />
+
+              {/* Channel tag */}
+              <p style={{
+                fontFamily:"'Montserrat',Arial,sans-serif",
+                fontSize:9,
+                color:"#F6C94A",
+                letterSpacing:2,
+                marginBottom:10,
+                opacity:0.8,
+                textTransform:"uppercase",
+              }}>
+                ✦ ch. 7 · tiny broadcast
+              </p>
+
+              {/* The message */}
+              <p style={{
+                fontFamily:"var(--font-hand)",
+                fontSize:"clamp(15px,3.5vw,19px)",
+                color:"#FFF8EC",
+                lineHeight:1.65,
+                position:"relative",
+                zIndex:1,
+              }}>
+                {broadcast}
+              </p>
+
+              {/* Bottom dots */}
+              <div style={{ display:"flex",gap:5,marginTop:14,opacity:0.45 }}>
+                {[0,1,2].map(i=>(
+                  <span key={i} style={{ width:4,height:4,borderRadius:"50%",background:"#F6C94A",display:"inline-block" }} />
+                ))}
+              </div>
+            </div>
+
+            {/* Bottom casing strip with knob + close */}
+            <div style={{
+              display:"flex",alignItems:"center",justifyContent:"space-between",
+              padding:"6px 16px 12px",
+            }}>
+              {/* Decorative knobs */}
+              <div style={{ display:"flex",gap:8,alignItems:"center" }}>
+                <div style={{ width:14,height:14,borderRadius:"50%",background:"#E8D0A8",border:"2px solid #6B4226" }} />
+                <div style={{ width:10,height:10,borderRadius:"50%",background:"#E8D0A8",border:"1.5px solid #C9A87A" }} />
+              </div>
+              {/* Speaker dots */}
+              <div style={{ display:"flex",flexDirection:"column",gap:3 }}>
+                {[0,1,2].map(row=>(
+                  <div key={row} style={{ display:"flex",gap:3 }}>
+                    {[0,1,2,3].map(col=>(
+                      <div key={col} style={{ width:3,height:3,borderRadius:"50%",background:"#C9A87A",opacity:0.6 }} />
+                    ))}
+                  </div>
+                ))}
+              </div>
+              {/* Close */}
+              <button
+                onClick={handleClose}
+                aria-label="close broadcast"
+                style={{
+                  background:"#E8D0A8",
+                  border:"2px solid #6B4226",
+                  borderRadius:"50%",
+                  width:28,height:28,
+                  cursor:"pointer",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  fontFamily:"var(--font-body)",fontSize:12,
+                  color:"#6B4226",fontWeight:700,
+                  boxShadow:"1px 2px 0 #C9A87A",
+                  flexShrink:0,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Feet */}
+            <div style={{ display:"flex",justifyContent:"space-between",padding:"0 24px 10px" }}>
+              <div style={{ width:20,height:8,borderRadius:4,background:"#E8D0A8",border:"1.5px solid #C9A87A" }} />
+              <div style={{ width:20,height:8,borderRadius:4,background:"#E8D0A8",border:"1.5px solid #C9A87A" }} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
+
 
 // ─── ADD THOUGHT INPUT ───────────────────────────────────────────────────────
 
@@ -1817,7 +2142,7 @@ export default function ThoughtJar() {
   const [revealedThought, setRevealedThought] = useState(null);
   const [isJarAnimating, setIsJarAnimating]   = useState(false);
   const [toast, setToast]         = useState({ message: "", visible: false });
-  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const dailyBroadcast = useRef(getDailyBroadcast()).current;
   const [showList, setShowList]   = useState(false);
   const [showJarFull, setShowJarFull] = useState(false);
   const [showNewJar, setShowNewJar]   = useState(false);
@@ -1932,9 +2257,6 @@ export default function ThoughtJar() {
     setJars(prev => prev.map((jar, i) => i === safeIdx ? { ...jar, name: newName.trim() } : jar));
     setEditingJarName(false);
   }, [safeIdx]);
-
-  const handleOpenBroadcast = useCallback(() => setBroadcastOpen(true), []);
-  const handleCloseBroadcast = useCallback(() => setBroadcastOpen(false), []);
 
   // Jar navigation
   const canGoPrev = safeIdx > 0;
@@ -2249,8 +2571,8 @@ export default function ThoughtJar() {
             right:0,
             bottom:"clamp(96px,16vh,130px)",
             flexDirection:"column",alignItems:"center",
-            opacity:0.88,zIndex:2 }}>
-            <RetroTV onOpenBroadcast={handleOpenBroadcast} />
+            zIndex:2 }}>
+            <CozyTV broadcast={dailyBroadcast} />
           </div>
         </main>
         {/* Footer */}
@@ -2331,7 +2653,6 @@ export default function ThoughtJar() {
         onOpenList={() => { setRevealedThought(null); setShowList(true); }}
       />
 
-      {broadcastOpen && <DailyBroadcastPopup onClose={handleCloseBroadcast} />}
       <Toast message={toast.message} visible={toast.visible} />
       {showTutorial && <TutorialOverlay onDone={() => setShowTutorial(false)} />}
       <Analytics />
