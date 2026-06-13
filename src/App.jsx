@@ -1205,19 +1205,6 @@ function CozyTV({ broadcast }) {
 // Decide which thought (if any) to resurface for a given jar today.
 // Returns a thought object or null.
 function pickMemoryThought(jar) {
-  // ─── TESTING BRANCH ONLY - disable before production ────────────────────
-  // To restore manual control: replace `true` below with:
-  //   localStorage.getItem("thoughtsJarTestMemoryMode") === "true"
-  const isTestMode = true; // eslint-disable-line no-constant-condition
-  if (isTestMode) {
-    // Bypass all production gates: min thoughts → 1, age → 0, chance → 100%
-    if (!jar || jar.thoughts.length < 1) return null;
-    const pool = jar.thoughts.filter(t => !t.completed);
-    if (pool.length === 0) return jar.thoughts[0]; // last resort: even completed
-    return pool[Math.floor(Math.random() * pool.length)];
-  }
-  // ─── END DEV TEST ────────────────────────────────────────────────────────
-
   if (!jar || jar.thoughts.length < MEMORY_MIN_THOUGHTS) return null;
 
   const todayKey = new Date().toISOString().slice(0, 10);
@@ -1648,6 +1635,88 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
         </div>{/* end scene wrapper */}
       </div>{/* end viewport */}
     </>
+  );
+}
+
+// ─── COMPLETION STARDUST ─────────────────────────────────────────────────────
+// Lightweight particle burst shown when a thought is marked complete.
+// Renders into a fixed full-viewport canvas so it never affects layout.
+// Particles are plain divs — no canvas API, no external libraries.
+
+const STARDUST_SHAPES = ["✦","✧","⋆","·","★","✺","✸"];
+const STARDUST_COLORS = ["#F6C94A","#F2A7B0","#A8C5A0","#C9A87A","#D4B8E0","#A8BFD4","#F6C94A"];
+
+function Stardust({ active, onDone }) {
+  const [particles, setParticles] = useState([]);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (!active) return;
+    // Generate 22 particles with randomised properties
+    const ps = Array.from({ length: 22 }, (_, i) => ({
+      id: i,
+      shape: STARDUST_SHAPES[Math.floor(Math.random() * STARDUST_SHAPES.length)],
+      color: STARDUST_COLORS[Math.floor(Math.random() * STARDUST_COLORS.length)],
+      // spread across 30%–70% of viewport width, centred
+      left: 30 + Math.random() * 40,      // vw
+      // start from roughly screen-centre, each drifts up a different amount
+      top: 35 + Math.random() * 30,        // vh at start
+      dx: (Math.random() - 0.5) * 60,     // px horizontal drift
+      dy: -(40 + Math.random() * 80),     // px vertical rise
+      rot: (Math.random() - 0.5) * 360,   // deg rotation
+      size: 12 + Math.random() * 14,       // px font-size
+      delay: Math.random() * 0.25,         // s stagger
+      dur: 0.9 + Math.random() * 0.5,     // s animation duration
+    }));
+    setParticles(ps);
+    // Auto-clean after longest particle finishes (max delay+dur ≈ 1.8s, add buffer)
+    timerRef.current = setTimeout(() => {
+      setParticles([]);
+      onDone?.();
+    }, 2200);
+    return () => clearTimeout(timerRef.current);
+  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!active && particles.length === 0) return null;
+
+  return (
+    <div style={{
+      position:"fixed", inset:0,
+      width:"100vw", height:"100dvh",
+      zIndex:9998,                    // below MemoryResurface (9999) but above everything else
+      pointerEvents:"none",           // never blocks taps
+      overflow:"hidden",
+    }}>
+      {particles.map(p => (
+        <div
+          key={p.id}
+          style={{
+            position:"absolute",
+            left:`${p.left}vw`,
+            top:`${p.top}vh`,
+            fontSize:p.size,
+            color:p.color,
+            userSelect:"none",
+            pointerEvents:"none",
+            willChange:"transform,opacity",
+            animation:`stardustFly ${p.dur}s cubic-bezier(0.22,1,0.36,1) ${p.delay}s forwards`,
+            // CSS custom properties drive the per-particle drift
+            "--dx":`${p.dx}px`,
+            "--dy":`${p.dy}px`,
+            "--rot":`${p.rot}deg`,
+          }}
+        >
+          {p.shape}
+        </div>
+      ))}
+      <style>{`
+        @keyframes stardustFly {
+          0%   { opacity:0;   transform:translate(0,0) rotate(0deg) scale(0.4); }
+          18%  { opacity:1;   transform:translate(calc(var(--dx)*0.2),calc(var(--dy)*0.2)) rotate(calc(var(--rot)*0.2)) scale(1.1); }
+          100% { opacity:0;   transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(0.6); }
+        }
+      `}</style>
+    </div>
   );
 }
 
@@ -2608,6 +2677,7 @@ export default function ThoughtJar() {
   const [showTutorial, setShowTutorial]   = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [memoryDismissed, setMemoryDismissed] = useState(false);
+  const [stardustActive, setStardustActive] = useState(false);
   const toastTimer = useRef(null);
 
   // Show HS prompt if not yet seen — independent of onboarding state
@@ -2687,6 +2757,7 @@ export default function ThoughtJar() {
       thoughts: jar.thoughts.map(t => t.id === thoughtId ? { ...t, completed: true } : t),
     }));
     showToast("thought completed");
+    setStardustActive(true);
   }, [showToast]);
 
   const handleDelete = useCallback((jarId, thoughtId) => {
@@ -3129,6 +3200,7 @@ export default function ThoughtJar() {
       />
 
       <Toast message={toast.message} visible={toast.visible} />
+      <Stardust active={stardustActive} onDone={() => setStardustActive(false)} />
       {showTutorial && <TutorialOverlay onDone={() => setShowTutorial(false)} />}
       <Analytics />
     </>
