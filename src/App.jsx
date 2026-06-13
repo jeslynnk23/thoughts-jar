@@ -16,7 +16,8 @@ const ACTIVE_JAR  = "tj-activeJar";
 const HS_PROMPT_KEY= "tj-hsPromptSeen";
 const MUSIC_KEY    = "tj-musicMuted";
 const MUSIC_VOL_KEY= "tj-musicVol";
-const MEMORY_KEY   = "tj-memory"; // { jarId, thoughtId, date }
+const MEMORY_KEY      = "tj-memory";    // { jarId, thoughtId, date }
+const BLOB_TEACHER_KEY = "tj-blob-taught"; // true once blob teacher is done
 
 const JAR_CAPACITY        = 25;
 const MEMORY_MIN_THOUGHTS = 4;    // jar must have at least this many thoughts
@@ -1638,6 +1639,264 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
   );
 }
 
+// ─── BLOB TEACHER ────────────────────────────────────────────────────────────
+// Lightweight first-visit guide using the same blob character as Memory
+// Resurfacing. Shows once after the main OnboardingFlow completes, then
+// is dismissed to localStorage so it never appears again.
+
+const BLOB_TEACHER_STEPS = [
+  {
+    blob: "#F2A7B0",
+    speech: "hi! i'll show you around.",
+    sub: null,
+  },
+  {
+    blob: "#F6E27A",
+    speech: "tap the jar to pull out a thought.",
+    sub: "or use the dice for a surprise.",
+  },
+  {
+    blob: "#A8C5A0",
+    speech: "drop thoughts in whenever you'd like.",
+    sub: "anything goes — feelings, ideas, small wonders.",
+  },
+  {
+    blob: "#A8BFDF",
+    speech: "sometimes i'll bring old thoughts back.",
+    sub: "just a gentle reminder from your past self.",
+  },
+  {
+    blob: "#D4A5C9",
+    speech: "that's it. i'll be around.",
+    sub: null,
+  },
+];
+
+function BlobTeacher({ onDone }) {
+  const [step, setStep]     = useState(0);
+  const [leaving, setLeaving] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  // Fade in on mount
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 80);
+    return () => clearTimeout(t);
+  }, []);
+
+  const current = BLOB_TEACHER_STEPS[step];
+  const isLast  = step === BLOB_TEACHER_STEPS.length - 1;
+  const blobVariant = step % BLOB_VARIANTS.length;
+
+  const advance = () => {
+    if (isLast) { finish(); return; }
+    setLeaving(true);
+    setTimeout(() => { setLeaving(false); setStep(s => s + 1); }, 240);
+  };
+
+  const finish = () => {
+    save(BLOB_TEACHER_KEY, true);
+    onDone();
+  };
+
+  return (
+    <>
+      <style>{`
+        @keyframes btBackdropIn  { from{opacity:0} to{opacity:1} }
+        @keyframes btBlobIn {
+          0%  {opacity:0;transform:translateY(14px) scale(0.88)}
+          65% {opacity:1;transform:translateY(-3px) scale(1.04)}
+          100%{opacity:1;transform:translateY(0) scale(1)}
+        }
+        @keyframes btBlobOut {
+          from{opacity:1;transform:scale(1)}
+          to  {opacity:0;transform:translateY(8px) scale(0.9)}
+        }
+        @keyframes btSpeechIn {
+          0%  {opacity:0;transform:scale(0.8) translateX(-4px)}
+          70% {opacity:1;transform:scale(1.03)}
+          100%{opacity:1;transform:scale(1)}
+        }
+        @keyframes btCardIn {
+          0%  {opacity:0;transform:translateY(10px) scale(0.96)}
+          70% {opacity:1;transform:translateY(-2px) scale(1.01)}
+          100%{opacity:1;transform:translateY(0) scale(1)}
+        }
+        @keyframes btBobble {
+          0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)}
+        }
+      `}</style>
+
+      {/* Full-viewport backdrop */}
+      <div
+        onClick={advance}          /* tap anywhere to advance */
+        style={{
+          position:"fixed", inset:0,
+          width:"100vw", height:"100dvh",
+          zIndex:8500,              /* below MemoryResurface but above app */
+          display:"flex", flexDirection:"column",
+          alignItems:"center", justifyContent:"center",
+          background:"rgba(53,32,12,0.18)",
+          backdropFilter:"blur(3px)", WebkitBackdropFilter:"blur(3px)",
+          boxSizing:"border-box",
+          opacity: visible ? 1 : 0,
+          animation: visible ? "btBackdropIn 0.4s ease forwards" : "none",
+          pointerEvents: visible ? "auto" : "none",
+        }}
+      >
+        {/* Scene — centred column, stops click-through */}
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            display:"flex", flexDirection:"column",
+            alignItems:"center", gap:0,
+            width:"min(88vw, 340px)", maxWidth:340,
+            boxSizing:"border-box",
+          }}
+        >
+          {/* Progress dots */}
+          <div style={{
+            display:"flex", gap:6, marginBottom:20,
+            animation: visible ? "btCardIn 0.5s ease 0.05s both" : "none",
+          }}>
+            {BLOB_TEACHER_STEPS.map((_, i) => (
+              <div key={i} style={{
+                width: i === step ? 18 : 7, height:7, borderRadius:50,
+                background: i === step ? "#E85D3A" : i < step ? "#A8C5A0" : "#D4C5B0",
+                border:"1.5px solid #6B4226",
+                transition:"all 0.3s ease",
+              }}/>
+            ))}
+          </div>
+
+          {/* Blob + speech bubble row */}
+          <div style={{
+            display:"flex", flexDirection:"row",
+            alignItems:"flex-end", gap:8, marginBottom:12,
+            animation: leaving
+              ? "btBlobOut 0.24s ease forwards"
+              : visible ? "btBobble 5s ease-in-out 0.8s infinite" : "none",
+          }}>
+            {/* Blob */}
+            <div style={{
+              animation: leaving ? "none" : visible
+                ? "btBlobIn 0.85s cubic-bezier(0.22,1,0.36,1) 0.1s both"
+                : "none",
+              position:"relative", display:"inline-block", flexShrink:0,
+            }}>
+              {/* Glow */}
+              <div style={{
+                position:"absolute", inset:-8, borderRadius:"50%",
+                background:`radial-gradient(circle,${current.blob}44 0%,transparent 68%)`,
+                pointerEvents:"none",
+              }}/>
+              <svg viewBox="-1.3 -1.3 2.6 2.6" width={60} height={60} style={{display:"block"}}>
+                <path
+                  d={BLOB_VARIANTS[blobVariant]}
+                  fill={current.blob} stroke="#6B4226" strokeWidth={0.12} opacity={0.95}
+                />
+                <circle cx={-0.27} cy={-0.15} r={0.13} fill="#6B4226" opacity={0.7}/>
+                <circle cx={ 0.27} cy={-0.15} r={0.13} fill="#6B4226" opacity={0.7}/>
+                <path d="M -0.17 0.18 Q 0 0.34 0.17 0.18"
+                  fill="none" stroke="#6B4226" strokeWidth={0.1}
+                  strokeLinecap="round" opacity={0.6}/>
+              </svg>
+            </div>
+
+            {/* Speech bubble */}
+            <div style={{
+              animation: leaving ? "none" : visible
+                ? "btSpeechIn 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.7s both"
+                : "none",
+              marginBottom:8, flexShrink:1,
+            }}>
+              <svg
+                viewBox="0 0 148 48"
+                width={148} height={48}
+                style={{overflow:"visible", display:"block"}}
+              >
+                <path
+                  d="M8,5 C6,3 9,1 13,1 L135,1 C141,1 147,4 147,9
+                     L147,33 C147,39 141,43 135,43 L38,43
+                     C36,43 34,45 30,52 C28,47 26,45 22,43
+                     L13,43 C7,43 1,39 1,33 L1,9 C1,5 4,3 8,5 Z"
+                  fill="#FFFDF5" stroke="#C9A87A" strokeWidth={2}
+                  strokeLinejoin="round" strokeLinecap="round"
+                />
+                <text x="74" y="26" textAnchor="middle"
+                  fontFamily="Georgia,'Times New Roman',serif"
+                  fontStyle="italic" fontSize="11" fill="#A07850" letterSpacing="0.2">
+                  {current.speech}
+                </text>
+              </svg>
+            </div>
+          </div>
+
+          {/* Sub-text card */}
+          <div style={{
+            width:"100%", boxSizing:"border-box",
+            animation: leaving ? "none" : visible
+              ? "btCardIn 0.7s cubic-bezier(0.22,1,0.36,1) 0.4s both"
+              : "none",
+          }}>
+            {current.sub && (
+              <p style={{
+                fontFamily:"var(--font-body)",
+                fontSize:"clamp(13px,3.5vw,15px)",
+                color:"#A07850",
+                lineHeight:1.65,
+                textAlign:"center",
+                margin:"0 0 16px",
+                padding:"0 8px",
+              }}>
+                {current.sub}
+              </p>
+            )}
+            {!current.sub && <div style={{height:16}}/>}
+
+            {/* Action buttons */}
+            <div style={{
+              display:"flex", gap:8, justifyContent:"center", flexWrap:"wrap",
+            }}>
+              <button
+                onClick={advance}
+                style={{
+                  background: isLast ? "#A8C5A0" : "#E85D3A",
+                  border:"2.5px solid #6B4226",
+                  borderRadius:50,
+                  padding:"10px 28px",
+                  fontFamily:"var(--font-body)",
+                  fontSize:14, fontWeight:500,
+                  color: isLast ? "#3D2510" : "white",
+                  cursor:"pointer",
+                  boxShadow:"3px 4px 0 #6B4226",
+                  WebkitTapHighlightColor:"transparent",
+                  touchAction:"manipulation",
+                }}
+              >
+                {isLast ? "i'm ready" : "next →"}
+              </button>
+              {!isLast && (
+                <button
+                  onClick={finish}
+                  style={{
+                    background:"transparent", border:"none",
+                    fontFamily:"var(--font-body)", fontSize:13,
+                    color:"#A07850", cursor:"pointer",
+                    padding:"10px 8px", opacity:0.7,
+                    WebkitTapHighlightColor:"transparent",
+                  }}
+                >
+                  skip
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── COMPLETION STARDUST ─────────────────────────────────────────────────────
 // Lightweight particle burst shown when a thought is marked complete.
 // Renders into a fixed full-viewport canvas so it never affects layout.
@@ -2678,7 +2937,14 @@ export default function ThoughtJar() {
   const [showMenu, setShowMenu] = useState(false);
   const [memoryDismissed, setMemoryDismissed] = useState(false);
   const [stardustActive, setStardustActive] = useState(false);
+  const [showBlobTeacher, setShowBlobTeacher] = useState(false);
   const toastTimer = useRef(null);
+
+  // ── Keyboard helper — blurs any active input/textarea to close mobile keyboard
+  const blurKeyboard = useCallback(() => {
+    const el = document.activeElement;
+    if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) el.blur();
+  }, []);
 
   // Show HS prompt if not yet seen — independent of onboarding state
   // PWA gate: detect if running as installed PWA or in browser
@@ -2722,8 +2988,13 @@ export default function ThoughtJar() {
     // Update first jar name
     setJars(prev => prev.map((jar, i) => i === 0 ? { ...jar, name: chosenNickname } : jar));
 
-    // Auto-show guided tutorial after first onboarding
-    setTimeout(() => { setShowTutorial(true); }, 700);
+    // Show blob teacher unless already seen
+    if (!load(BLOB_TEACHER_KEY, false)) {
+      setTimeout(() => setShowBlobTeacher(true), 500);
+    } else {
+      // Returning user: show the tutorial hint instead
+      setTimeout(() => { setShowTutorial(true); }, 700);
+    }
   }, []);
 
   const handleAddThought = useCallback((text) => {
@@ -2742,14 +3013,16 @@ export default function ThoughtJar() {
     setIsJarAnimating(true);
     setTimeout(() => setIsJarAnimating(false), 600);
     showToast("thought dropped in");
-  }, [currentThoughts.length, updateActiveJar, showToast]);
+    blurKeyboard(); // close mobile keyboard after submitting
+  }, [currentThoughts.length, updateActiveJar, showToast, blurKeyboard]);
 
   const handleJarClick = useCallback(() => {
+    blurKeyboard(); // close keyboard before showing thought reveal
     if (currentThoughts.length === 0) { showToast("this jar is empty — add thoughts to use it"); return; }
     const random = currentThoughts[Math.floor(Math.random() * currentThoughts.length)];
     setIsJarAnimating(true);
     setTimeout(() => { setIsJarAnimating(false); setRevealedThought(random); }, 400);
-  }, [currentThoughts, showToast]);
+  }, [currentThoughts, showToast, blurKeyboard]);
 
   const handleComplete = useCallback((jarId, thoughtId) => {
     setJars(prev => prev.map(jar => jar.id !== jarId ? jar : {
@@ -2795,8 +3068,8 @@ export default function ThoughtJar() {
   // Jar navigation
   const canGoPrev = safeIdx > 0;
   const canGoNext = safeIdx < jars.length - 1;
-  const goPrev = () => setActiveJarIndex(i => Math.max(0, i - 1));
-  const goNext = () => setActiveJarIndex(i => Math.min(jars.length - 1, i + 1));
+  const goPrev = () => { blurKeyboard(); setActiveJarIndex(i => Math.max(0, i - 1)); };
+  const goNext = () => { blurKeyboard(); setActiveJarIndex(i => Math.min(jars.length - 1, i + 1)); };
 
   return (
     <>
@@ -2859,7 +3132,7 @@ export default function ThoughtJar() {
           {/* RIGHT: app menu */}
           <div style={{ position:"relative" }}>
             <button
-              onClick={() => setShowMenu(m => !m)}
+              onClick={() => { blurKeyboard(); setShowMenu(m => !m); }}
               aria-label="open menu"
               style={{
                 display:"flex",alignItems:"center",gap:8,
@@ -2919,7 +3192,7 @@ export default function ThoughtJar() {
                             strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                       ),
-                      action: () => { setShowMenu(false); setShowInfo(true); },
+                      action: () => { blurKeyboard(); setShowMenu(false); setShowInfo(true); },
                     },
                     {
                       label: "all thoughts",
@@ -2934,7 +3207,7 @@ export default function ThoughtJar() {
   }}
 />
                       ),
-                      action: () => { setShowMenu(false); setShowList(true); },
+                      action: () => { blurKeyboard(); setShowMenu(false); setShowList(true); },
                     },
                     {
                       label: "new jar",
@@ -3136,7 +3409,7 @@ export default function ThoughtJar() {
       {editingJarName && (
         <div style={{ position:"fixed",inset:0,background:"rgba(107,66,38,0.2)",backdropFilter:"blur(4px)",
           display:"flex",alignItems:"center",justifyContent:"center",zIndex:400,padding:"1.5rem" }}
-          onClick={() => setEditingJarName(false)}>
+          onClick={() => { blurKeyboard(); setEditingJarName(false); }}>
           <div style={{ background:"#FFFDF5",border:"2.5px solid #6B4226",borderRadius:20,
             width:"min(92vw,360px)",padding:"1.6rem 1.8rem",boxShadow:"5px 6px 0 #C9A87A" }}
             onClick={e => e.stopPropagation()}>
@@ -3201,6 +3474,9 @@ export default function ThoughtJar() {
 
       <Toast message={toast.message} visible={toast.visible} />
       <Stardust active={stardustActive} onDone={() => setStardustActive(false)} />
+      {showBlobTeacher && (
+        <BlobTeacher onDone={() => setShowBlobTeacher(false)} />
+      )}
       {showTutorial && <TutorialOverlay onDone={() => setShowTutorial(false)} />}
       <Analytics />
     </>
