@@ -1,5 +1,5 @@
 import './index.css';
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Analytics } from '@vercel/analytics/react';
 
 // ─── CONSTANTS & STORAGE ────────────────────────────────────────────────────
@@ -303,7 +303,6 @@ useEffect(() => {
   return { muted, setMuted, volume, setVolume };
 }
 
-
 // ─── THOUGHT REVEAL POPUP ───────────────────────────────────────────────────
 
 function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList }) {
@@ -581,7 +580,7 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
             fontWeight: filterJar==="all"?600:400, whiteSpace:"nowrap" }}>all jars</span>
         </button>
 
-        {/* Between-jars ad: inside the horizontal jar strip, after the 2nd jar.
+        {/* Between-jars ad — inside the horizontal jar strip, after the 2nd jar.
             Only renders when there are ≥4 jars. Never covers jar buttons.
             Rendered as a flex child inside the strip so it scrolls with the jars. */}
         {jars.map((jar, idx) => {
@@ -592,44 +591,46 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
           const lidColors = ["#E8C87A","#F2A7B0","#A8C5A0","#F6E27A","#D4A5C9"];
           const lidColor = lidColors[variant];
           return (
-            <button key={jar.id} onClick={() => handleTabClick(jar.id)}
-              style={{ background: isActive ? "#FFF8EC" : "transparent",
-                border:"2px solid " + (isActive ? "#6B4226" : "#D4C5B0"),
-                borderRadius:14,padding:"8px 10px",cursor:"pointer",flexShrink:0,
-                display:"flex",flexDirection:"column",alignItems:"center",gap:4,
-                boxShadow: isActive ? "2px 3px 0 #C9A87A" : "none",
-                position:"relative",transition:"all 0.15s" }}>
-              {isCurrentJar && (
-                <span style={{ position:"absolute",top:4,right:4,width:6,height:6,
-                  borderRadius:"50%",background:"#E85D3A",border:"1px solid #6B4226" }} />
-              )}
-              <svg viewBox="0 0 38 48" width={38} height={48}>
-                <path d="M6,14 C5,16 4,19 4,23 C3,28 3,34 4,39 C5,42 7,44 11,45 C15,46 18,46 19,46 C20,46 23,46 27,45 C31,44 33,42 34,39 C35,34 35,28 34,23 C34,19 33,16 32,14 Z"
-                  fill="#FFF8EC" stroke="#6B4226" strokeWidth={2} strokeLinejoin="round"/>
-                {fillPct > 0 && (
-                  <clipPath id={`fill-${jar.id}`}>
-                    <path d="M6,14 C5,16 4,19 4,23 C3,28 3,34 4,39 C5,42 7,44 11,45 C15,46 18,46 19,46 C20,46 23,46 27,45 C31,44 33,42 34,39 C35,34 35,28 34,23 C34,19 33,16 32,14 Z" />
-                  </clipPath>
+            <React.Fragment key={jar.id}>
+              <button onClick={() => handleTabClick(jar.id)}
+                style={{ background: isActive ? "#FFF8EC" : "transparent",
+                  border:"2px solid " + (isActive ? "#6B4226" : "#D4C5B0"),
+                  borderRadius:14,padding:"8px 10px",cursor:"pointer",flexShrink:0,
+                  display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+                  boxShadow: isActive ? "2px 3px 0 #C9A87A" : "none",
+                  position:"relative",transition:"all 0.15s" }}>
+                {isCurrentJar && (
+                  <span style={{ position:"absolute",top:4,right:4,width:6,height:6,
+                    borderRadius:"50%",background:"#E85D3A",border:"1px solid #6B4226" }} />
                 )}
-                {fillPct > 0 && (
-                  <rect x={3} y={Math.max(14, 45 - fillPct * 30)} width={34} height={32}
-                    fill="#FDE8C8" opacity={0.5} clipPath={`url(#fill-${jar.id})`} />
-                )}
-                <path d="M12,9 C11,10 9,12 9,14 L29,14 C29,12 27,10 26,9 Z"
-                  fill="#FFF8EC" stroke="#6B4226" strokeWidth={1.8} strokeLinejoin="round"/>
-                <rect x={9} y={5} width={20} height={6} rx={2} fill={lidColor} stroke="#6B4226" strokeWidth={1.8}/>
-                <ellipse cx={19} cy={5} rx={4} ry={2} fill={lidColor} stroke="#6B4226" strokeWidth={1.5}
-                  style={{ filter:"brightness(0.88)" }}/>
-              </svg>
-              <span style={{ fontFamily:"var(--font-body)",fontSize:10,color: isActive?"#3D2510":"#A07850",
-                fontWeight: isActive?600:400,
-                maxWidth:52,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
-                {jar.name}
-              </span>
-              <span style={{ fontFamily:"var(--font-body)",fontSize:9,color:"#B89070" }}>
-                {jar.thoughts.length}/25
-              </span>
-            </button>
+                <svg viewBox="0 0 38 48" width={38} height={48}>
+                  <path d="M6,14 C5,16 4,19 4,23 C3,28 3,34 4,39 C5,42 7,44 11,45 C15,46 18,46 19,46 C20,46 23,46 27,45 C31,44 33,42 34,39 C35,34 35,28 34,23 C34,19 33,16 32,14 Z"
+                    fill="#FFF8EC" stroke="#6B4226" strokeWidth={2} strokeLinejoin="round"/>
+                  {fillPct > 0 && (
+                    <clipPath id={`fill-${jar.id}`}>
+                      <path d="M6,14 C5,16 4,19 4,23 C3,28 3,34 4,39 C5,42 7,44 11,45 C15,46 18,46 19,46 C20,46 23,46 27,45 C31,44 33,42 34,39 C35,34 35,28 34,23 C34,19 33,16 32,14 Z" />
+                    </clipPath>
+                  )}
+                  {fillPct > 0 && (
+                    <rect x={3} y={Math.max(14, 45 - fillPct * 30)} width={34} height={32}
+                      fill="#FDE8C8" opacity={0.5} clipPath={`url(#fill-${jar.id})`} />
+                  )}
+                  <path d="M12,9 C11,10 9,12 9,14 L29,14 C29,12 27,10 26,9 Z"
+                    fill="#FFF8EC" stroke="#6B4226" strokeWidth={1.8} strokeLinejoin="round"/>
+                  <rect x={9} y={5} width={20} height={6} rx={2} fill={lidColor} stroke="#6B4226" strokeWidth={1.8}/>
+                  <ellipse cx={19} cy={5} rx={4} ry={2} fill={lidColor} stroke="#6B4226" strokeWidth={1.5}
+                    style={{ filter:"brightness(0.88)" }}/>
+                </svg>
+                <span style={{ fontFamily:"var(--font-body)",fontSize:10,color: isActive?"#3D2510":"#A07850",
+                  fontWeight: isActive?600:400,
+                  maxWidth:52,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+                  {jar.name}
+                </span>
+                <span style={{ fontFamily:"var(--font-body)",fontSize:9,color:"#B89070" }}>
+                  {jar.thoughts.length}/25
+                </span>
+              </button>
+            </React.Fragment>
           );
         })}
       </div>
@@ -641,11 +642,12 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
             no thoughts yet — add one to your jar!
           </p>
         )}
-        {displayThoughts.map((t) => (
-          <div key={t.id}
-            style={{ display:"flex",alignItems:"center",gap:12,background:"white",
-              border:`2px solid ${t.completed ? "#D4C5B0" : "#E8D8C0"}`,borderRadius:16,
-              padding:"10px 14px",opacity: t.completed ? 0.72 : 1 }}>
+        {displayThoughts.map((t, idx) => (
+          <React.Fragment key={t.id}>
+            <div
+              style={{ display:"flex",alignItems:"center",gap:12,background:"white",
+                border:`2px solid ${t.completed ? "#D4C5B0" : "#E8D8C0"}`,borderRadius:16,
+                padding:"10px 14px",opacity: t.completed ? 0.72 : 1 }}>
               <MiniBlob color={PASTEL_COLORS[t.colorIndex ?? 0]} seed={t.blobSeed ?? 0} completed={t.completed} />
               <div style={{ flex:1,minWidth:0 }}>
                 <p style={{ fontFamily:"var(--font-body)",fontSize:14,color:"#3D2510",lineHeight:1.45,
@@ -694,6 +696,7 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
                 )}
               </div>
             </div>
+          </React.Fragment>
         ))}
       </div>
     </div>
@@ -3116,8 +3119,24 @@ export default function ThoughtJar() {
   const [showHSPrompt, setShowHSPrompt] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(() => !load(INTRO_KEY, false));
 
+  // Derived active jar (clamp index in case jar was removed)
+  const safeIdx  = Math.min(activeJarIndex, Math.max(0, jars.length - 1));
+  const activeJar = jars[safeIdx] || jars[0];
+  const currentThoughts = activeJar?.thoughts || [];
+
+  // Memory resurfacing — recompute for the active jar.
+  // dismissedMemoryJars tracks which jar IDs have been dismissed this session.
+  // setMemoryDismissedTick bumps a counter to force this derivation to re-run after a dismiss.
+  // Switching jars does NOT reset dismissals — each jar is dismissed independently.
+  // eslint-disable-next-line no-unused-vars
+  const _tick = memoryDismissedTick; // read tick so React includes it in render deps
+  const memoryThought = (activeJar && !dismissedMemoryJars.current.has(activeJar.id))
+    ? pickMemoryThought(activeJar)
+    : null;
+
   // ── Persist ──────────────────────────────────────────────────────────────
   useEffect(() => { save(JARS_KEY, jars); }, [jars]);
+  useEffect(() => { save(ACTIVE_JAR, safeIdx); }, [safeIdx]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const showToast = useCallback((msg) => {
@@ -3217,23 +3236,10 @@ export default function ThoughtJar() {
   }, [safeIdx]);
 
   // Jar navigation
-  const safeIdx  = Math.min(activeJarIndex, Math.max(0, jars.length - 1));
-  const activeJar = jars[safeIdx] || jars[0];
-  const currentThoughts = activeJar?.thoughts || [];
-
   const canGoPrev = safeIdx > 0;
   const canGoNext = safeIdx < jars.length - 1;
   const goPrev = () => { blurKeyboard(); setActiveJarIndex(i => Math.max(0, i - 1)); };
   const goNext = () => { blurKeyboard(); setActiveJarIndex(i => Math.min(jars.length - 1, i + 1)); };
-
-  useEffect(() => { save(ACTIVE_JAR, safeIdx); }, [safeIdx]);
-
-  // Memory resurfacing
-  // eslint-disable-next-line no-unused-vars
-  const _tick = memoryDismissedTick; // read tick so React includes it in render deps
-  const memoryThought = (activeJar && !dismissedMemoryJars.current.has(activeJar.id))
-    ? pickMemoryThought(activeJar)
-    : null;
 
   return (
     <>
