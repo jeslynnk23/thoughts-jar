@@ -1317,36 +1317,58 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
   return (
     <>
       <style>{`
-        @keyframes memFadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
+        /* ── backdrop ── */
+        @keyframes memBackdropIn  { from { opacity:0 } to { opacity:1 } }
+        @keyframes memBackdropOut { from { opacity:1 } to { opacity:0 } }
+
+        /* ── spark: appears first, pulses, then lingers ── */
+        @keyframes memSparkPop {
+          0%   { opacity:0; transform: scale(0.2); }
+          40%  { opacity:1; transform: scale(1.25); }
+          60%  { transform: scale(0.9); }
+          100% { opacity:1; transform: scale(1); }
         }
-        @keyframes memFadeOut {
-          from { opacity: 1; }
-          to   { opacity: 0; }
+        @keyframes memSparkGlow {
+          0%, 100% { box-shadow: 0 0 6px 3px rgba(246,201,74,0.55),
+                                 0 0 14px 6px rgba(246,201,74,0.25); }
+          50%       { box-shadow: 0 0 10px 5px rgba(246,201,74,0.75),
+                                  0 0 22px 9px rgba(246,201,74,0.35); }
         }
-        @keyframes memSlideUp {
-          0%   { opacity: 0; transform: translateY(20px) scale(0.97); }
-          70%  { opacity: 1; transform: translateY(-3px) scale(1.01); }
-          100% { opacity: 1; transform: translateY(0)    scale(1);    }
+
+        /* ── blob rises up from below ── */
+        @keyframes memBlobRise {
+          0%   { opacity:0; transform: translateY(18px) scale(0.85); }
+          60%  { opacity:1; transform: translateY(-4px) scale(1.05); }
+          100% { opacity:1; transform: translateY(0)    scale(1);    }
         }
-        @keyframes memSlideOut {
-          from { opacity: 1; transform: translateY(0)    scale(1);    }
-          to   { opacity: 0; transform: translateY(16px) scale(0.96); }
+
+        /* ── card unfurls after blob ── */
+        @keyframes memCardReveal {
+          0%   { opacity:0; transform: translateY(12px) scale(0.96); }
+          70%  { opacity:1; transform: translateY(-2px) scale(1.01); }
+          100% { opacity:1; transform: translateY(0)    scale(1);    }
         }
-        @keyframes memBobble {
+
+        /* ── idle float on card ── */
+        @keyframes memFloat {
           0%, 100% { transform: translateY(0px);  }
-          50%       { transform: translateY(-4px); }
+          50%       { transform: translateY(-6px); }
         }
-        @keyframes memDrift {
+
+        /* ── blob bobs continuously ── */
+        @keyframes memBobble {
           0%, 100% { transform: translateY(0px);  }
           50%       { transform: translateY(-5px); }
         }
+
+        /* ── exit ── */
+        @keyframes memOut {
+          from { opacity:1; transform: translateY(0)    scale(1);    }
+          to   { opacity:0; transform: translateY(12px) scale(0.95); }
+        }
       `}</style>
 
-      {/* ── Full-viewport backdrop ──────────────────────────────────────────────
-          position:fixed + inset:0 + 100vw/100dvh gives true viewport coverage.
-          No transform on this element — nothing can offset it. Tap to dismiss. */}
+      {/* ── Full-viewport backdrop — flex centers the scene, tap to dismiss ── */}
       <div
         onClick={dismiss}
         style={{
@@ -1356,185 +1378,234 @@ function MemoryResurface({ thought, onDismiss, onExpand }) {
           height: "100dvh",
           zIndex: 9999,
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "rgba(61,37,16,0.10)",
-          backdropFilter: "blur(2px)",
-          WebkitBackdropFilter: "blur(2px)",
+          background: "rgba(61,37,16,0.13)",
+          backdropFilter: "blur(3px)",
+          WebkitBackdropFilter: "blur(3px)",
           boxSizing: "border-box",
           animation: leaving
-            ? "memFadeOut 0.35s ease forwards"
-            : "memFadeIn 0.4s ease forwards",
+            ? "memBackdropOut 0.4s ease forwards"
+            : "memBackdropIn 0.5s ease forwards",
           opacity: visible ? undefined : 0,
           pointerEvents: visible ? "auto" : "none",
         }}
       >
-        {/* ── Popup card ────────────────────────────────────────────────────────
-            Centered purely by parent flexbox — no position, no translate, no margin.
-            The drift animation only moves the card within the flex container,
-            so the flex centering always stays correct. */}
+        {/* ── Scene wrapper — not clickable-through ── */}
         <div
           onClick={e => e.stopPropagation()}
           style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 0,
             width: "min(88vw, 360px)",
             maxWidth: 360,
-            maxHeight: "75dvh",
-            overflowY: "auto",
             boxSizing: "border-box",
-            background: "#FFFDF5",
-            border: "2.5px solid #C9A87A",
-            borderRadius: 24,
-            boxShadow: "0 8px 32px rgba(107,66,38,0.18), 4px 5px 0 #E8D0A8",
-            animation: !visible
-              ? "none"
-              : leaving
-                ? "memSlideOut 0.35s ease forwards"
-                : "memSlideUp 0.65s cubic-bezier(0.22,1,0.36,1) forwards, memDrift 7s ease-in-out 1.2s infinite",
+            animation: leaving
+              ? "memOut 0.4s ease forwards"
+              : "memFloat 8s ease-in-out 1.8s infinite",
           }}
         >
 
-          {/* Label bar */}
+          {/* ── 1. Spark ─────────────────────────────────────────────────── */}
           <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "12px 16px 10px",
-            borderBottom: "1.5px solid #F0E4D0",
-            flexWrap: "wrap",
-            gap: 6,
+            width: 12,
+            height: 12,
+            borderRadius: "50%",
+            background: "#F6C94A",
+            marginBottom: 10,
+            animation: visible && !leaving
+              ? "memSparkPop 0.6s cubic-bezier(0.22,1,0.36,1) forwards, memSparkGlow 2.5s ease-in-out 0.6s infinite"
+              : "none",
+            opacity: visible ? undefined : 0,
+          }} />
+
+          {/* ── 2. Blob rising ───────────────────────────────────────────── */}
+          <div style={{
+            animation: visible && !leaving
+              ? "memBobble 5s ease-in-out 1s infinite"
+              : "none",
+            marginBottom: 14,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <svg viewBox="0 0 14 14" width={12} height={12} style={{ flexShrink: 0 }}>
-                <path d="M7,1 L7.8,5.5 L12,7 L7.8,8.5 L7,13 L6.2,8.5 L2,7 L6.2,5.5 Z"
-                  fill="#C9A87A" opacity={0.9} />
-              </svg>
+            <div style={{
+              animation: visible && !leaving
+                ? "memBlobRise 0.9s cubic-bezier(0.22,1,0.36,1) 0.25s both"
+                : "none",
+              opacity: visible ? undefined : 0,
+            }}>
+              {/* Soft glow ring behind blob */}
+              <div style={{ position: "relative", display: "inline-block" }}>
+                <div style={{
+                  position: "absolute",
+                  inset: -8,
+                  borderRadius: "50%",
+                  background: `radial-gradient(circle, ${blobColor}55 0%, transparent 70%)`,
+                  pointerEvents: "none",
+                }} />
+                <svg viewBox="-1.3 -1.3 2.6 2.6" width={62} height={62} style={{ display: "block" }}>
+                  <path
+                    d={BLOB_VARIANTS[thought.blobSeed % BLOB_VARIANTS.length]}
+                    fill={blobColor}
+                    stroke="#6B4226"
+                    strokeWidth={0.12}
+                    opacity={0.95}
+                  />
+                  {/* tiny eye dots on the blob */}
+                  <circle cx={-0.28} cy={-0.18} r={0.13} fill="#6B4226" opacity={0.7} />
+                  <circle cx={ 0.28} cy={-0.18} r={0.13} fill="#6B4226" opacity={0.7} />
+                  {/* tiny smile */}
+                  <path d="M -0.18 0.15 Q 0 0.32 0.18 0.15"
+                    fill="none" stroke="#6B4226" strokeWidth={0.1}
+                    strokeLinecap="round" opacity={0.6} />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* ── 3. Thought card ──────────────────────────────────────────── */}
+          <div
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              background: "#FFFDF5",
+              border: "2px solid #C9A87A",
+              borderRadius: 22,
+              boxShadow: "0 6px 28px rgba(107,66,38,0.16), 3px 4px 0 #E8D0A8",
+              overflow: "hidden",
+              animation: visible && !leaving
+                ? "memCardReveal 0.8s cubic-bezier(0.22,1,0.36,1) 0.55s both"
+                : "none",
+              opacity: visible ? undefined : 0,
+            }}
+          >
+            {/* Blob speech label */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "11px 16px 9px",
+              borderBottom: "1.5px solid #F0E4D0",
+              flexWrap: "wrap",
+              gap: 6,
+            }}>
               <span style={{
                 fontFamily: "var(--font-body)",
                 fontSize: 11,
                 color: "#A07850",
                 fontStyle: "italic",
-                letterSpacing: 0.3,
+                letterSpacing: 0.2,
+                lineHeight: 1.5,
               }}>
-                a thought floated back…
+                ✨ i found this again...
               </span>
+              {ago && (
+                <span style={{
+                  fontFamily: "var(--font-body)",
+                  fontSize: 10,
+                  color: "#C9A87A",
+                  background: "#FBF5E8",
+                  border: "1px solid #E8D8C0",
+                  borderRadius: 50,
+                  padding: "2px 9px",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}>
+                  {ago}
+                </span>
+              )}
             </div>
-            {ago && (
-              <span style={{
-                fontFamily: "var(--font-body)",
-                fontSize: 10,
-                color: "#C9A87A",
-                background: "#FBF5E8",
-                border: "1px solid #E8D8C0",
-                borderRadius: 50,
-                padding: "2px 8px",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}>
-                {ago}
-              </span>
-            )}
-          </div>
 
-          {/* Body — blob floats above, thought text is the main visual focus */}
-          <div
-            onClick={expand}
-            role="button"
-            aria-label="view full thought"
-            style={{
-              padding: "22px 22px 18px",
-              cursor: "pointer",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 16,
-              boxSizing: "border-box",
-              WebkitTapHighlightColor: "transparent",
-              touchAction: "manipulation",
-            }}
-          >
-            {/* Blob centered above text */}
-            <div style={{
-              flexShrink: 0,
-              animation: "memBobble 5s ease-in-out infinite",
-            }}>
-              <svg viewBox="-1.3 -1.3 2.6 2.6" width={44} height={44}>
-                <path
-                  d={BLOB_VARIANTS[thought.blobSeed % BLOB_VARIANTS.length]}
-                  fill={blobColor}
-                  stroke="#6B4226"
-                  strokeWidth={0.13}
-                  opacity={0.9}
-                />
-              </svg>
-            </div>
-            {/* Thought text — large, centered, readable, the main focus */}
-            <p style={{
-              fontFamily: "var(--font-hand)",
-              fontSize: "clamp(18px,5vw,22px)",
-              color: "#3D2510",
-              lineHeight: 1.65,
-              margin: 0,
-              width: "100%",
-              textAlign: "center",
-              wordBreak: "break-word",
-              overflowWrap: "break-word",
-              hyphens: "auto",
-            }}>
-              {thought.text}
-            </p>
-          </div>
-
-          {/* Footer — action buttons, centered to match body layout */}
-          <div style={{
-            display: "flex",
-            gap: 8,
-            padding: "4px 20px 20px",
-            justifyContent: "center",
-            flexWrap: "wrap",
-            boxSizing: "border-box",
-          }}>
-            <button
+            {/* Thought text — tap to open full view */}
+            <div
               onClick={expand}
+              role="button"
+              aria-label="open this thought"
               style={{
-                background: "#A8C5A0",
-                border: "2px solid #6B4226",
-                borderRadius: 50,
-                padding: "9px 20px",
-                fontFamily: "var(--font-body)",
-                fontSize: 13,
-                fontWeight: 500,
+                padding: "22px 22px 20px",
+                cursor: "pointer",
+                boxSizing: "border-box",
+                WebkitTapHighlightColor: "transparent",
+                touchAction: "manipulation",
+              }}
+            >
+              {/* Decorative opening quote */}
+              <div style={{
+                fontFamily: "Georgia, serif",
+                fontSize: 36,
+                color: "#E8D0A8",
+                lineHeight: 0.6,
+                marginBottom: 6,
+                userSelect: "none",
+              }}>"</div>
+              <p style={{
+                fontFamily: "var(--font-hand)",
+                fontSize: "clamp(18px,5vw,22px)",
                 color: "#3D2510",
-                cursor: "pointer",
-                boxShadow: "2px 3px 0 #6B4226",
-                WebkitTapHighlightColor: "transparent",
-                touchAction: "manipulation",
-                boxSizing: "border-box",
-              }}
-            >
-              open it
-            </button>
-            <button
-              onClick={dismiss}
-              style={{
-                background: "transparent",
-                border: "2px solid #D4C5B0",
-                borderRadius: 50,
-                padding: "9px 20px",
-                fontFamily: "var(--font-body)",
-                fontSize: 13,
-                color: "#A07850",
-                cursor: "pointer",
-                WebkitTapHighlightColor: "transparent",
-                touchAction: "manipulation",
-                boxSizing: "border-box",
-              }}
-            >
-              let it rest
-            </button>
-          </div>
+                lineHeight: 1.7,
+                margin: 0,
+                textAlign: "center",
+                wordBreak: "break-word",
+                overflowWrap: "break-word",
+                hyphens: "auto",
+              }}>
+                {thought.text}
+              </p>
+            </div>
 
-        </div>{/* end card */}
-      </div>{/* end viewport wrapper */}
+            {/* Action buttons */}
+            <div style={{
+              display: "flex",
+              gap: 8,
+              padding: "0 18px 18px",
+              justifyContent: "center",
+              flexWrap: "wrap",
+              boxSizing: "border-box",
+            }}>
+              <button
+                onClick={expand}
+                style={{
+                  background: "#A8C5A0",
+                  border: "2px solid #6B4226",
+                  borderRadius: 50,
+                  padding: "9px 20px",
+                  fontFamily: "var(--font-body)",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: "#3D2510",
+                  cursor: "pointer",
+                  boxShadow: "2px 3px 0 #6B4226",
+                  WebkitTapHighlightColor: "transparent",
+                  touchAction: "manipulation",
+                  boxSizing: "border-box",
+                }}
+              >
+                thanks, little blob
+              </button>
+              <button
+                onClick={dismiss}
+                style={{
+                  background: "transparent",
+                  border: "2px solid #D4C5B0",
+                  borderRadius: 50,
+                  padding: "9px 20px",
+                  fontFamily: "var(--font-body)",
+                  fontSize: 13,
+                  color: "#A07850",
+                  cursor: "pointer",
+                  WebkitTapHighlightColor: "transparent",
+                  touchAction: "manipulation",
+                  boxSizing: "border-box",
+                }}
+              >
+                let it drift away
+              </button>
+            </div>
+
+          </div>{/* end thought card */}
+        </div>{/* end scene wrapper */}
+      </div>{/* end viewport */}
     </>
   );
 }
