@@ -381,14 +381,40 @@ function AdSenseSlot({ slot }) {
 
 // ─── THOUGHT REVEAL POPUP ───────────────────────────────────────────────────
 
-function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList }) {
+function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList, onEdit }) {
   const [shaking, setShaking] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftText, setDraftText] = useState("");
+
+  // Reset editing state whenever a different thought is surfaced
+  useEffect(() => {
+    setIsEditing(false);
+    setDraftText(thought ? thought.text : "");
+  }, [thought?.id]);
+
   if (!thought) return null;
 
   const handleReroll = () => {
     setShaking(true);
     setTimeout(() => setShaking(false), 500);
     setTimeout(() => onReroll(), 120);
+  };
+
+  const handleStartEdit = () => {
+    setDraftText(thought.text);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setDraftText(thought.text);
+  };
+
+  const handleSaveEdit = () => {
+    const trimmed = draftText.trim();
+    if (!trimmed) { handleCancelEdit(); return; }
+    onEdit(thought.id, trimmed);
+    setIsEditing(false);
   };
 
   const blobColor = PASTEL_COLORS[thought.colorIndex ?? 0];
@@ -418,7 +444,7 @@ function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList }) {
             <path d={blobPath} fill="white" opacity={0.12} transform="scale(0.82) translate(32, 26)" />
           </svg>
 
-          {/* Dice + list icons — pinned top-right, following blob curve */}
+          {/* Icons — pinned top-right, following blob curve */}
           <div style={{
   position:"absolute",
   top:"10%",
@@ -429,13 +455,14 @@ function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList }) {
   zIndex:10,
   pointerEvents:"auto",
 }}>
-            <button onClick={e => { e.stopPropagation(); handleReroll(); }} aria-label="roll again"
-              style={{ background:"rgba(255,248,236,0.95)",border:"2.5px solid #6B4226",borderRadius:"50%",
-                width:46,height:46,display:"flex",alignItems:"center",justifyContent:"center",
-                cursor:"pointer",boxShadow:"2px 3px 0 rgba(107,66,38,0.35)",flexShrink:0,
-                WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
-              {/* Mini 3D dice — same isometric style as main dice */}
-              <img
+            {!isEditing && (
+              <button onClick={e => { e.stopPropagation(); handleReroll(); }} aria-label="roll again"
+                style={{ background:"rgba(255,248,236,0.95)",border:"2.5px solid #6B4226",borderRadius:"50%",
+                  width:46,height:46,display:"flex",alignItems:"center",justifyContent:"center",
+                  cursor:"pointer",boxShadow:"2px 3px 0 rgba(107,66,38,0.35)",flexShrink:0,
+                  WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+                {/* Mini 3D dice — same isometric style as main dice */}
+                <img
   src="/icons/dice.svg"
   alt="dice"
   style={{
@@ -444,13 +471,56 @@ function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList }) {
     pointerEvents: "none",
   }}
 />
-            </button>
-            <button onClick={e => { e.stopPropagation(); onOpenList(); }} aria-label="view all thoughts"
-              style={{ background:"rgba(255,248,236,0.95)",border:"2.5px solid #6B4226",borderRadius:"50%",
-                width:46,height:46,display:"flex",alignItems:"center",justifyContent:"center",
-                cursor:"pointer",boxShadow:"2px 3px 0 rgba(107,66,38,0.35)",flexShrink:0,
-                WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
-              <img
+              </button>
+            )}
+
+            {isEditing ? (
+              <button onClick={e => { e.stopPropagation(); handleSaveEdit(); }} aria-label="save edit"
+                style={{ background:"rgba(255,248,236,0.95)",border:"2.5px solid #6B4226",borderRadius:"50%",
+                  width:46,height:46,display:"flex",alignItems:"center",justifyContent:"center",
+                  cursor:"pointer",boxShadow:"2px 3px 0 rgba(107,66,38,0.35)",flexShrink:0,
+                  WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+                <svg viewBox="0 0 24 24" width={22} height={22} fill="none">
+                  <path d="M4 12.5 L9.5 18 L20 5" stroke="#4C7A44" strokeWidth={2.6}
+                    strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            ) : (
+              <button onClick={e => { e.stopPropagation(); handleStartEdit(); }} aria-label="edit thought"
+                style={{ background:"rgba(255,248,236,0.95)",border:"2.5px solid #6B4226",borderRadius:"50%",
+                  width:46,height:46,display:"flex",alignItems:"center",justifyContent:"center",
+                  cursor:"pointer",boxShadow:"2px 3px 0 rgba(107,66,38,0.35)",flexShrink:0,
+                  WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+                <svg viewBox="0 0 24 24" width={20} height={20} fill="none">
+                  <path d="M14.5 4.5 L19.5 9.5 L8 21 L3.5 21.5 L4 17 Z"
+                    fill="rgba(107,66,38,0.08)" stroke="#6B4226" strokeWidth={1.8}
+                    strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M12.5 6.5 L17.5 11.5" stroke="#6B4226" strokeWidth={1.8}
+                    strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
+
+            {isEditing && (
+              <button onClick={e => { e.stopPropagation(); handleCancelEdit(); }} aria-label="cancel edit"
+                style={{ background:"rgba(255,248,236,0.95)",border:"2.5px solid #6B4226",borderRadius:"50%",
+                  width:46,height:46,display:"flex",alignItems:"center",justifyContent:"center",
+                  cursor:"pointer",boxShadow:"2px 3px 0 rgba(107,66,38,0.35)",flexShrink:0,
+                  WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+                <svg viewBox="0 0 24 24" width={20} height={20} fill="none">
+                  <path d="M6 6 L18 18 M18 6 L6 18" stroke="#B04A3A" strokeWidth={2.2}
+                    strokeLinecap="round" />
+                </svg>
+              </button>
+            )}
+
+            {!isEditing && (
+              <button onClick={e => { e.stopPropagation(); onOpenList(); }} aria-label="view all thoughts"
+                style={{ background:"rgba(255,248,236,0.95)",border:"2.5px solid #6B4226",borderRadius:"50%",
+                  width:46,height:46,display:"flex",alignItems:"center",justifyContent:"center",
+                  cursor:"pointer",boxShadow:"2px 3px 0 rgba(107,66,38,0.35)",flexShrink:0,
+                  WebkitTapHighlightColor:"transparent",touchAction:"manipulation" }}>
+                <img
   src="/icons/list-no-border.svg"
   alt="list"
   style={{
@@ -459,45 +529,85 @@ function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList }) {
     pointerEvents: "none",
   }}
 />
-            </button>
+              </button>
+            )}
           </div>
 
-          {/* Thought text — centred inside blob */}
-          <div style={{ position:"absolute",inset:0,display:"flex",flexDirection:"column",
-            alignItems:"center",justifyContent:"center",padding:"2rem 3.5rem 2rem 2rem",textAlign:"center" }}>
-            <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(14px,2.8vw,22px)",
-              color:"#6B4226",opacity:0.7,marginBottom:6,letterSpacing:1,lineHeight:1.5,overflow:"visible" }}>
-              {thought.completed ? "a completed thought" : "a thought from the jar"}
-            </p>
-            <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(20px,5vw,32px)",
-              color:"#3D2510",lineHeight:1.5,overflow:"visible",marginBottom:6,wordBreak:"break-word",hyphens:"auto",
-              textDecoration: thought.completed ? "line-through" : "none", opacity: thought.completed ? 0.6 : 1 }}>
-              {thought.text}
-            </p>
-            <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(10px,1.8vw,14px)",color:"#6B4226",opacity:0.55 }}>
-              {formattedDate}
-            </p>
-          </div>
+          {/* Thought text — centred inside blob (or edit textarea when editing) */}
+          {isEditing ? (
+            <div style={{ position:"absolute",inset:0,display:"flex",flexDirection:"column",
+              alignItems:"center",justifyContent:"center",padding:"2rem 3.5rem 2rem 2rem",textAlign:"center" }}
+              onClick={e => e.stopPropagation()}>
+              <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(14px,2.8vw,22px)",
+                color:"#6B4226",opacity:0.7,marginBottom:6,letterSpacing:1,lineHeight:1.5,overflow:"visible" }}>
+                editing this thought
+              </p>
+              <textarea
+                autoFocus
+                value={draftText}
+                onChange={e => setDraftText(e.target.value)}
+                maxLength={280}
+                onKeyDown={e => { if (e.key === "Escape") handleCancelEdit(); }}
+                style={{ width:"100%",minHeight:96,maxHeight:"40vh",background:"rgba(255,255,255,0.55)",
+                  border:"2px solid #6B4226",borderRadius:14,padding:"10px 14px",
+                  fontFamily:"var(--font-hand)",fontSize:"clamp(16px,3.6vw,24px)",color:"#3D2510",
+                  textAlign:"center",resize:"none",outline:"none",lineHeight:1.4 }}
+              />
+            </div>
+          ) : (
+            <div style={{ position:"absolute",inset:0,display:"flex",flexDirection:"column",
+              alignItems:"center",justifyContent:"center",padding:"2rem 3.5rem 2rem 2rem",textAlign:"center" }}>
+              <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(14px,2.8vw,22px)",
+                color:"#6B4226",opacity:0.7,marginBottom:6,letterSpacing:1,lineHeight:1.5,overflow:"visible" }}>
+                {thought.completed ? "a completed thought" : "a thought from the jar"}
+              </p>
+              <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(20px,5vw,32px)",
+                color:"#3D2510",lineHeight:1.5,overflow:"visible",marginBottom:6,wordBreak:"break-word",hyphens:"auto",
+                textDecoration: thought.completed ? "line-through" : "none", opacity: thought.completed ? 0.6 : 1 }}>
+                {thought.text}
+              </p>
+              <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(10px,1.8vw,14px)",color:"#6B4226",opacity:0.55 }}>
+                {formattedDate}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Action buttons — single horizontal row below blob */}
-        <div style={{ display:"flex",gap:10,marginTop:14,justifyContent:"center",flexWrap:"nowrap" }}>
-
-          {!thought.completed && (
-            <button onClick={() => { onComplete(thought.id); onClose(); }}
+        {isEditing ? (
+          <div style={{ display:"flex",gap:10,marginTop:14,justifyContent:"center",flexWrap:"nowrap" }}>
+            <button onClick={handleSaveEdit}
               style={{ background:"#A8C5A0",border:"2.5px solid #6B4226",borderRadius:50,
                 padding:"10px 18px",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
                 color:"#3D2510",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226",whiteSpace:"nowrap" }}>
-              mark complete
+              save changes
             </button>
-          )}
-          <button onClick={onClose}
-            style={{ background:"#E85D3A",border:"2.5px solid #6B4226",borderRadius:50,
-              padding:"10px 18px",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
-              color:"white",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226",whiteSpace:"nowrap" }}>
-            put it back
-          </button>
-        </div>
+            <button onClick={handleCancelEdit}
+              style={{ background:"transparent",border:"2.5px solid #C9A87A",borderRadius:50,
+                padding:"10px 18px",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
+                color:"#A07850",cursor:"pointer",whiteSpace:"nowrap" }}>
+              cancel
+            </button>
+          </div>
+        ) : (
+          <div style={{ display:"flex",gap:10,marginTop:14,justifyContent:"center",flexWrap:"nowrap" }}>
+
+            {!thought.completed && (
+              <button onClick={() => { onComplete(thought.id); onClose(); }}
+                style={{ background:"#A8C5A0",border:"2.5px solid #6B4226",borderRadius:50,
+                  padding:"10px 18px",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
+                  color:"#3D2510",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226",whiteSpace:"nowrap" }}>
+                mark complete
+              </button>
+            )}
+            <button onClick={onClose}
+              style={{ background:"#E85D3A",border:"2.5px solid #6B4226",borderRadius:50,
+                padding:"10px 18px",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
+                color:"white",cursor:"pointer",boxShadow:"3px 4px 0 #6B4226",whiteSpace:"nowrap" }}>
+              put it back
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -597,7 +707,7 @@ onClick={e => e.stopPropagation()}>
 
 // ─── THOUGHTS LIST MODAL ─────────────────────────────────────────────────────
 
-function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, activeJarId }) {
+function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, activeJarId, onOpenThought }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   // "all" shows every jar, or filter by jar id
   const [filterJar, setFilterJar] = useState("all");
@@ -734,9 +844,12 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
         {displayThoughts.map((t, idx) => (
           <React.Fragment key={t.id}>
             <div
+              onClick={() => onOpenThought(t.jarId, t.id)}
+              role="button"
+              aria-label="open thought"
               style={{ display:"flex",alignItems:"center",gap:12,background:"white",
                 border:`2px solid ${t.completed ? "#D4C5B0" : "#E8D8C0"}`,borderRadius:16,
-                padding:"10px 14px",opacity: t.completed ? 0.72 : 1 }}>
+                padding:"10px 14px",opacity: t.completed ? 0.72 : 1, cursor:"pointer" }}>
               <MiniBlob color={PASTEL_COLORS[t.colorIndex ?? 0]} seed={t.blobSeed ?? 0} completed={t.completed} />
               <div style={{ flex:1,minWidth:0 }}>
                 <p style={{ fontFamily:"var(--font-body)",fontSize:14,color:"#3D2510",lineHeight:1.45,
@@ -749,7 +862,7 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
                   {t.completed && " · done"}
                 </p>
               </div>
-              <div style={{ display:"flex",gap:6,flexShrink:0 }}>
+              <div style={{ display:"flex",gap:6,flexShrink:0 }} onClick={e => e.stopPropagation()}>
                 {!t.completed && (
                   <button onClick={() => onComplete(t.jarId, t.id)}
                     title="mark complete"
@@ -954,6 +1067,102 @@ const COZY_BROADCASTS = [
   "the little jar noticed you came back again today. that probably means some small part of you still believes tomorrow is worth reaching.",
   "nothing dramatic happened today, and maybe that is its own kind of miracle. quiet days count too.",
   "some thoughts are not meant to be solved immediately. some are only asking for somewhere safe to rest for the night.",
+
+  // more tiny comforting thoughts
+  "you don't have to hold it all at once. the jar can hold some of it for a while.",
+  "whatever today was, it's over now. that counts as something.",
+  "it's okay to feel better in small increments instead of all at once.",
+  "you made it to the end of this sentence. that's a start.",
+  "you're allowed to be a soft creature in a loud world.",
+  "the hard part is already behind you, even if it doesn't feel that way yet.",
+  "you don't need permission to feel relieved.",
+  "some comfort doesn't need explaining. it just needs to be let in.",
+  "you're doing okay, even on the days that don't feel like it.",
+  "it's fine to need reminding that you're okay more than once.",
+
+  // cute observations
+  "dogs sneeze when they're happy. that's just a nice fact to have.",
+  "cats knead things when they feel safe. so do some people, in their own way.",
+  "a lot of small animals fall asleep mid-thought. relatable, honestly.",
+  "there is a kind of hush that only happens right before it snows.",
+  "somewhere a toddler is very seriously narrating something no one else can understand.",
+  "the first sip of something warm always tastes a little more like relief than the rest of the cup.",
+  "a windowsill with three plants on it is basically a tiny personality.",
+  "socks fresh out of the dryer are an underrated form of joy.",
+  "birds argue about the bird feeder the same way people argue about the thermostat.",
+  "a nap under a blanket that's slightly too warm is one of the good kinds of trapped.",
+
+  // silly / random thoughts
+  "somewhere, a sock is alone in a drawer, quietly wondering where its match went.",
+  "if clouds had opinions, most of them would probably just be about snacks.",
+  "a houseplant has never once judged anyone for staying in bed.",
+  "the fridge light stays on the whole time you're not looking. genuinely wild.",
+  "toast always lands butter-side down, except when it's blob's turn, in which case it lands however it wants.",
+  "somewhere a cat is staring at a wall with the confidence of someone who knows something you don't.",
+  "if the jar had legs, it would probably just stand near you and not say anything. which honestly sounds nice.",
+  "a spoon left in a mug makes the most annoying sound known to breakfast.",
+  "somewhere a pigeon is having the best day of its entire life over a dropped fry.",
+  "blob has never once folded a fitted sheet correctly and has made peace with it.",
+
+  // gentle encouragement
+  "you're allowed to move slowly through hard things.",
+  "you don't need a dramatic turnaround. a quiet one works fine too.",
+  "showing up half-tired still counts as showing up.",
+  "you're closer to okay than you think you are.",
+  "it's alright to need today to be smaller than you planned.",
+  "you're not starting from zero. you're starting from everything you've already survived.",
+  "trying counts even when it doesn't look like much from the outside.",
+  "you get to define what counts as enough for today.",
+  "the fact that you're still trying says something good about you.",
+  "you don't have to feel ready to be doing fine.",
+
+  // soft existential thoughts
+  "most of what makes a life good is small and repeats quietly, not loud and once.",
+  "you are allowed to not have it figured out. almost no one does.",
+  "time moves the same speed for everyone, but it never feels that way, and that's alright.",
+  "meaning doesn't always arrive as a lightning bolt. sometimes it's just a slow accumulation of small mornings.",
+  "you're a temporary, changing thing living inside a temporary, changing world, and somehow that's kind of freeing.",
+  "you don't have to have a big purpose today. existing quietly is a valid way to spend a tuesday.",
+  "most people are improvising more than they let on. you're not behind, you're just also a person.",
+  "the fact that anything exists at all is a little bit absurd, in a nice way.",
+  "you are allowed to change, even from who you were yesterday.",
+  "nobody actually has the whole thing figured out. they're all just guessing more confidently than you expect.",
+
+  // little reflection prompts
+  "what's something small that made today 2% easier?",
+  "if today had a color, what would it be, and is that okay?",
+  "what's one thing you're quietly proud of, even if no one else noticed it?",
+  "is there a thought in here you've been avoiding opening? it can wait as long as it needs to.",
+  "what would you say to yourself from exactly one year ago?",
+  "what's something you needed today that you didn't get, and can you give a little of it to yourself now?",
+  "if you could mail a thought to your future self, what would it say?",
+  "what's a small kindness you did today that you almost forgot about?",
+  "what's something you're looking forward to, even a tiny bit?",
+  "is there a thought you've outgrown that's ready to be marked complete?",
+
+  // cozy thoughts
+  "a lamp in the corner of a dark room does more emotional work than people give it credit for.",
+  "the specific quiet of a house at night, when everyone else is asleep, has its own kind of comfort.",
+  "wearing the softest thing you own on a hard day is a legitimate coping strategy.",
+  "a candle that smells like something familiar can make an unfamiliar day feel a little more like home.",
+  "there's a particular comfort in a mug that's just the right amount of too full.",
+  "the sound of a kettle starting to hum is a small promise that something warm is coming.",
+  "a weighted blanket is basically a hug that doesn't need to check in on you.",
+  "some of the coziest moments happen in the two minutes before you fall asleep.",
+  "a good pair of socks can make an ordinary evening feel intentional.",
+  "the corner of the couch that's shaped like you now is a small, quiet kind of belonging.",
+
+  // playful blob / jar-style messages
+  "blob rolled over in the jar today and called it exercise.",
+  "blob would like it on record that it takes its floating very seriously.",
+  "blob tried to count all the other blobs today and got distracted halfway through.",
+  "blob thinks the jar lid looks extra nice today, for no particular reason.",
+  "blob is not doing anything productive right now and is very at peace with that.",
+  "the jar reports a light bloomy haze this evening. mood: soft.",
+  "blob bumped into another blob today. they are now, apparently, friends.",
+  "blob would like to formally announce that today counted, even the boring parts.",
+  "the jar has slightly more blobs than yesterday, which blob considers a personal win.",
+  "blob sends a small, wobbly wave from somewhere near the bottom of the jar.",
 ];
 
 // Pick today's broadcast — stable per calendar day, cycles through all messages
@@ -3283,7 +3492,14 @@ export default function ThoughtJar() {
   const handleJarClick = useCallback(() => {
     blurKeyboard(); // close keyboard before showing thought reveal
     if (currentThoughts.length === 0) { showToast("this jar is empty — add thoughts to use it"); return; }
-    const random = currentThoughts[Math.floor(Math.random() * currentThoughts.length)];
+    // Only incomplete thoughts are eligible to be randomly surfaced.
+    // Completed thoughts stay visible as blobs in the jar but are never picked here.
+    const eligible = currentThoughts.filter(t => !t.completed);
+    if (eligible.length === 0) {
+      showToast("every thought here is complete — add a new one to discover something");
+      return;
+    }
+    const random = eligible[Math.floor(Math.random() * eligible.length)];
     setIsJarAnimating(true);
     setTimeout(() => { setIsJarAnimating(false); setRevealedThought(random); }, 400);
   }, [currentThoughts, showToast, blurKeyboard]);
@@ -3311,6 +3527,29 @@ export default function ThoughtJar() {
     handleComplete(activeJar.id, thoughtId);
     setRevealedThought(prev => prev ? { ...prev, completed: true } : null);
   }, [activeJar?.id, handleComplete]);
+
+  // Edit a thought's text in place — preserves id, createdAt, jar, blob identity, and completed status.
+  const handleEditThought = useCallback((jarId, thoughtId, newText) => {
+    setJars(prev => prev.map(jar => jar.id !== jarId ? jar : {
+      ...jar,
+      thoughts: jar.thoughts.map(t => t.id === thoughtId ? { ...t, text: newText } : t),
+    }));
+    // Keep the currently surfaced blob in sync so the edit shows immediately
+    setRevealedThought(prev => prev?.id === thoughtId ? { ...prev, text: newText } : prev);
+    showToast("thought updated");
+  }, [showToast]);
+
+  // Open an exact thought from "All Thoughts" in the same blob/reveal UI used for surfacing.
+  // Switches to the thought's own jar (if needed) so complete/edit actions stay consistent.
+  const handleOpenThoughtFromList = useCallback((jarId, thoughtId) => {
+    const jarIdx = jars.findIndex(j => j.id === jarId);
+    if (jarIdx < 0) return;
+    const thought = jars[jarIdx].thoughts.find(t => t.id === thoughtId);
+    if (!thought) return;
+    if (jarIdx !== safeIdx) setActiveJarIndex(jarIdx);
+    setShowList(false);
+    setRevealedThought(thought);
+  }, [jars, safeIdx]);
 
   const handleCreateNewJar = useCallback((jarName) => {
     const newJar = { id: Date.now(), name: jarName || "new jar", thoughts: [] };
@@ -3665,6 +3904,7 @@ export default function ThoughtJar() {
       {showList && (
         <ThoughtsListModal jars={jars} onClose={() => setShowList(false)}
           onComplete={handleComplete} onDelete={handleDelete}
+          onOpenThought={handleOpenThoughtFromList}
           activeJarId={activeJar?.id}
           onSwitchJar={(jarId) => {
             const idx = jars.findIndex(j => j.id === jarId);
@@ -3732,11 +3972,17 @@ export default function ThoughtJar() {
 
       <ThoughtReveal thought={revealedThought} onClose={() => setRevealedThought(null)}
         onComplete={handleCompleteFromReveal}
+        onEdit={(thoughtId, newText) => handleEditThought(activeJar.id, thoughtId, newText)}
         onReroll={() => {
-          // Pick a new random thought (different from current if possible)
-          const pool = currentThoughts.filter(t => t.id !== revealedThought?.id);
-          const source = pool.length > 0 ? pool : currentThoughts;
-          if (source.length === 0) return;
+          // Rerolling only picks among incomplete thoughts — completed thoughts stay
+          // out of the random-surfacing pool even if the current blob is a completed one.
+          const eligible = currentThoughts.filter(t => !t.completed);
+          const pool = eligible.filter(t => t.id !== revealedThought?.id);
+          const source = pool.length > 0 ? pool : eligible;
+          if (source.length === 0) {
+            showToast("every thought here is complete — add a new one to discover something");
+            return;
+          }
           const next = source[Math.floor(Math.random() * source.length)];
           setRevealedThought(next);
         }}
