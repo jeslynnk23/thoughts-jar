@@ -381,7 +381,7 @@ function AdSenseSlot({ slot }) {
 
 // ─── THOUGHT REVEAL POPUP ───────────────────────────────────────────────────
 
-function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList, onEdit }) {
+function ThoughtReveal({ thought, onClose, onComplete, onUncomplete, onReroll, onOpenList, onEdit }) {
   const [shaking, setShaking] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [draftText, setDraftText] = useState("");
@@ -600,6 +600,14 @@ function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList, onE
                 mark complete
               </button>
             )}
+            {thought.completed && (
+              <button onClick={() => { onUncomplete(thought.id); onClose(); }}
+                style={{ background:"#FBF5E8",border:"2.5px solid #6B4226",borderRadius:50,
+                  padding:"10px 18px",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
+                  color:"#6B4226",cursor:"pointer",boxShadow:"3px 4px 0 #C9A87A",whiteSpace:"nowrap" }}>
+                not done yet
+              </button>
+            )}
             <button onClick={onClose}
               style={{ background:"#E85D3A",border:"2.5px solid #6B4226",borderRadius:50,
                 padding:"10px 18px",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
@@ -707,23 +715,32 @@ onClick={e => e.stopPropagation()}>
 
 // ─── THOUGHTS LIST MODAL ─────────────────────────────────────────────────────
 
-function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, activeJarId, onOpenThought }) {
+function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, activeJarId, onOpenThought, initialFilter = "all" }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  // "all" shows every jar, or filter by jar id
-  const [filterJar, setFilterJar] = useState("all");
+  // "all" shows every jar, a jar id filters to that jar, "completed" shows every completed thought across all jars.
+  const [filterJar, setFilterJar] = useState(initialFilter);
 
-  const displayThoughts = (filterJar === "all"
-    ? jars.flatMap(jar => jar.thoughts.map(t => ({ ...t, jarName: jar.name, jarId: jar.id })))
-    : (jars.find(j => j.id === filterJar)?.thoughts || []).map(t => ({
-        ...t,
-        jarName: jars.find(j => j.id === filterJar)?.name || "",
-        jarId: filterJar,
-      }))
-  ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const completedSortKey = (t) => t.completedAt ? new Date(t.completedAt).getTime() : -1;
+
+  const allCompletedThoughts = jars.flatMap(jar =>
+    jar.thoughts.filter(t => t.completed).map(t => ({ ...t, jarName: jar.name, jarId: jar.id }))
+  );
+  const totalCompletedCount = allCompletedThoughts.length;
+
+  const displayThoughts = filterJar === "completed"
+    ? [...allCompletedThoughts].sort((a, b) => completedSortKey(b) - completedSortKey(a))
+    : (filterJar === "all"
+        ? jars.flatMap(jar => jar.thoughts.map(t => ({ ...t, jarName: jar.name, jarId: jar.id })))
+        : (jars.find(j => j.id === filterJar)?.thoughts || []).map(t => ({
+            ...t,
+            jarName: jars.find(j => j.id === filterJar)?.name || "",
+            jarId: filterJar,
+          }))
+      ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   const handleTabClick = (jarId) => {
     setFilterJar(jarId);
-    if (jarId !== "all") onSwitchJar(jarId);
+    if (jarId !== "all" && jarId !== "completed") onSwitchJar(jarId);
   };
 
   return (
@@ -732,10 +749,19 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
       {/* Header */}
       <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",
         padding:"1rem 1.5rem 0.8rem",borderBottom:"2px solid #E8D8C0",flexShrink:0 }}>
-        <h2 style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(22px,4vw,30px)",color:"#3D2510",
-            lineHeight:1.6,paddingBottom:6,overflow:"visible",display:"block" }}>
-          all thoughts
-        </h2>
+        <div>
+          <h2 style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(22px,4vw,30px)",color:"#3D2510",
+              lineHeight:1.6,paddingBottom:2,overflow:"visible",display:"block" }}>
+            {filterJar === "completed" ? "things i've put down ♡" : "all thoughts"}
+          </h2>
+          {filterJar === "completed" && (
+            <p style={{ fontFamily:"var(--font-body)",fontSize:12.5,color:"#A07850" }}>
+              {totalCompletedCount === 0
+                ? "nothing scratched off just yet"
+                : `${totalCompletedCount} thought${totalCompletedCount === 1 ? "" : "s"} scratched off so far`}
+            </p>
+          )}
+        </div>
         <button onClick={onClose}
           style={{ background:"#FBF5E8",border:"2px solid #6B4226",borderRadius:"50%",
             width:36,height:36,cursor:"pointer",fontFamily:"var(--font-body)",fontSize:16,
@@ -832,13 +858,31 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
             </React.Fragment>
           );
         })}
+
+        {/* "completed" card — always last, not a jar, just a filter into the scratched-off pile */}
+        <button onClick={() => handleTabClick("completed")}
+          style={{ background: filterJar==="completed" ? "#FFF8EC" : "transparent",
+            border:"2px solid " + (filterJar==="completed" ? "#6B4226" : "#D4C5B0"),
+            borderRadius:14,padding:"8px 12px",cursor:"pointer",flexShrink:0,
+            display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+            boxShadow: filterJar==="completed" ? "2px 3px 0 #C9A87A" : "none",
+            transition:"all 0.15s" }}>
+          <svg viewBox="0 0 32 28" width={32} height={28}>
+            <path d="M6,15 L13,21 L26,7" fill="none" stroke="#A8C5A0" strokeWidth={3.4}
+              strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span style={{ fontFamily:"var(--font-body)",fontSize:10,color: filterJar==="completed"?"#3D2510":"#A07850",
+            fontWeight: filterJar==="completed"?600:400, whiteSpace:"nowrap" }}>completed</span>
+        </button>
       </div>
 
       {/* List */}
       <div style={{ flex:1,overflowY:"auto",padding:"1rem 1.5rem",display:"flex",flexDirection:"column",gap:10 }}>
         {displayThoughts.length === 0 && (
           <p style={{ fontFamily:"var(--font-body)",fontSize:14,color:"#A07850",textAlign:"center",marginTop:40 }}>
-            no thoughts yet — add one to your jar!
+            {filterJar === "completed"
+              ? "nothing scratched off yet — that's alright. it'll fill in on its own time."
+              : "no thoughts yet — add one to your jar!"}
           </p>
         )}
         {displayThoughts.map((t, idx) => (
@@ -899,13 +943,86 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
               </div>
             </div>
             {/* Between-thoughts ad: after the 4th thought (idx === 3), only when ≥8 active thoughts */}
-            {displayThoughts.filter(t2 => !t2.completed).length >= 8 && idx === 3 && (
+            {filterJar !== "completed" && displayThoughts.filter(t2 => !t2.completed).length >= 8 && idx === 3 && (
               <AdSenseSlot slot="8368046380" />
             )}
           </React.Fragment>
         ))}
         {/* thoughts-jar-completed-section (slot 3244883075) — DISABLED, not rendered */}
       </div>
+    </div>
+  );
+}
+
+// ─── COMPLETED THOUGHTS SCORECARD ───────────────────────────────────────────
+// A cute, paper-like "bucket list" card that lives as the last slide in the
+// homepage jar carousel. It is NOT a jar — it doesn't hold blobs or accept new
+// thoughts, it just reflects thoughts that are already marked completed elsewhere.
+
+function CompletedScorecard({ totalCompletedCount, recentCompletedThoughts, onOpenThought, onViewAll }) {
+  const isEmpty = totalCompletedCount === 0;
+
+  return (
+    <div style={{
+      width:"100%", maxWidth:360, margin:"0 auto",
+      background:"#FFFDF5", border:"3px solid #6B4226", borderRadius:20,
+      boxShadow:"5px 6px 0 #C9A87A",
+      padding:"1.3rem 1.2rem 1rem",
+      display:"flex", flexDirection:"column",
+      minHeight: 300, maxHeight: 340,
+      position:"relative", overflow:"hidden",
+    }}>
+      {/* A little washi-tape corner touch, purely decorative */}
+      <div style={{ position:"absolute", top:-8, left:22, width:52, height:20, borderRadius:3,
+        background:"#F2A7B0", opacity:0.55, transform:"rotate(-6deg)" }} />
+
+      <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(20px,4vw,26px)",
+        color:"#3D2510",lineHeight:1.5,overflow:"visible",paddingBottom:2,marginBottom:2,
+        textAlign:"center" }}>
+        things i've put down ♡
+      </p>
+      <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#A07850",textAlign:"center",
+        marginBottom:12 }}>
+        {isEmpty
+          ? "nothing scratched off just yet"
+          : `${totalCompletedCount} thought${totalCompletedCount === 1 ? "" : "s"} scratched off so far`}
+      </p>
+
+      {isEmpty ? (
+        <div style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",
+          justifyContent:"center",gap:10,textAlign:"center",padding:"0 0.5rem" }}>
+          <MiniBlob color="#D4C5B0" seed={2} size={40} completed />
+          <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#A07850",lineHeight:1.6 }}>
+            that's alright — there's no rush.<br/>
+            things will land here when they're ready to be put down.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div style={{ flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:8,
+            paddingRight:2,marginBottom:10 }}>
+            {recentCompletedThoughts.map(t => (
+              <div key={t.id}
+                onClick={() => onOpenThought(t.jarId, t.id)}
+                role="button" aria-label="open completed thought"
+                style={{ display:"flex",alignItems:"flex-start",gap:8,cursor:"pointer" }}>
+                <span style={{ flexShrink:0,marginTop:2,color:"#A8C5A0",fontSize:14,lineHeight:1 }}>✓</span>
+                <p style={{ fontFamily:"var(--font-hand)",fontSize:15,color:"#6B4226",lineHeight:1.4,
+                  textDecoration:"line-through",opacity:0.68,overflow:"hidden",display:"-webkit-box",
+                  WebkitLineClamp:2,WebkitBoxOrient:"vertical" }}>
+                  {t.text}
+                </p>
+              </div>
+            ))}
+          </div>
+          <button onClick={onViewAll}
+            style={{ background:"transparent",border:"none",cursor:"pointer",
+              fontFamily:"var(--font-body)",fontSize:13,fontWeight:500,color:"#E85D3A",
+              alignSelf:"center",padding:"4px 6px" }}>
+            view all completed →
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -3393,6 +3510,7 @@ export default function ThoughtJar() {
   const [toast, setToast]         = useState({ message: "", visible: false });
   const dailyBroadcast = useRef(getDailyBroadcast()).current;
   const [showList, setShowList]   = useState(false);
+  const [listInitialFilter, setListInitialFilter] = useState("all");
   const [showJarFull, setShowJarFull] = useState(false);
   const [showNewJar, setShowNewJar]   = useState(false);
   const [showInfo, setShowInfo]       = useState(false);
@@ -3422,10 +3540,27 @@ export default function ThoughtJar() {
   const [showHSPrompt, setShowHSPrompt] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(() => !load(INTRO_KEY, false));
 
-  // Derived active jar (clamp index in case jar was removed)
-  const safeIdx  = Math.min(activeJarIndex, Math.max(0, jars.length - 1));
-  const activeJar = jars[safeIdx] || jars[0];
+  // Derived active jar (clamp index in case jar was removed).
+  // The homepage carousel has one extra "virtual" slide beyond the jars:
+  // the Completed Scorecard, which always sits after the last jar and is not a jar itself.
+  const totalSlides = jars.length + 1; // + Completed Scorecard slide
+  const safeIdx  = Math.min(activeJarIndex, totalSlides - 1);
+  const isScorecardSlide = safeIdx === jars.length;
+  const activeJar = isScorecardSlide ? null : (jars[safeIdx] || jars[0]);
   const currentThoughts = activeJar?.thoughts || [];
+
+  // All completed thoughts across every jar — the scorecard's source of truth.
+  // Falls back to a very old sort key for legacy completed thoughts that predate
+  // the completedAt field, so they still appear (and count) without corrupting order.
+  const allCompletedThoughts = jars.flatMap(jar =>
+    jar.thoughts
+      .filter(t => t.completed)
+      .map(t => ({ ...t, jarId: jar.id, jarName: jar.name }))
+  );
+  const completedSortKey = (t) => t.completedAt ? new Date(t.completedAt).getTime() : -1;
+  const sortedCompletedThoughts = [...allCompletedThoughts].sort((a, b) => completedSortKey(b) - completedSortKey(a));
+  const totalCompletedCount = allCompletedThoughts.length;
+  const recentCompletedThoughts = sortedCompletedThoughts.slice(0, 10);
 
   // Memory resurfacing — recompute for the active jar.
   // dismissedMemoryJars tracks which jar IDs have been dismissed this session.
@@ -3507,10 +3642,24 @@ export default function ThoughtJar() {
   const handleComplete = useCallback((jarId, thoughtId) => {
     setJars(prev => prev.map(jar => jar.id !== jarId ? jar : {
       ...jar,
-      thoughts: jar.thoughts.map(t => t.id === thoughtId ? { ...t, completed: true } : t),
+      thoughts: jar.thoughts.map(t => t.id === thoughtId
+        ? { ...t, completed: true, completedAt: new Date().toISOString() }
+        : t),
     }));
     showToast("thought completed");
     setStardustActive(true);
+  }, [showToast]);
+
+  // Un-complete a thought — clears completedAt so it drops out of the scorecard
+  // and becomes eligible for random resurfacing again.
+  const handleUncomplete = useCallback((jarId, thoughtId) => {
+    setJars(prev => prev.map(jar => jar.id !== jarId ? jar : {
+      ...jar,
+      thoughts: jar.thoughts.map(t => t.id === thoughtId
+        ? { ...t, completed: false, completedAt: null }
+        : t),
+    }));
+    showToast("marked as not done yet");
   }, [showToast]);
 
   const handleDelete = useCallback((jarId, thoughtId) => {
@@ -3527,6 +3676,11 @@ export default function ThoughtJar() {
     handleComplete(activeJar.id, thoughtId);
     setRevealedThought(prev => prev ? { ...prev, completed: true } : null);
   }, [activeJar?.id, handleComplete]);
+
+  const handleUncompleteFromReveal = useCallback((thoughtId) => {
+    handleUncomplete(activeJar.id, thoughtId);
+    setRevealedThought(prev => prev ? { ...prev, completed: false, completedAt: null } : null);
+  }, [activeJar?.id, handleUncomplete]);
 
   // Edit a thought's text in place — preserves id, createdAt, jar, blob identity, and completed status.
   const handleEditThought = useCallback((jarId, thoughtId, newText) => {
@@ -3570,9 +3724,9 @@ export default function ThoughtJar() {
 
   // Jar navigation
   const canGoPrev = safeIdx > 0;
-  const canGoNext = safeIdx < jars.length - 1;
+  const canGoNext = safeIdx < totalSlides - 1;
   const goPrev = () => { blurKeyboard(); setActiveJarIndex(i => Math.max(0, i - 1)); };
-  const goNext = () => { blurKeyboard(); setActiveJarIndex(i => Math.min(jars.length - 1, i + 1)); };
+  const goNext = () => { blurKeyboard(); setActiveJarIndex(i => Math.min(totalSlides - 1, i + 1)); };
 
   return (
     <>
@@ -3710,7 +3864,7 @@ export default function ThoughtJar() {
   }}
 />
                       ),
-                      action: () => { blurKeyboard(); setShowMenu(false); setShowList(true); },
+                      action: () => { blurKeyboard(); setShowMenu(false); setListInitialFilter("all"); setShowList(true); },
                     },
                     {
                       label: "new jar",
@@ -3771,27 +3925,30 @@ export default function ThoughtJar() {
           paddingBottom:"clamp(24px,4vh,48px)",
           position:"relative" }}>
 
-          {/* Dice icon — above jar. Handdrawn 3D dice matching TV illustration style */}
-          <button
-            data-bt-target="dice"
-            onClick={handleJarClick}
-            aria-label="roll dice for a random thought"
-            style={{
-              background: "none", border: "none", cursor: "pointer",
-              padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
-              WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
-              transform: "translateX(0px)",
-              marginBottom: 28,
-            }}>
-            {/* Handdrawn 3D dice — matches reference: cube with rounded corners, clear pips */}
-              <img
-                src="/icons/dice.svg"
-                alt="dice"
-                style={{ width: 62, height: 62 }}
-              />
-          </button>
+          {/* Dice icon — above jar. Hidden on the Completed Scorecard slide, which isn't a jar. */}
+          {!isScorecardSlide && (
+            <button
+              data-bt-target="dice"
+              onClick={handleJarClick}
+              aria-label="roll dice for a random thought"
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
+                transform: "translateX(0px)",
+                marginBottom: 28,
+              }}>
+              {/* Handdrawn 3D dice — matches reference: cube with rounded corners, clear pips */}
+                <img
+                  src="/icons/dice.svg"
+                  alt="dice"
+                  style={{ width: 62, height: 62 }}
+                />
+            </button>
+          )}
 
-          {/* Jar + nav arrows — arrows close to jar body */}
+          {/* Jar + nav arrows — arrows close to jar body. The last slide is the Completed
+              Scorecard, which reuses the same nav arrows but shows a card instead of a jar. */}
           <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
             gap:"clamp(2px,0.8vw,6px)", width:"100%" }}>
 
@@ -3812,12 +3969,25 @@ export default function ThoughtJar() {
               </svg>
             </button>
 
-            {/* Jar — maximises central space, left-shifted to balance right icon column */}
-            <div data-bt-target="jar" style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
-              transform:"translate(0px, -64px)",
-              transition:"opacity 0.5s ease, filter 0.5s ease",
-              animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
-              <style>{`
+            {isScorecardSlide ? (
+              /* Completed Scorecard — final carousel slide, not a jar */
+              <div style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
+                transform:"translate(0px, -34px)",
+                transition:"opacity 0.5s ease, filter 0.5s ease" }}>
+                <CompletedScorecard
+                  totalCompletedCount={totalCompletedCount}
+                  recentCompletedThoughts={recentCompletedThoughts}
+                  onOpenThought={handleOpenThoughtFromList}
+                  onViewAll={() => { setListInitialFilter("completed"); setShowList(true); }}
+                />
+              </div>
+            ) : (
+              /* Jar — maximises central space, left-shifted to balance right icon column */
+              <div data-bt-target="jar" style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
+                transform:"translate(0px, -64px)",
+                transition:"opacity 0.5s ease, filter 0.5s ease",
+                animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
+                <style>{`
   @keyframes jarShake {
     0%, 100% {
       transform: translate(0px, -64px);
@@ -3839,11 +4009,12 @@ export default function ThoughtJar() {
     }
   }
 `}</style>
-              <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
-                isAnimating={isJarAnimating} jarName={activeJar?.name}
-                lidVariant={(activeJar?.id ?? 0) % 5}
-                onLabelClick={() => { setJarNameInput(activeJar?.name || ""); setEditingJarName(true); }} />
-            </div>
+                <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
+                  isAnimating={isJarAnimating} jarName={activeJar?.name}
+                  lidVariant={(activeJar?.id ?? 0) % 5}
+                  onLabelClick={() => { setJarNameInput(activeJar?.name || ""); setEditingJarName(true); }} />
+              </div>
+            )}
 
             {/* Right arrow — tight to jar */}
             <button
@@ -3864,18 +4035,22 @@ export default function ThoughtJar() {
 
           </div>
 
-          <div data-bt-target="input" style={{width:"100%",maxWidth:480}}>
-            <AddThoughtInput onAdd={handleAddThought} />
-          </div>
+          {!isScorecardSlide && (
+            <div data-bt-target="input" style={{width:"100%",maxWidth:480}}>
+              <AddThoughtInput onAdd={handleAddThought} />
+            </div>
+          )}
 
-          {/* Hint text — below the input */}
+          {/* Hint text — below the input (or below the scorecard, on that slide) */}
           <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(12px,1.8vw,14px)",
             color:"#A07850",textAlign:"center",opacity:0.75,lineHeight:1.5 }}>
-            {currentThoughts.length === 0
-              ? "add a thought, and it will float inside the jar"
-              : currentThoughts.length >= JAR_CAPACITY
-                ? "this jar is full — create a new one"
-                : "tap the dice or jar to rediscover a thought"}
+            {isScorecardSlide
+              ? "swipe back to your jars to put something new down"
+              : currentThoughts.length === 0
+                ? "add a thought, and it will float inside the jar"
+                : currentThoughts.length >= JAR_CAPACITY
+                  ? "this jar is full — create a new one"
+                  : "tap the dice or jar to rediscover a thought"}
           </p>
 
           {/* TV — right edge, clears input bar comfortably */}
@@ -3905,6 +4080,7 @@ export default function ThoughtJar() {
         <ThoughtsListModal jars={jars} onClose={() => setShowList(false)}
           onComplete={handleComplete} onDelete={handleDelete}
           onOpenThought={handleOpenThoughtFromList}
+          initialFilter={listInitialFilter}
           activeJarId={activeJar?.id}
           onSwitchJar={(jarId) => {
             const idx = jars.findIndex(j => j.id === jarId);
@@ -3972,6 +4148,7 @@ export default function ThoughtJar() {
 
       <ThoughtReveal thought={revealedThought} onClose={() => setRevealedThought(null)}
         onComplete={handleCompleteFromReveal}
+        onUncomplete={handleUncompleteFromReveal}
         onEdit={(thoughtId, newText) => handleEditThought(activeJar.id, thoughtId, newText)}
         onReroll={() => {
           // Rerolling only picks among incomplete thoughts — completed thoughts stay
@@ -3986,7 +4163,7 @@ export default function ThoughtJar() {
           const next = source[Math.floor(Math.random() * source.length)];
           setRevealedThought(next);
         }}
-        onOpenList={() => { setRevealedThought(null); setShowList(true); }}
+        onOpenList={() => { setRevealedThought(null); setListInitialFilter("all"); setShowList(true); }}
       />
 
       <Toast message={toast.message} visible={toast.visible} />
