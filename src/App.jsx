@@ -1,5 +1,5 @@
 import './index.css';
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from "react";
 import { Analytics } from '@vercel/analytics/react';
 
 // ─── CONSTANTS & STORAGE ────────────────────────────────────────────────────
@@ -1001,81 +1001,96 @@ function buildPaperLines(totalCompletedCount, paperThoughts) {
 }
 
 // ── Sound ───────────────────────────────────────────────────────────────
-// A single shared AudioContext, created/resumed from a real user gesture (the
-// successful lever pull) so autoplay restrictions don't silently swallow the
-// clunk/typing/ding sounds that follow it.
-let _sharedAudioCtx = null;
-function unlockAudio() {
+// Three clearly separated, reusable sound hooks for the Little Wins print
+// sequence. Each wraps a single local <audio> file so they're trivial to
+// re-point at different assets later — nothing else in the component cares
+// how the sound is produced.
+//
+// Timing contract (enforced by the callers below):
+//   successful lever pull → playLeverClunkSound()
+//   → startTypingSound() while the paper is actively printing
+//   → stopTypingSound() the instant typing finishes
+//   → playFinishDingSound() once, after everything is done
+//
+// Placeholder note: point these paths at whatever the final assets end up
+// being named — nothing else in the app needs to change.
+const SOUND_SRC = {
+  leverClunk: "/sounds/lever-clunk.mp3",
+  typingLoop: "/sounds/typing-loop.mp3",
+  finishDing: "/sounds/finish-ding.mp3",
+};
+
+function safeCreateAudio(src, { loop = false } = {}) {
   try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return null;
-    if (!_sharedAudioCtx) _sharedAudioCtx = new Ctx();
-    if (_sharedAudioCtx.state === "suspended") _sharedAudioCtx.resume().catch(() => {});
-    return _sharedAudioCtx;
+    if (typeof Audio === "undefined") return null;
+    const el = new Audio(src);
+    el.preload = "auto";
+    el.loop = loop;
+    return el;
   } catch (e) { return null; }
 }
 
-// A short, soft mechanical "clack" — pitch/volume randomised a little so a
-// run of them doesn't sound robotic. Never loud.
-function playClack() {
-  try {
-    const ctx = unlockAudio();
-    if (!ctx) return;
-    const now = ctx.currentTime;
-    const freq = 170 + Math.random() * 110;
-    const gainPeak = 0.028 + Math.random() * 0.03;
-    const osc = ctx.createOscillator();
-    osc.type = "square";
-    osc.frequency.setValueAtTime(freq, now);
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(gainPeak, now + 0.004);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045 + Math.random() * 0.02);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.09);
-  } catch (e) { /* audio unavailable — silently ignore */ }
+let _leverClunkAudio;
+function getLeverClunkAudio() {
+  if (_leverClunkAudio === undefined) _leverClunkAudio = safeCreateAudio(SOUND_SRC.leverClunk);
+  return _leverClunkAudio;
+}
+let _typingLoopAudio;
+function getTypingLoopAudio() {
+  if (_typingLoopAudio === undefined) _typingLoopAudio = safeCreateAudio(SOUND_SRC.typingLoop, { loop: true });
+  return _typingLoopAudio;
+}
+let _finishDingAudio;
+function getFinishDingAudio() {
+  if (_finishDingAudio === undefined) _finishDingAudio = safeCreateAudio(SOUND_SRC.finishDing);
+  return _finishDingAudio;
 }
 
-// A short, self-contained "ding" — synthesized so no extra audio asset is
-// needed. Plays once, after everything has finished printing.
-function playTypewriterDing() {
+// Warms up playback permission from a real user gesture (called from the jar
+// nav arrows, the same interaction that can lead into Little Wins) so the
+// later, timer-driven ding isn't silently blocked by autoplay restrictions.
+function primeAudioEl(el) {
+  if (!el) return;
   try {
-    const ctx = unlockAudio();
-    if (!ctx) return;
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(1568, now);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.2, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.6);
-  } catch (e) { /* audio unavailable — silently ignore */ }
+    const wasMuted = el.muted;
+    el.muted = true;
+    const p = el.play();
+    const reset = () => { try { el.pause(); el.currentTime = 0; el.muted = wasMuted; } catch (e) { /* ignore */ } };
+    if (p && typeof p.then === "function") p.then(reset).catch(reset);
+    else reset();
+  } catch (e) { /* ignore */ }
+}
+function unlockAudio() {
+  primeAudioEl(getLeverClunkAudio());
+  primeAudioEl(getTypingLoopAudio());
+  primeAudioEl(getFinishDingAudio());
 }
 
-// A punchier, lower "clunk" for the moment the lever's pull succeeds —
-// deliberately distinct from the light typing clacks.
-function playLeverClunk() {
-  try {
-    const ctx = unlockAudio();
-    if (!ctx) return;
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(130, now);
-    osc.frequency.exponentialRampToValueAtTime(58, now + 0.13);
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.32, now + 0.008);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.22);
-  } catch (e) { /* audio unavailable — silently ignore */ }
+// 1) Lever cock/clunk — fires immediately once the pull crosses the threshold.
+function playLeverClunkSound() {
+  const audio = getLeverClunkAudio();
+  if (!audio) return;
+  try { audio.currentTime = 0; audio.play().catch(() => {}); } catch (e) { /* ignore */ }
+}
+
+// 2) Typing sound — starts as soon as the paper begins actively printing.
+function startTypingSound() {
+  const audio = getTypingLoopAudio();
+  if (!audio) return;
+  try { audio.currentTime = 0; audio.play().catch(() => {}); } catch (e) { /* ignore */ }
+}
+// ...and stops the instant printing finishes (or is interrupted).
+function stopTypingSound() {
+  const audio = getTypingLoopAudio();
+  if (!audio) return;
+  try { audio.pause(); audio.currentTime = 0; } catch (e) { /* ignore */ }
+}
+
+// 3) Finish ding — plays once, only after the paper has fully finished.
+function playFinishDingSound() {
+  const audio = getFinishDingAudio();
+  if (!audio) return;
+  try { audio.currentTime = 0; audio.play().catch(() => {}); } catch (e) { /* ignore */ }
 }
 
 // ── Small JS tween helper (springy easing) for the lever's snap-back ──────
@@ -1133,8 +1148,6 @@ function LittleWinsScreen({
   const tweenCancelRef = useRef(null);
   const typingCleanupRef = useRef(null);
   const dingPlayed = useRef(false);
-  const clackCursor = useRef(0);
-  const nextClackAt = useRef(2 + Math.floor(Math.random() * 3));
   const measureRef = useRef(null);
   const [paperFullHeight, setPaperFullHeight] = useState(null);
   const svgWrapRef = useRef(null);
@@ -1174,10 +1187,9 @@ function LittleWinsScreen({
     setTypedPct(0);
     setIsDragging(false);
     dingPlayed.current = false;
-    clackCursor.current = 0;
-    nextClackAt.current = 2 + Math.floor(Math.random() * 3);
     return () => {
       cancelTween();
+      stopTypingSound();
       if (typingCleanupRef.current) { typingCleanupRef.current(); typingCleanupRef.current = null; }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1186,9 +1198,11 @@ function LittleWinsScreen({
   useEffect(() => { phaseRef.current = phase; }, [phase]);
 
   // Drive the actual printing (paper feed + typed reveal) once the lever
-  // successfully triggers it — not on any unrelated fixed timer.
+  // successfully triggers it — not on any unrelated fixed timer. The typing
+  // sound starts the moment printing begins and stops the instant it ends.
   useEffect(() => {
     if (phase !== "printing") return;
+    if (!muted) startTypingSound();
     const start = Date.now();
     const tick = setInterval(() => {
       const elapsed = Date.now() - start;
@@ -1200,28 +1214,22 @@ function LittleWinsScreen({
       }
     }, 45);
     typingCleanupRef.current = () => clearInterval(tick);
-    return () => clearInterval(tick);
-  }, [phase, typingDuration]);
+    return () => {
+      clearInterval(tick);
+      stopTypingSound();
+    };
+  }, [phase, typingDuration, muted]);
 
+  // The finish ding — plays exactly once, only once the paper has fully
+  // finished printing (typing has already stopped by this point).
   useEffect(() => {
     if (phase === "done" && !dingPlayed.current && !isEmpty) {
       dingPlayed.current = true;
-      if (!muted) playTypewriterDing();
+      if (!muted) playFinishDingSound();
     }
   }, [phase, isEmpty, muted]);
 
   const revealChars = Math.floor(totalChars * typedPct);
-
-  // A gentle, irregular "clack… clack-clack… clack…" as new characters appear —
-  // synchronised to the same progress that drives the paper feed, not a separate timer.
-  useEffect(() => {
-    if (phase !== "printing" || muted) return;
-    while (revealChars - clackCursor.current >= nextClackAt.current) {
-      clackCursor.current += nextClackAt.current;
-      nextClackAt.current = 2 + Math.floor(Math.random() * 3);
-      playClack();
-    }
-  }, [revealChars, phase, muted]);
 
   // Work out how much of each line is currently revealed, by cursor position.
   let cursor = 0;
@@ -1249,8 +1257,10 @@ function LittleWinsScreen({
   // Reads/writes go through refs so pointer-up always evaluates the real,
   // current pull progress — no stale closures, no deferred callbacks.
   const triggerSuccessfulPull = useCallback(() => {
-    unlockAudio(); // initialise/resume from this successful lever interaction
-    if (!muted) playLeverClunk();
+    // Audio is primed on pointerdown (grab) and on jar navigation already —
+    // priming again here, back-to-back with the real clunk playback below,
+    // would race the async mute-reset and risk the clunk itself being muted.
+    if (!muted) playLeverClunkSound();
     cancelTween();
     tweenCancelRef.current = tweenValue({
       from: pullProgressRef.current, to: 0, duration: 480, ease: easeOutBack, onUpdate: setPull,
@@ -1271,6 +1281,10 @@ function LittleWinsScreen({
     cancelTween();
     setIsDragging(true);
     dragStartYRef.current = e.clientY;
+    // Prime playback here too (in addition to jar navigation) so a user who
+    // lands directly on this slide (e.g. a refresh) still gets audio primed
+    // well before the real clunk/typing sounds are triggered on release.
+    unlockAudio();
     try { e.target.setPointerCapture?.(e.pointerId); } catch (err) { /* ignore */ }
   }, [cancelTween]);
 
@@ -1473,15 +1487,6 @@ function LittleWinsScreen({
               <path d={`M ${handleX + 8} ${handleY + 10} A 12 12 0 0 1 ${handleX - 2} ${handleY + 16}`}
                 fill="none" stroke="#B0483A" strokeWidth="2" opacity="0.3" strokeLinecap="round" pointerEvents="none" />
             </g>
-
-            {/* "pull to print ♡" instruction bubble */}
-            {showInstruction && (
-              <g style={{ transition:"opacity 0.3s ease", opacity: showInstruction ? 1 : 0 }} pointerEvents="none">
-                <rect x="330" y="10" width="118" height="30" rx="15" fill="#FFF8EC" stroke="#6B4226" strokeWidth="2" />
-                <text x="389" y="29" textAnchor="middle" fontFamily="var(--font-body), 'Helvetica Neue', Arial, sans-serif"
-                  fontSize="12.5" fill="#6B4226">pull to print ♡</text>
-              </g>
-            )}
           </svg>
 
           {/* Invisible hit target for the lever — a real, constant ~56px CSS
@@ -1507,6 +1512,31 @@ function LittleWinsScreen({
               WebkitTapHighlightColor:"transparent",
             }}
           />
+
+          {/* "pull to print ♡" instruction — a standalone HTML tooltip (not part
+              of the machine SVG) so it can sit at a higher stacking layer than
+              the paper and never get visually swallowed by it. Positioned
+              above/right of the knob, well clear of the arm, slot and body.
+              Always mounted so it can genuinely fade rather than just vanish,
+              and hidden completely the moment a successful pull begins printing. */}
+          <div aria-hidden="true" style={{
+            position:"absolute",
+            left: handleX * svgScale,
+            top: handleY * svgScale,
+            transform:"translate(-72%, -190%)",
+            zIndex:5,
+            opacity: showInstruction ? 1 : 0,
+            transition:"opacity 0.35s ease",
+            pointerEvents:"none",
+            whiteSpace:"nowrap",
+            background:"#FFF8EC", border:"2px solid #6B4226", borderRadius:16,
+            padding:"6px 14px",
+            fontFamily:"var(--font-body), 'Helvetica Neue', Arial, sans-serif",
+            fontSize:12.5, fontWeight:500, color:"#6B4226",
+            boxShadow:"2px 3px 0 rgba(107,66,38,0.15)",
+          }}>
+            pull to print ♡
+          </div>
         </div>
       </div>
 
@@ -1572,32 +1602,95 @@ function PaperContent({ lines, isEmpty, onOpenThought }) {
             </p>
           );
         }
-        // thought line — types out, then gets a soft analogue strike drawn across it
+        // thought line — types out, then gets a soft analogue strike drawn
+        // across EACH rendered (wrapped) line individually
         return (
-          <div key={line.key} style={{ textAlign:"center" }}>
-            <div
-              onClick={() => line.revealedFully && onOpenThought(line.jarId, line.id)}
-              role={line.revealedFully ? "button" : undefined}
-              aria-label={line.revealedFully ? "open completed thought" : undefined}
-              style={{ position:"relative", display:"inline-block", maxWidth:"100%",
-                cursor: line.revealedFully ? "pointer" : "default", padding:"1px 2px" }}>
-              <span style={{ fontFamily:"'Courier New', Courier, monospace",
-                fontSize:16.5,color:"#4A3220",lineHeight:1.6 }}>
-                {line.visibleText}
-              </span>
-              {/* soft, slightly-imperfect analogue strike-through, drawn left-to-right
-                  once the line finishes typing, following the text's own width */}
-              <span aria-hidden="true" style={{
-                position:"absolute", left:0, top:"52%", height:1.1,
-                background:"#9C6B54", opacity:0.62,
-                width: line.revealedFully ? "100%" : "0%",
-                transition:"width 0.45s ease-out",
-                transform:"translateY(-50%) rotate(-0.5deg)",
-              }} />
-            </div>
-          </div>
+          <ThoughtLine key={line.key} line={line} onOpenThought={onOpenThought} />
         );
       })}
+    </div>
+  );
+}
+
+// Renders one completed thought and, once it's fully typed, draws a thin
+// analogue strike-through across each *actually rendered* wrapped line —
+// using the Range API to read real line boxes rather than assuming a fixed
+// line count, so 1-line and multi-line (wrapped) thoughts both look correct.
+function ThoughtLine({ line, onOpenThought }) {
+  const containerRef = useRef(null);
+  const textRef = useRef(null);
+  const [lineRects, setLineRects] = useState([]);
+  const [strikesVisible, setStrikesVisible] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!line.revealedFully) { setLineRects([]); setStrikesVisible(false); return; }
+
+    const measure = () => {
+      const textEl = textRef.current;
+      const containerEl = containerRef.current;
+      if (!textEl || !containerEl || !textEl.firstChild) { setLineRects([]); return; }
+      try {
+        const range = document.createRange();
+        range.selectNodeContents(textEl);
+        const rects = Array.from(range.getClientRects());
+        const containerBox = containerEl.getBoundingClientRect();
+        const relative = rects
+          .filter(r => r.width > 0 && r.height > 0)
+          .map(r => ({
+            left: r.left - containerBox.left,
+            top: r.top - containerBox.top,
+            width: r.width,
+            height: r.height,
+          }));
+        setLineRects(relative);
+      } catch (e) { setLineRects([]); }
+    };
+
+    measure();
+    // Re-measure if the paper's width changes (e.g. viewport resize) so the
+    // strikes keep following the real wrapped line boxes.
+    let ro;
+    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+      ro = new ResizeObserver(measure);
+      ro.observe(containerRef.current);
+    }
+    return () => { if (ro) ro.disconnect(); };
+  }, [line.revealedFully, line.visibleText]);
+
+  // Start each strike at 0 width, then flip to its real width a tick later so
+  // the left-to-right transition actually has something to animate from.
+  useEffect(() => {
+    if (lineRects.length === 0) { setStrikesVisible(false); return; }
+    setStrikesVisible(false);
+    const raf = requestAnimationFrame(() => setStrikesVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, [lineRects]);
+
+  return (
+    <div style={{ textAlign:"center" }}>
+      <div
+        ref={containerRef}
+        onClick={() => line.revealedFully && onOpenThought(line.jarId, line.id)}
+        role={line.revealedFully ? "button" : undefined}
+        aria-label={line.revealedFully ? "open completed thought" : undefined}
+        style={{ position:"relative", display:"inline-block", maxWidth:"100%",
+          cursor: line.revealedFully ? "pointer" : "default", padding:"1px 2px" }}>
+        <span ref={textRef} style={{ fontFamily:"'Courier New', Courier, monospace",
+          fontSize:16.5,color:"#4A3220",lineHeight:1.6 }}>
+          {line.visibleText}
+        </span>
+        {/* one soft, slightly-imperfect analogue strike per actual rendered
+            line — not one line stretched across the whole wrapped block */}
+        {lineRects.map((r, i) => (
+          <span key={i} aria-hidden="true" style={{
+            position:"absolute", left:r.left, top:r.top + r.height / 2, height:1.1,
+            background:"#9C6B54", opacity:0.62,
+            width: strikesVisible ? r.width : 0,
+            transition:`width 0.4s ease-out ${i * 90}ms`,
+            transform:"translateY(-50%) rotate(-0.5deg)",
+          }} />
+        ))}
+      </div>
     </div>
   );
 }
