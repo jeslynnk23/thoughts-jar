@@ -957,7 +957,8 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
 // ─── LITTLE WINS ✦ — homepage achievement screen ───────────────────────────
 // The final slide in the jar carousel. NOT a jar — it doesn't hold blobs or
 // accept new thoughts. It reflects thoughts that are already marked completed
-// elsewhere, presented as a little typewritten "achievement receipt".
+// elsewhere, presented as a little printed "achievement receipt" that comes out
+// of a cute control-panel machine when the user pulls its lever.
 
 // Decide which completed thoughts (most-recent-first) comfortably fit on the
 // paper without ever truncating a thought's text. Always shows at least the
@@ -988,7 +989,7 @@ function selectThoughtsForPaper(sortedCompletedThoughts) {
 // each thought separated by a blank line. Blank lines are not typed/counted.
 function buildPaperLines(totalCompletedCount, paperThoughts) {
   const lines = [
-    { key: "title", text: "look what i actually did ♡", kind: "title" },
+    { key: "title", text: "WHAT I DID SO FAR", kind: "title" },
     { key: "spacer1", text: "", kind: "blank" },
     { key: "count", text: `${totalCompletedCount} crossed off`, kind: "count" },
   ];
@@ -1000,9 +1001,9 @@ function buildPaperLines(totalCompletedCount, paperThoughts) {
 }
 
 // ── Sound ───────────────────────────────────────────────────────────────
-// A single shared AudioContext, created/resumed from a real user gesture
-// (the arrow tap that enters the Little Wins slide) so autoplay restrictions
-// don't silently swallow the typing/ding sounds later.
+// A single shared AudioContext, created/resumed from a real user gesture (the
+// successful lever pull) so autoplay restrictions don't silently swallow the
+// clunk/typing/ding sounds that follow it.
 let _sharedAudioCtx = null;
 function unlockAudio() {
   try {
@@ -1037,7 +1038,7 @@ function playClack() {
 }
 
 // A short, self-contained "ding" — synthesized so no extra audio asset is
-// needed. Plays once, after everything has finished typing.
+// needed. Plays once, after everything has finished printing.
 function playTypewriterDing() {
   try {
     const ctx = unlockAudio();
@@ -1056,9 +1057,58 @@ function playTypewriterDing() {
   } catch (e) { /* audio unavailable — silently ignore */ }
 }
 
+// A punchier, lower "clunk" for the moment the lever's pull succeeds —
+// deliberately distinct from the light typing clacks.
+function playLeverClunk() {
+  try {
+    const ctx = unlockAudio();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(130, now);
+    osc.frequency.exponentialRampToValueAtTime(58, now + 0.13);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.32, now + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.22);
+  } catch (e) { /* audio unavailable — silently ignore */ }
+}
+
+// ── Small JS tween helper (springy easing) for the lever's snap-back ──────
+function easeOutBack(t) {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+function tweenValue({ from, to, duration, ease = (t) => t, onUpdate, onDone }) {
+  const start = (typeof performance !== "undefined" ? performance.now() : Date.now());
+  let raf;
+  const frame = (now) => {
+    const t = Math.min(1, (now - start) / duration);
+    onUpdate(from + (to - from) * ease(t));
+    if (t < 1) {
+      raf = requestAnimationFrame(frame);
+    } else if (onDone) {
+      onDone();
+    }
+  };
+  raf = requestAnimationFrame(frame);
+  return () => cancelAnimationFrame(raf);
+}
+
+const LEVER_PIVOT = { x: 424, y: 96 };
+const LEVER_RADIUS = 62;
+const LEVER_IDLE_DEG = -58;   // resting: angled up and to the right
+const LEVER_PULLED_DEG = 26;  // pulled: swung down
+const LEVER_DRAG_RANGE_PX = 120;
+const LEVER_PULL_THRESHOLD = 0.6;
+
 function LittleWinsScreen({
   totalCompletedCount, paperThoughts, onOpenThought,
-  canGoPrev, canGoNext, goPrev, goNext,
+  canGoPrev, canGoNext, goPrev, goNext, soundMuted,
 }) {
   const isEmpty = totalCompletedCount === 0;
   const lines = useMemo(() => buildPaperLines(totalCompletedCount, paperThoughts),
@@ -1069,65 +1119,82 @@ function LittleWinsScreen({
     [typableLines]
   );
 
-  // phase: 'entering' (typewriter rises in) -> 'typing' (paper feeds + types) -> 'done'
-  const [phase, setPhase] = useState("entering");
-  const [pct, setPct] = useState(0); // 0..1 progress through the typing stage
+  // phase: 'idle' (waiting for the lever) -> 'printing' (paper feeds + types) -> 'done'
+  const [phase, setPhase] = useState("idle");
+  const [pullProgress, setPullProgress] = useState(0); // 0..1 — drives the lever's angle
+  const [isDragging, setIsDragging] = useState(false);
+  const [typedPct, setTypedPct] = useState(0); // 0..1 — drives paper feed + revealed chars + sound
+  const dragStartYRef = useRef(0);
+  const tweenCancelRef = useRef(null);
+  const typingCleanupRef = useRef(null);
   const dingPlayed = useRef(false);
   const clackCursor = useRef(0);
   const nextClackAt = useRef(2 + Math.floor(Math.random() * 3));
-  const cleanupRef = useRef(null);
   const measureRef = useRef(null);
   const [paperFullHeight, setPaperFullHeight] = useState(null);
 
-  const ENTER_MS = 700;        // Stage 1 — typewriter floats up and settles
-  const SETTLE_PAUSE_MS = 280; // brief pause before typing begins
-  // Stage 3 duration scales gently with content, but always breathes (~3.4–5.2s)
-  const typingDuration = isEmpty ? 500 : Math.min(5200, Math.max(3400, 1100 + totalChars * 42));
+  const muted = !!soundMuted;
+  // Printing breathes for a few seconds, scaling gently with how much there is to type.
+  const typingDuration = isEmpty ? 600 : Math.min(5200, Math.max(3000, 900 + totalChars * 40));
 
+  const cancelTween = useCallback(() => {
+    if (tweenCancelRef.current) { tweenCancelRef.current(); tweenCancelRef.current = null; }
+  }, []);
+
+  // Reset to idle whenever the underlying content changes (e.g. navigating away
+  // and back re-mounts this component fresh) or on first mount.
   useEffect(() => {
-    setPhase("entering");
-    setPct(0);
+    setPhase("idle");
+    setPullProgress(0);
+    setTypedPct(0);
+    setIsDragging(false);
     dingPlayed.current = false;
     clackCursor.current = 0;
     nextClackAt.current = 2 + Math.floor(Math.random() * 3);
-    if (cleanupRef.current) { cleanupRef.current(); cleanupRef.current = null; }
+    return () => {
+      cancelTween();
+      if (typingCleanupRef.current) { typingCleanupRef.current(); typingCleanupRef.current = null; }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    const enterTimer = setTimeout(() => {
-      setPhase("typing");
-      const start = Date.now();
-      const tick = setInterval(() => {
-        const elapsed = Date.now() - start;
-        const p = Math.min(1, elapsed / typingDuration);
-        setPct(p);
-        if (p >= 1) {
-          clearInterval(tick);
-          setPhase("done");
-        }
-      }, 45);
-      cleanupRef.current = () => clearInterval(tick);
-    }, ENTER_MS + SETTLE_PAUSE_MS);
-
-    return () => { clearTimeout(enterTimer); if (cleanupRef.current) cleanupRef.current(); };
-  }, [totalChars, isEmpty, typingDuration]);
+  // Drive the actual printing (paper feed + typed reveal) once the lever
+  // successfully triggers it — not on any unrelated fixed timer.
+  useEffect(() => {
+    if (phase !== "printing") return;
+    const start = Date.now();
+    const tick = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const p = Math.min(1, elapsed / typingDuration);
+      setTypedPct(p);
+      if (p >= 1) {
+        clearInterval(tick);
+        setPhase("done");
+      }
+    }, 45);
+    typingCleanupRef.current = () => clearInterval(tick);
+    return () => clearInterval(tick);
+  }, [phase, typingDuration]);
 
   useEffect(() => {
     if (phase === "done" && !dingPlayed.current && !isEmpty) {
       dingPlayed.current = true;
-      playTypewriterDing();
+      if (!muted) playTypewriterDing();
     }
-  }, [phase, isEmpty]);
+  }, [phase, isEmpty, muted]);
 
-  const revealChars = Math.floor(totalChars * pct);
+  const revealChars = Math.floor(totalChars * typedPct);
 
-  // A gentle, irregular "clack… clack-clack… clack…" as new characters appear.
+  // A gentle, irregular "clack… clack-clack… clack…" as new characters appear —
+  // synchronised to the same progress that drives the paper feed, not a separate timer.
   useEffect(() => {
-    if (phase !== "typing") return;
+    if (phase !== "printing" || muted) return;
     while (revealChars - clackCursor.current >= nextClackAt.current) {
       clackCursor.current += nextClackAt.current;
       nextClackAt.current = 2 + Math.floor(Math.random() * 3);
       playClack();
     }
-  }, [revealChars, phase]);
+  }, [revealChars, phase, muted]);
 
   // Work out how much of each line is currently revealed, by cursor position.
   let cursor = 0;
@@ -1145,27 +1212,78 @@ function LittleWinsScreen({
     if (measureRef.current) setPaperFullHeight(measureRef.current.offsetHeight);
   }, [lines]);
 
-  const PEEK_HEIGHT = 26; // how much paper pokes out before typing starts
-  const paperProgress = phase === "entering" ? 0 : pct;
+  const PEEK_HEIGHT = 22; // how much paper pokes out before the lever is pulled
+  const paperProgress = phase === "idle" ? 0 : typedPct;
   const paperHeight = paperFullHeight == null
     ? undefined
     : PEEK_HEIGHT + (Math.max(PEEK_HEIGHT, paperFullHeight) - PEEK_HEIGHT) * paperProgress;
 
-  const isTyping = phase === "typing";
+  // ── Lever drag handling ────────────────────────────────────────────────
+  const triggerSuccessfulPull = useCallback(() => {
+    unlockAudio(); // initialise/resume from this successful lever interaction
+    if (!muted) playLeverClunk();
+    cancelTween();
+    tweenCancelRef.current = tweenValue({
+      from: pullProgress, to: 0, duration: 480, ease: easeOutBack, onUpdate: setPullProgress,
+    });
+    setPhase("printing");
+  }, [pullProgress, muted, cancelTween]);
+
+  const handlePointerDown = useCallback((e) => {
+    if (phase !== "idle") return;
+    cancelTween();
+    setIsDragging(true);
+    dragStartYRef.current = e.clientY;
+    try { e.target.setPointerCapture?.(e.pointerId); } catch (err) { /* ignore */ }
+  }, [phase, cancelTween]);
+
+  const handlePointerMove = useCallback((e) => {
+    if (!isDragging) return;
+    const delta = e.clientY - dragStartYRef.current;
+    const p = Math.max(0, Math.min(1, delta / LEVER_DRAG_RANGE_PX));
+    setPullProgress(p);
+  }, [isDragging]);
+
+  const handlePointerUp = useCallback(() => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    setPullProgress((current) => {
+      if (current >= LEVER_PULL_THRESHOLD) {
+        // Defer the actual trigger so we read the final progress value once.
+        setTimeout(() => triggerSuccessfulPull(), 0);
+        return current;
+      }
+      cancelTween();
+      tweenCancelRef.current = tweenValue({
+        from: current, to: 0, duration: 420, ease: easeOutBack, onUpdate: setPullProgress,
+      });
+      return current;
+    });
+  }, [isDragging, triggerSuccessfulPull, cancelTween]);
+
+  const leverAngleDeg = LEVER_IDLE_DEG + pullProgress * (LEVER_PULLED_DEG - LEVER_IDLE_DEG);
+  const leverAngleRad = (leverAngleDeg * Math.PI) / 180;
+  const handleX = LEVER_PIVOT.x + LEVER_RADIUS * Math.cos(leverAngleRad);
+  const handleY = LEVER_PIVOT.y + LEVER_RADIUS * Math.sin(leverAngleRad);
+
+  const showInstruction = phase === "idle";
+  const lightActive = phase !== "idle";
 
   return (
     <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
       gap:"clamp(2px,0.8vw,6px)", width:"100%" }}>
 
       <style>{`
-        @keyframes twRise {
-          0%   { transform: translateY(46px); opacity: 0; }
-          70%  { transform: translateY(-4px); opacity: 1; }
-          100% { transform: translateY(0px); opacity: 1; }
+        @keyframes leverIdleWiggle {
+          0%, 78%, 100% { transform: rotate(0deg); }
+          82% { transform: rotate(-4deg); }
+          86% { transform: rotate(3deg); }
+          90% { transform: rotate(-2deg); }
+          94% { transform: rotate(0deg); }
         }
-        @keyframes twClack {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(1.2px); }
+        @keyframes lightPulseIdle {
+          0%, 100% { opacity: 0.35; r: 13; }
+          50% { opacity: 0.65; r: 16; }
         }
       `}</style>
 
@@ -1185,42 +1303,113 @@ function LittleWinsScreen({
         </svg>
       </button>
 
-      {/* Achievement scene: paper above, typewriter anchored at the bottom */}
-      <div data-bt-target="little-wins" style={{ flex:"1 1 auto", maxWidth:"min(400px,86vw)", minWidth:0,
+      {/* Achievement scene: paper above, control-panel machine anchored at the bottom */}
+      <div data-bt-target="little-wins" style={{ flex:"1 1 auto", maxWidth:"min(420px,88vw)", minWidth:0,
         display:"flex", flexDirection:"column", alignItems:"center" }}>
 
         {/* Hidden measurer — the fully-typed content, used only to learn the
             paper's real final height so the feed animation targets it precisely. */}
         <div ref={measureRef} aria-hidden="true" style={{
           position:"absolute", visibility:"hidden", pointerEvents:"none",
-          width:"min(400px,86vw)", padding:"1.3rem 1.35rem 1.6rem",
+          width:"min(420px,88vw)", padding:"1.3rem 1.35rem 1.6rem",
         }}>
           <PaperContent lines={lines.map(l => ({ ...l, visibleText: l.text, revealedFully: true }))}
             isEmpty={isEmpty} onOpenThought={() => {}} />
         </div>
 
-        {/* Paper — height feeds upward as typing progresses */}
+        {/* Paper — height feeds upward as the print job progresses */}
         <div data-testid="little-wins-paper" style={{
           width:"100%", background:"#FFFDF6",
           border:"2px solid #D9C5A0", borderBottom:"none",
           borderRadius:"6px 6px 0 0",
           boxShadow:"0 3px 10px rgba(107,66,38,0.15)",
           padding:"1.3rem 1.35rem 1.6rem",
-          marginBottom:-6, zIndex:1, position:"relative",
+          marginBottom:-4, zIndex:2, position:"relative",
           overflow:"hidden",
           height: paperHeight,
-          transition: phase === "entering" ? "none" : "height 0.08s linear",
+          transition: phase === "idle" ? "none" : "height 0.08s linear",
         }}>
           <PaperContent lines={renderedLines} isEmpty={isEmpty} onOpenThought={onOpenThought} />
         </div>
 
-        {/* Typewriter, anchored at the bottom of the scene */}
-        <div style={{ width:"100%", animation:"twRise 0.7s cubic-bezier(0.22,0.61,0.36,1) both" }}>
-          <div style={{ animation: isTyping ? "twClack 0.16s steps(2) infinite" : "none" }}>
-            <img src="/typewriter.svg" alt="a cute vintage typewriter"
-              style={{ width:"min(80vw, 420px)", maxWidth:"100%", height:"auto", display:"block", margin:"0 auto" }} />
-          </div>
-        </div>
+        {/* The control-panel machine itself — low, wide, cream, hand-drawn.
+            Built as one responsive SVG (scales via viewBox) rather than a raster image. */}
+        <svg viewBox="0 0 460 190" width="100%" height="auto"
+          style={{ maxWidth: 460, display:"block", overflow:"visible" }}
+          role="img" aria-label="little wins printing machine">
+
+          {/* Ground shadow */}
+          <ellipse cx="230" cy="182" rx="180" ry="7" fill="#6B4226" opacity="0.08" />
+
+          {/* Feet */}
+          <ellipse cx="90" cy="176" rx="14" ry="6" fill="#C9A87A" stroke="#6B4226" strokeWidth="2.5" />
+          <ellipse cx="370" cy="176" rx="14" ry="6" fill="#C9A87A" stroke="#6B4226" strokeWidth="2.5" />
+
+          {/* Body — low and wide */}
+          <path d="M26,84 C22,72 30,62 46,58 L414,58 C430,62 438,72 434,84
+            L442,150 C444,162 434,170 418,170 L42,170 C26,170 16,162 18,150 Z"
+            fill="#FFF8EC" stroke="#6B4226" strokeWidth="4.5" strokeLinejoin="round" />
+          {/* soft interior warmth */}
+          <path d="M26,84 C22,72 30,62 46,58 L414,58 C430,62 438,72 434,84
+            L442,150 C444,162 434,170 418,170 L42,170 C26,170 16,162 18,150 Z"
+            fill="#F6E6C8" opacity="0.35" />
+
+          {/* Long paper slot along the top */}
+          <rect x="70" y="46" width="320" height="20" rx="10" fill="#E7D3AE" stroke="#6B4226" strokeWidth="3.5" />
+          <rect x="78" y="52" width="304" height="8" rx="4" fill="#6B4226" opacity="0.18" />
+
+          {/* "little wins" label */}
+          <text x="60" y="140" fontFamily="var(--font-body), 'Helvetica Neue', Arial, sans-serif"
+            fontSize="17" fontWeight="600" fill="#6B4226" opacity="0.8">little wins</text>
+          <line x1="60" y1="147" x2="150" y2="147" stroke="#6B4226" strokeWidth="2" opacity="0.5" />
+
+          {/* Status light with idle pulse / active glow */}
+          <circle cx="250" cy="132" r={lightActive ? 17 : 13}
+            fill="#F6E27A" opacity={lightActive ? 0.55 : 0}
+            style={{ transition:"r 0.3s ease, opacity 0.3s ease" }} />
+          {!lightActive && (
+            <circle cx="250" cy="132" r="13" fill="#F6E27A"
+              style={{ animation:"lightPulseIdle 2.4s ease-in-out infinite" }} opacity="0.4" />
+          )}
+          <circle cx="250" cy="132" r="10" fill="#F6E27A" stroke="#6B4226" strokeWidth="2.5"
+            opacity={lightActive ? 1 : 0.85} />
+          <circle cx="247" cy="129" r="2.6" fill="#FFFDF6" opacity="0.8" />
+
+          {/* Two small decorative pastel buttons */}
+          <circle cx="284" cy="132" r="8" fill="#A8BFDF" stroke="#6B4226" strokeWidth="2.2" />
+          <circle cx="310" cy="132" r="8" fill="#A8C5A0" stroke="#6B4226" strokeWidth="2.2" />
+
+          {/* ── Lever — attached to the right side, draggable ── */}
+          <g style={{
+            animation: (phase === "idle" && !isDragging) ? "leverIdleWiggle 5.5s ease-in-out infinite" : "none",
+            transformBox: "fill-box", transformOrigin: "100% 0%",
+          }}>
+            <line x1={LEVER_PIVOT.x} y1={LEVER_PIVOT.y} x2={handleX} y2={handleY}
+              stroke="#6B4226" strokeWidth="10" strokeLinecap="round" />
+            <circle cx={LEVER_PIVOT.x} cy={LEVER_PIVOT.y} r="7" fill="#6B4226" />
+            <circle
+              cx={handleX} cy={handleY} r="19"
+              fill="#EE7A6E" stroke="#6B4226" strokeWidth="4"
+              style={{ cursor: phase === "idle" ? "grab" : "default", touchAction:"none" }}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              role="button"
+              aria-label="pull lever to print little wins"
+            />
+            <circle cx={handleX - 5} cy={handleY - 5} r="5.5" fill="#FFD9D3" opacity="0.75" pointerEvents="none" />
+          </g>
+
+          {/* "pull to print ♡" instruction bubble */}
+          {showInstruction && (
+            <g style={{ transition:"opacity 0.3s ease", opacity: showInstruction ? 1 : 0 }} pointerEvents="none">
+              <rect x="330" y="18" width="118" height="30" rx="15" fill="#FFF8EC" stroke="#6B4226" strokeWidth="2" />
+              <text x="389" y="37" textAnchor="middle" fontFamily="var(--font-body), 'Helvetica Neue', Arial, sans-serif"
+                fontSize="12.5" fill="#6B4226">pull to print ♡</text>
+            </g>
+          )}
+        </svg>
       </div>
 
       {/* Right arrow — same nav as the jar carousel */}
@@ -1248,8 +1437,9 @@ function PaperContent({ lines, isEmpty, onOpenThought }) {
   if (isEmpty) {
     return (
       <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:8,textAlign:"center" }}>
-        <p style={{ fontFamily:"'Courier New', Courier, monospace",fontSize:19,color:"#6B4226",lineHeight:1.6 }}>
-          look what i actually did ♡
+        <p style={{ fontFamily:"'Courier New', Courier, monospace",fontSize:19,fontWeight:700,
+          color:"#3D2510",lineHeight:1.6,letterSpacing:0.5 }}>
+          WHAT I DID SO FAR
         </p>
         <p style={{ fontFamily:"'Courier New', Courier, monospace",fontSize:14.5,color:"#A07850",lineHeight:1.6 }}>
           nothing crossed off just yet —<br/>that's alright, there's no rush.
@@ -1264,16 +1454,23 @@ function PaperContent({ lines, isEmpty, onOpenThought }) {
         if (line.kind === "title") {
           return (
             <p key={line.key} style={{ fontFamily:"'Courier New', Courier, monospace",
-              fontSize:19,fontWeight:700,color:"#3D2510",textAlign:"center",lineHeight:1.5 }}>
+              fontSize:19,fontWeight:700,color:"#3D2510",textAlign:"center",lineHeight:1.5,letterSpacing:0.5 }}>
               {line.visibleText}
             </p>
           );
         }
         if (line.kind === "count") {
           return (
-            <p key={line.key} style={{ fontFamily:"'Courier New', Courier, monospace",
-              fontSize:14.5,color:"#A07850",textAlign:"center",lineHeight:1.5,letterSpacing:0.5 }}>
-              {line.visibleText}
+            <p key={line.key} style={{ textAlign:"center",lineHeight:1.5 }}>
+              {line.visibleText && (
+                <span style={{ fontFamily:"'Courier New', Courier, monospace",
+                  fontSize:14.5,fontWeight:700,color:"#3D2510",letterSpacing:0.5,
+                  background:"#F6E27A", borderRadius:6, padding:"2px 12px",
+                  display:"inline-block", transform:"rotate(-1deg)",
+                  boxShadow:"0 0 0 2px rgba(246,226,122,0.35)" }}>
+                  {line.visibleText}
+                </span>
+              )}
             </p>
           );
         }
@@ -4216,6 +4413,7 @@ export default function ThoughtJar() {
               onOpenThought={handleOpenThoughtFromList}
               canGoPrev={canGoPrev} canGoNext={canGoNext}
               goPrev={goPrev} goNext={goNext}
+              soundMuted={musicMuted}
             />
           ) : (
             <>
