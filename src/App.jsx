@@ -1020,6 +1020,21 @@ const SOUND_SRC = {
   finishDing: "/sounds/finish-ding.mp3",
 };
 
+// The lever-clunk file has some leading silence baked in, which made the
+// sound feel delayed after a successful pull. Rather than fiddling with
+// animation timing, we just start playback a little way into the file.
+const LEVER_CLUNK_START_OFFSET_SEC = 1.0;
+
+// The typing loop and finish ding are noticeably quieter than the BGM even
+// at full native volume (1.0 is the ceiling for a plain <audio> element), so
+// they're routed through a small Web Audio gain boost to bring their
+// perceived loudness up closer to the BGM. Purely a playback-volume fix —
+// does not touch the BGM itself.
+const SFX_GAIN = {
+  typingLoop: 2.2,
+  finishDing: 2.6,
+};
+
 function safeCreateAudio(src, { loop = false } = {}) {
   try {
     if (typeof Audio === "undefined") return null;
@@ -1030,6 +1045,36 @@ function safeCreateAudio(src, { loop = false } = {}) {
   } catch (e) { return null; }
 }
 
+// A single shared AudioContext used only to boost the SFX above their native
+// file volume. Independent of the app's music playback entirely.
+let _sfxAudioCtx;
+function getSfxAudioCtx() {
+  if (_sfxAudioCtx === undefined) {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      _sfxAudioCtx = Ctx ? new Ctx() : null;
+    } catch (e) { _sfxAudioCtx = null; }
+  }
+  return _sfxAudioCtx;
+}
+
+// Routes an <audio> element through ctx → GainNode(gain) → destination, so
+// its perceived loudness can exceed the native 1.0 volume ceiling. Falls
+// back silently to the element's normal (native-volume) playback if the Web
+// Audio API isn't available. Each element is only ever wired up once.
+function boostAudioVolume(audioEl, gain) {
+  if (!audioEl || audioEl._sfxGainNode) return;
+  const ctx = getSfxAudioCtx();
+  if (!ctx) return;
+  try {
+    const source = ctx.createMediaElementSource(audioEl);
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = gain;
+    source.connect(gainNode).connect(ctx.destination);
+    audioEl._sfxGainNode = gainNode;
+  } catch (e) { /* ignore — plays at native volume instead */ }
+}
+
 let _leverClunkAudio;
 function getLeverClunkAudio() {
   if (_leverClunkAudio === undefined) _leverClunkAudio = safeCreateAudio(SOUND_SRC.leverClunk);
@@ -1037,12 +1082,18 @@ function getLeverClunkAudio() {
 }
 let _typingLoopAudio;
 function getTypingLoopAudio() {
-  if (_typingLoopAudio === undefined) _typingLoopAudio = safeCreateAudio(SOUND_SRC.typingLoop, { loop: true });
+  if (_typingLoopAudio === undefined) {
+    _typingLoopAudio = safeCreateAudio(SOUND_SRC.typingLoop, { loop: true });
+    boostAudioVolume(_typingLoopAudio, SFX_GAIN.typingLoop);
+  }
   return _typingLoopAudio;
 }
 let _finishDingAudio;
 function getFinishDingAudio() {
-  if (_finishDingAudio === undefined) _finishDingAudio = safeCreateAudio(SOUND_SRC.finishDing);
+  if (_finishDingAudio === undefined) {
+    _finishDingAudio = safeCreateAudio(SOUND_SRC.finishDing);
+    boostAudioVolume(_finishDingAudio, SFX_GAIN.finishDing);
+  }
   return _finishDingAudio;
 }
 
@@ -1052,6 +1103,8 @@ function getFinishDingAudio() {
 function primeAudioEl(el) {
   if (!el) return;
   try {
+    const ctx = getSfxAudioCtx();
+    if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
     const wasMuted = el.muted;
     el.muted = true;
     const p = el.play();
@@ -1066,11 +1119,20 @@ function unlockAudio() {
   primeAudioEl(getFinishDingAudio());
 }
 
-// 1) Lever cock/clunk — fires immediately once the pull crosses the threshold.
+// 1) Lever cock/clunk — fires immediately once the pull crosses the
+// threshold. Starts partway into the file (see LEVER_CLUNK_START_OFFSET_SEC)
+// so the sound itself feels instant despite leading silence in the asset.
 function playLeverClunkSound() {
   const audio = getLeverClunkAudio();
   if (!audio) return;
-  try { audio.currentTime = 0; audio.play().catch(() => {}); } catch (e) { /* ignore */ }
+  try {
+    audio.currentTime = LEVER_CLUNK_START_OFFSET_SEC;
+    audio.play().catch(() => {});
+  } catch (e) {
+    // If the browser can't seek yet (metadata not loaded), still play something
+    // rather than staying silent.
+    try { audio.play().catch(() => {}); } catch (e2) { /* ignore */ }
+  }
 }
 
 // 2) Typing sound — starts as soon as the paper begins actively printing.
@@ -3278,7 +3340,9 @@ function Toast({ message, visible }) {
       transform:`translateX(-50%) translateY(${visible ? 0 : 20}px)`,
       opacity: visible ? 1 : 0,transition:"all 0.35s cubic-bezier(0.34,1.56,0.64,1)",
       background:"#3D2510",color:"white",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
-      padding:"10px 24px",borderRadius:50,pointerEvents:"none",zIndex:200,whiteSpace:"nowrap" }}
+      padding:"10px 24px",borderRadius:24,pointerEvents:"none",zIndex:200,
+      maxWidth:"calc(100vw - 48px)",width:"max-content",textAlign:"center",
+      whiteSpace:"normal",wordBreak:"break-word",lineHeight:1.4,boxSizing:"border-box" }}
       role="status" aria-live="polite">
       {message}
     </div>
