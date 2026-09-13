@@ -1105,6 +1105,9 @@ const LEVER_IDLE_DEG = -58;   // resting: angled up and to the right
 const LEVER_PULLED_DEG = 26;  // pulled: swung down
 const LEVER_DRAG_RANGE_PX = 120;
 const LEVER_PULL_THRESHOLD = 0.6;
+const MACHINE_VIEWBOX_W = 460;
+const MACHINE_VIEWBOX_H = 190;
+const LEVER_HIT_RADIUS_PX = 28; // ~56px diameter invisible hit target, in real CSS px regardless of SVG scale
 
 function LittleWinsScreen({
   totalCompletedCount, paperThoughts, onOpenThought,
@@ -1125,6 +1128,8 @@ function LittleWinsScreen({
   const [isDragging, setIsDragging] = useState(false);
   const [typedPct, setTypedPct] = useState(0); // 0..1 — drives paper feed + revealed chars + sound
   const dragStartYRef = useRef(0);
+  const pullProgressRef = useRef(0); // mirrors pullProgress synchronously, read at pointer-up (no stale state)
+  const phaseRef = useRef("idle");   // mirrors phase synchronously, for the same reason
   const tweenCancelRef = useRef(null);
   const typingCleanupRef = useRef(null);
   const dingPlayed = useRef(false);
@@ -1132,6 +1137,8 @@ function LittleWinsScreen({
   const nextClackAt = useRef(2 + Math.floor(Math.random() * 3));
   const measureRef = useRef(null);
   const [paperFullHeight, setPaperFullHeight] = useState(null);
+  const svgWrapRef = useRef(null);
+  const [svgScale, setSvgScale] = useState(1);
 
   const muted = !!soundMuted;
   // Printing breathes for a few seconds, scaling gently with how much there is to type.
@@ -1141,11 +1148,29 @@ function LittleWinsScreen({
     if (tweenCancelRef.current) { tweenCancelRef.current(); tweenCancelRef.current = null; }
   }, []);
 
+  const setPull = useCallback((p) => {
+    pullProgressRef.current = p;
+    setPullProgress(p);
+  }, []);
+
+  // Keep track of the SVG's rendered scale (its box is responsive, but the
+  // lever's hit target needs to sit at a real, constant CSS-pixel size).
+  useEffect(() => {
+    const el = svgWrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const update = () => { if (el.clientWidth) setSvgScale(el.clientWidth / MACHINE_VIEWBOX_W); };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Reset to idle whenever the underlying content changes (e.g. navigating away
   // and back re-mounts this component fresh) or on first mount.
   useEffect(() => {
     setPhase("idle");
-    setPullProgress(0);
+    phaseRef.current = "idle";
+    setPull(0);
     setTypedPct(0);
     setIsDragging(false);
     dingPlayed.current = false;
@@ -1157,6 +1182,8 @@ function LittleWinsScreen({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
 
   // Drive the actual printing (paper feed + typed reveal) once the lever
   // successfully triggers it — not on any unrelated fixed timer.
@@ -1219,47 +1246,52 @@ function LittleWinsScreen({
     : PEEK_HEIGHT + (Math.max(PEEK_HEIGHT, paperFullHeight) - PEEK_HEIGHT) * paperProgress;
 
   // ── Lever drag handling ────────────────────────────────────────────────
+  // Reads/writes go through refs so pointer-up always evaluates the real,
+  // current pull progress — no stale closures, no deferred callbacks.
   const triggerSuccessfulPull = useCallback(() => {
     unlockAudio(); // initialise/resume from this successful lever interaction
     if (!muted) playLeverClunk();
     cancelTween();
     tweenCancelRef.current = tweenValue({
-      from: pullProgress, to: 0, duration: 480, ease: easeOutBack, onUpdate: setPullProgress,
+      from: pullProgressRef.current, to: 0, duration: 480, ease: easeOutBack, onUpdate: setPull,
     });
+    phaseRef.current = "printing";
     setPhase("printing");
-  }, [pullProgress, muted, cancelTween]);
+  }, [muted, cancelTween, setPull]);
+
+  const springBack = useCallback(() => {
+    cancelTween();
+    tweenCancelRef.current = tweenValue({
+      from: pullProgressRef.current, to: 0, duration: 420, ease: easeOutBack, onUpdate: setPull,
+    });
+  }, [cancelTween, setPull]);
 
   const handlePointerDown = useCallback((e) => {
-    if (phase !== "idle") return;
+    if (phaseRef.current !== "idle") return;
     cancelTween();
     setIsDragging(true);
     dragStartYRef.current = e.clientY;
     try { e.target.setPointerCapture?.(e.pointerId); } catch (err) { /* ignore */ }
-  }, [phase, cancelTween]);
+  }, [cancelTween]);
 
   const handlePointerMove = useCallback((e) => {
-    if (!isDragging) return;
+    if (phaseRef.current !== "idle") return;
     const delta = e.clientY - dragStartYRef.current;
     const p = Math.max(0, Math.min(1, delta / LEVER_DRAG_RANGE_PX));
-    setPullProgress(p);
-  }, [isDragging]);
+    setPull(p);
+  }, [setPull]);
 
   const handlePointerUp = useCallback(() => {
-    if (!isDragging) return;
+    if (phaseRef.current !== "idle") return;
     setIsDragging(false);
-    setPullProgress((current) => {
-      if (current >= LEVER_PULL_THRESHOLD) {
-        // Defer the actual trigger so we read the final progress value once.
-        setTimeout(() => triggerSuccessfulPull(), 0);
-        return current;
-      }
-      cancelTween();
-      tweenCancelRef.current = tweenValue({
-        from: current, to: 0, duration: 420, ease: easeOutBack, onUpdate: setPullProgress,
-      });
-      return current;
-    });
-  }, [isDragging, triggerSuccessfulPull, cancelTween]);
+    // Read the real, current progress directly from the ref — reliable
+    // regardless of render timing, no stale state.
+    if (pullProgressRef.current >= LEVER_PULL_THRESHOLD) {
+      triggerSuccessfulPull();
+    } else {
+      springBack();
+    }
+  }, [triggerSuccessfulPull, springBack]);
 
   const leverAngleDeg = LEVER_IDLE_DEG + pullProgress * (LEVER_PULLED_DEG - LEVER_IDLE_DEG);
   const leverAngleRad = (leverAngleDeg * Math.PI) / 180;
@@ -1268,22 +1300,20 @@ function LittleWinsScreen({
 
   const showInstruction = phase === "idle";
   const lightActive = phase !== "idle";
+  const idleKnobPulse = phase === "idle" && !isDragging;
 
   return (
     <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
       gap:"clamp(2px,0.8vw,6px)", width:"100%" }}>
 
       <style>{`
-        @keyframes leverIdleWiggle {
-          0%, 78%, 100% { transform: rotate(0deg); }
-          82% { transform: rotate(-4deg); }
-          86% { transform: rotate(3deg); }
-          90% { transform: rotate(-2deg); }
-          94% { transform: rotate(0deg); }
+        @keyframes knobIdlePulse {
+          0%, 100% { transform: translateY(0px) scale(1); }
+          50% { transform: translateY(-2px) scale(1.04); }
         }
         @keyframes lightPulseIdle {
-          0%, 100% { opacity: 0.35; r: 13; }
-          50% { opacity: 0.65; r: 16; }
+          0%, 100% { opacity: 0.35; r: 15; }
+          50% { opacity: 0.65; r: 19; }
         }
       `}</style>
 
@@ -1317,99 +1347,167 @@ function LittleWinsScreen({
             isEmpty={isEmpty} onOpenThought={() => {}} />
         </div>
 
-        {/* Paper — height feeds upward as the print job progresses */}
+        {/* Paper — height feeds upward as the print job progresses.
+            A soft shadow along its own bottom edge helps it read as though
+            it's dipping down into the dark slot beneath it. */}
         <div data-testid="little-wins-paper" style={{
           width:"100%", background:"#FFFDF6",
           border:"2px solid #D9C5A0", borderBottom:"none",
           borderRadius:"6px 6px 0 0",
           boxShadow:"0 3px 10px rgba(107,66,38,0.15)",
           padding:"1.3rem 1.35rem 1.6rem",
-          marginBottom:-4, zIndex:2, position:"relative",
+          marginBottom:-14, zIndex:2, position:"relative",
           overflow:"hidden",
           height: paperHeight,
           transition: phase === "idle" ? "none" : "height 0.08s linear",
         }}>
           <PaperContent lines={renderedLines} isEmpty={isEmpty} onOpenThought={onOpenThought} />
+          <div aria-hidden="true" style={{
+            position:"absolute", left:0, right:0, bottom:0, height:16,
+            background:"linear-gradient(to bottom, rgba(58,36,20,0), rgba(58,36,20,0.32))",
+            pointerEvents:"none",
+          }} />
         </div>
 
-        {/* The control-panel machine itself — low, wide, cream, hand-drawn.
-            Built as one responsive SVG (scales via viewBox) rather than a raster image. */}
-        <svg viewBox="0 0 460 190" width="100%" height="auto"
-          style={{ maxWidth: 460, display:"block", overflow:"visible" }}
-          role="img" aria-label="little wins printing machine">
+        {/* The control-panel machine itself — low, wide, cream, with a
+            hand-drawn illustrated 2.5D depth via SVG gradients (no PNG). */}
+        <div ref={svgWrapRef} style={{ width:"100%", maxWidth: MACHINE_VIEWBOX_W, position:"relative" }}>
+          <svg viewBox={`0 0 ${MACHINE_VIEWBOX_W} ${MACHINE_VIEWBOX_H}`} width="100%" height="auto"
+            style={{ display:"block", overflow:"visible" }}
+            role="img" aria-label="little wins printing machine">
 
-          {/* Ground shadow */}
-          <ellipse cx="230" cy="182" rx="180" ry="7" fill="#6B4226" opacity="0.08" />
+            <defs>
+              <linearGradient id="lw-body-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#FFFDF6" />
+                <stop offset="55%" stopColor="#FFF8EC" />
+                <stop offset="100%" stopColor="#F1E1C2" />
+              </linearGradient>
+              <linearGradient id="lw-slot-inner-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#4A2E1A" />
+                <stop offset="60%" stopColor="#341F11" />
+                <stop offset="100%" stopColor="#2A180D" />
+              </linearGradient>
+              <radialGradient id="lw-lamp-grad" cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stopColor="#FFF3B0" />
+                <stop offset="55%" stopColor="#F6E27A" />
+                <stop offset="100%" stopColor="#D9B84E" />
+              </radialGradient>
+              <radialGradient id="lw-blue-grad" cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stopColor="#DCE7F7" />
+                <stop offset="55%" stopColor="#A8BFDF" />
+                <stop offset="100%" stopColor="#7E97C4" />
+              </radialGradient>
+              <radialGradient id="lw-green-grad" cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stopColor="#DCEBD6" />
+                <stop offset="55%" stopColor="#A8C5A0" />
+                <stop offset="100%" stopColor="#7DA173" />
+              </radialGradient>
+            </defs>
 
-          {/* Feet */}
-          <ellipse cx="90" cy="176" rx="14" ry="6" fill="#C9A87A" stroke="#6B4226" strokeWidth="2.5" />
-          <ellipse cx="370" cy="176" rx="14" ry="6" fill="#C9A87A" stroke="#6B4226" strokeWidth="2.5" />
+            {/* Ground shadow */}
+            <ellipse cx="230" cy="182" rx="180" ry="7" fill="#6B4226" opacity="0.1" />
 
-          {/* Body — low and wide */}
-          <path d="M26,84 C22,72 30,62 46,58 L414,58 C430,62 438,72 434,84
-            L442,150 C444,162 434,170 418,170 L42,170 C26,170 16,162 18,150 Z"
-            fill="#FFF8EC" stroke="#6B4226" strokeWidth="4.5" strokeLinejoin="round" />
-          {/* soft interior warmth */}
-          <path d="M26,84 C22,72 30,62 46,58 L414,58 C430,62 438,72 434,84
-            L442,150 C444,162 434,170 418,170 L42,170 C26,170 16,162 18,150 Z"
-            fill="#F6E6C8" opacity="0.35" />
+            {/* Feet */}
+            <ellipse cx="90" cy="176" rx="14" ry="6" fill="#C9A87A" stroke="#6B4226" strokeWidth="2.5" />
+            <ellipse cx="370" cy="176" rx="14" ry="6" fill="#C9A87A" stroke="#6B4226" strokeWidth="2.5" />
 
-          {/* Long paper slot along the top */}
-          <rect x="70" y="46" width="320" height="20" rx="10" fill="#E7D3AE" stroke="#6B4226" strokeWidth="3.5" />
-          <rect x="78" y="52" width="304" height="8" rx="4" fill="#6B4226" opacity="0.18" />
+            {/* Dark recessed slot opening — sits BEHIND the body/bezel, so paper
+                (layered above, in HTML) appears to emerge out of a real hole */}
+            <rect x="76" y="44" width="308" height="26" rx="12" fill="url(#lw-slot-inner-grad)" />
 
-          {/* "little wins" label */}
-          <text x="60" y="140" fontFamily="var(--font-body), 'Helvetica Neue', Arial, sans-serif"
-            fontSize="17" fontWeight="600" fill="#6B4226" opacity="0.8">little wins</text>
-          <line x1="60" y1="147" x2="150" y2="147" stroke="#6B4226" strokeWidth="2" opacity="0.5" />
+            {/* Body — low and wide, subtle gradient depth */}
+            <path d="M26,84 C22,72 30,62 46,58 L414,58 C430,62 438,72 434,84
+              L442,150 C444,162 434,170 418,170 L42,170 C26,170 16,162 18,150 Z"
+              fill="url(#lw-body-grad)" stroke="#6B4226" strokeWidth="4.5" strokeLinejoin="round" />
+            {/* soft highlight, upper-left */}
+            <ellipse cx="110" cy="90" rx="90" ry="34" fill="#FFFFFF" opacity="0.28" />
+            {/* soft warm shading, lower edge */}
+            <path d="M40,150 C120,164 340,164 420,150 L434,84 L442,150 C444,162 434,170 418,170 L42,170 C26,170 16,162 18,150 Z"
+              fill="#6B4226" opacity="0.06" />
 
-          {/* Status light with idle pulse / active glow */}
-          <circle cx="250" cy="132" r={lightActive ? 17 : 13}
-            fill="#F6E27A" opacity={lightActive ? 0.55 : 0}
-            style={{ transition:"r 0.3s ease, opacity 0.3s ease" }} />
-          {!lightActive && (
-            <circle cx="250" cy="132" r="13" fill="#F6E27A"
-              style={{ animation:"lightPulseIdle 2.4s ease-in-out infinite" }} opacity="0.4" />
-          )}
-          <circle cx="250" cy="132" r="10" fill="#F6E27A" stroke="#6B4226" strokeWidth="2.5"
-            opacity={lightActive ? 1 : 0.85} />
-          <circle cx="247" cy="129" r="2.6" fill="#FFFDF6" opacity="0.8" />
+            {/* Outer slot bezel/lip — chocolate-brown frame with a warm highlight
+                right at the top edge, drawn OVER the body so the opening reads
+                as recessed rather than a flat bar */}
+            <rect x="68" y="40" width="324" height="30" rx="15" fill="none" stroke="#4A2E1A" strokeWidth="7" />
+            <path d="M74,42 C130,36 330,36 386,42" fill="none" stroke="#E8C79A" strokeWidth="2.4"
+              strokeLinecap="round" opacity="0.65" />
 
-          {/* Two small decorative pastel buttons */}
-          <circle cx="284" cy="132" r="8" fill="#A8BFDF" stroke="#6B4226" strokeWidth="2.2" />
-          <circle cx="310" cy="132" r="8" fill="#A8C5A0" stroke="#6B4226" strokeWidth="2.2" />
+            {/* ── Three physical indicator controls — centred, cute 2.5D treatment ── */}
+            {/* Status light — largest, softly glows while printing */}
+            {!lightActive && (
+              <circle cx="230" cy="122" r="15" fill="#F6E27A"
+                style={{ animation:"lightPulseIdle 2.4s ease-in-out infinite" }} opacity="0.4" />
+            )}
+            <circle cx="230" cy="122" r={lightActive ? 24 : 18}
+              fill="#F6E27A" opacity={lightActive ? 0.5 : 0}
+              style={{ transition:"r 0.3s ease, opacity 0.3s ease" }} />
+            <circle cx="230" cy="122" r="17" fill="url(#lw-lamp-grad)" stroke="#4A2E1A" strokeWidth="3" />
+            <ellipse cx="225" cy="116" rx="5.5" ry="4" fill="#FFFDF6" opacity="0.85" />
+            <path d="M236,128 A15,15 0 0 1 227,136" fill="none" stroke="#8A6A1E" strokeWidth="2" opacity="0.35" strokeLinecap="round" />
 
-          {/* ── Lever — attached to the right side, draggable ── */}
-          <g style={{
-            animation: (phase === "idle" && !isDragging) ? "leverIdleWiggle 5.5s ease-in-out infinite" : "none",
-            transformBox: "fill-box", transformOrigin: "100% 0%",
-          }}>
+            {/* Blue button — smaller */}
+            <circle cx="185" cy="126" r="11" fill="url(#lw-blue-grad)" stroke="#4A2E1A" strokeWidth="2.4" />
+            <ellipse cx="181.5" cy="122.5" rx="3.4" ry="2.6" fill="#FFFDF6" opacity="0.85" />
+            <path d="M191,130 A11,11 0 0 1 184,136" fill="none" stroke="#4C628A" strokeWidth="1.6" opacity="0.35" strokeLinecap="round" />
+
+            {/* Green button — smaller */}
+            <circle cx="275" cy="126" r="11" fill="url(#lw-green-grad)" stroke="#4A2E1A" strokeWidth="2.4" />
+            <ellipse cx="271.5" cy="122.5" rx="3.4" ry="2.6" fill="#FFFDF6" opacity="0.85" />
+            <path d="M281,130 A11,11 0 0 1 274,136" fill="none" stroke="#4F6B45" strokeWidth="1.6" opacity="0.35" strokeLinecap="round" />
+
+            {/* ── Lever — pivot always visibly fixed to the right side of the body.
+                 Only the pull itself (from real pointer drag) rotates the arm;
+                 there is no ambient group-level wiggle. ── */}
             <line x1={LEVER_PIVOT.x} y1={LEVER_PIVOT.y} x2={handleX} y2={handleY}
               stroke="#6B4226" strokeWidth="10" strokeLinecap="round" />
-            <circle cx={LEVER_PIVOT.x} cy={LEVER_PIVOT.y} r="7" fill="#6B4226" />
-            <circle
-              cx={handleX} cy={handleY} r="19"
-              fill="#EE7A6E" stroke="#6B4226" strokeWidth="4"
-              style={{ cursor: phase === "idle" ? "grab" : "default", touchAction:"none" }}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerUp}
-              role="button"
-              aria-label="pull lever to print little wins"
-            />
-            <circle cx={handleX - 5} cy={handleY - 5} r="5.5" fill="#FFD9D3" opacity="0.75" pointerEvents="none" />
-          </g>
-
-          {/* "pull to print ♡" instruction bubble */}
-          {showInstruction && (
-            <g style={{ transition:"opacity 0.3s ease", opacity: showInstruction ? 1 : 0 }} pointerEvents="none">
-              <rect x="330" y="18" width="118" height="30" rx="15" fill="#FFF8EC" stroke="#6B4226" strokeWidth="2" />
-              <text x="389" y="37" textAnchor="middle" fontFamily="var(--font-body), 'Helvetica Neue', Arial, sans-serif"
-                fontSize="12.5" fill="#6B4226">pull to print ♡</text>
+            <circle cx={LEVER_PIVOT.x} cy={LEVER_PIVOT.y} r="8" fill="#4A2E1A" />
+            <circle cx={LEVER_PIVOT.x} cy={LEVER_PIVOT.y} r="8" fill="none" stroke="#6B4226" strokeWidth="2" />
+            {/* visual knob — purely decorative; the invisible HTML hit-target
+                (below) is what actually receives pointer events */}
+            <g style={{
+              animation: idleKnobPulse ? "knobIdlePulse 3.2s ease-in-out infinite" : "none",
+              transformBox: "fill-box", transformOrigin: "50% 50%",
+            }}>
+              <circle cx={handleX} cy={handleY} r="19" fill="#EE7A6E" stroke="#4A2E1A" strokeWidth="4" pointerEvents="none" />
+              <circle cx={handleX - 5} cy={handleY - 5} r="5.5" fill="#FFD9D3" opacity="0.75" pointerEvents="none" />
+              <path d={`M ${handleX + 8} ${handleY + 10} A 12 12 0 0 1 ${handleX - 2} ${handleY + 16}`}
+                fill="none" stroke="#B0483A" strokeWidth="2" opacity="0.3" strokeLinecap="round" pointerEvents="none" />
             </g>
-          )}
-        </svg>
+
+            {/* "pull to print ♡" instruction bubble */}
+            {showInstruction && (
+              <g style={{ transition:"opacity 0.3s ease", opacity: showInstruction ? 1 : 0 }} pointerEvents="none">
+                <rect x="330" y="10" width="118" height="30" rx="15" fill="#FFF8EC" stroke="#6B4226" strokeWidth="2" />
+                <text x="389" y="29" textAnchor="middle" fontFamily="var(--font-body), 'Helvetica Neue', Arial, sans-serif"
+                  fontSize="12.5" fill="#6B4226">pull to print ♡</text>
+              </g>
+            )}
+          </svg>
+
+          {/* Invisible hit target for the lever — a real, constant ~56px CSS
+              circle regardless of how much the SVG itself is scaled down, so
+              the knob stays easy to grab on small screens. */}
+          <div
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            role="button"
+            aria-label="pull lever to print little wins"
+            style={{
+              position:"absolute",
+              left: handleX * svgScale - LEVER_HIT_RADIUS_PX,
+              top: handleY * svgScale - LEVER_HIT_RADIUS_PX,
+              width: LEVER_HIT_RADIUS_PX * 2,
+              height: LEVER_HIT_RADIUS_PX * 2,
+              borderRadius:"50%",
+              background:"transparent",
+              cursor: phase === "idle" ? "grab" : "default",
+              touchAction:"none",
+              WebkitTapHighlightColor:"transparent",
+            }}
+          />
+        </div>
       </div>
 
       {/* Right arrow — same nav as the jar carousel */}
