@@ -1,5 +1,5 @@
 import './index.css';
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Analytics } from '@vercel/analytics/react';
 
 // ─── CONSTANTS & STORAGE ────────────────────────────────────────────────────
@@ -752,7 +752,7 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
         <div>
           <h2 style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(22px,4vw,30px)",color:"#3D2510",
               lineHeight:1.6,paddingBottom:2,overflow:"visible",display:"block" }}>
-            {filterJar === "completed" ? "things i've put down ♡" : "all thoughts"}
+            {filterJar === "completed" ? "little wins ✦" : "all thoughts"}
           </h2>
           {filterJar === "completed" && (
             <p style={{ fontFamily:"var(--font-body)",fontSize:12.5,color:"#A07850" }}>
@@ -872,7 +872,7 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
               strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <span style={{ fontFamily:"var(--font-body)",fontSize:10,color: filterJar==="completed"?"#3D2510":"#A07850",
-            fontWeight: filterJar==="completed"?600:400, whiteSpace:"nowrap" }}>completed</span>
+            fontWeight: filterJar==="completed"?600:400, whiteSpace:"nowrap" }}>little wins ✦</span>
         </button>
       </div>
 
@@ -954,75 +954,283 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
   );
 }
 
-// ─── COMPLETED THOUGHTS SCORECARD ───────────────────────────────────────────
-// A cute, paper-like "bucket list" card that lives as the last slide in the
-// homepage jar carousel. It is NOT a jar — it doesn't hold blobs or accept new
-// thoughts, it just reflects thoughts that are already marked completed elsewhere.
+// ─── LITTLE WINS ✦ — homepage achievement screen ───────────────────────────
+// The final slide in the jar carousel. NOT a jar — it doesn't hold blobs or
+// accept new thoughts. It reflects thoughts that are already marked completed
+// elsewhere, presented as a little typewritten "achievement receipt".
 
-function CompletedScorecard({ totalCompletedCount, recentCompletedThoughts, onOpenThought, onViewAll }) {
+// Decide which completed thoughts (most-recent-first) comfortably fit on the
+// paper without ever truncating a thought's text. Always shows at least the
+// most recent one, even if it alone is long.
+function selectThoughtsForPaper(sortedCompletedThoughts) {
+  const CHARS_PER_LINE = 30; // rough estimate for the typewriter font/paper width
+  const LINE_BUDGET = 9;     // lines available for thoughts (title/count take the rest)
+  const selected = [];
+  let usedLines = 0;
+  for (const t of sortedCompletedThoughts) {
+    const lines = Math.max(1, Math.ceil(t.text.length / CHARS_PER_LINE));
+    if (selected.length === 0) {
+      selected.push(t);
+      usedLines += lines;
+      continue;
+    }
+    if (usedLines + lines <= LINE_BUDGET) {
+      selected.push(t);
+      usedLines += lines;
+    } else {
+      break;
+    }
+  }
+  return selected;
+}
+
+// Build the ordered list of "paper lines" — title, blank, count, blank, then
+// each thought separated by a blank line. Blank lines are not typed/counted.
+function buildPaperLines(totalCompletedCount, paperThoughts) {
+  const lines = [
+    { key: "title", text: "look what i actually did ♡", kind: "title" },
+    { key: "spacer1", text: "", kind: "blank" },
+    { key: "count", text: `${totalCompletedCount} crossed off`, kind: "count" },
+  ];
+  paperThoughts.forEach((t) => {
+    lines.push({ key: `spacer-${t.id}`, text: "", kind: "blank" });
+    lines.push({ key: `thought-${t.id}`, text: t.text, kind: "thought", id: t.id, jarId: t.jarId });
+  });
+  return lines;
+}
+
+// A short, self-contained "ding" — synthesized so no extra audio asset is needed.
+// Silently no-ops if the Web Audio API isn't available or sound is muted.
+function playTypewriterDing() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(1568, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.6);
+    osc.onended = () => { try { ctx.close(); } catch (e) { /* ignore */ } };
+  } catch (e) { /* audio unavailable — silently ignore */ }
+}
+
+// Cute, hand-drawn vintage typewriter — cream/brown/pastel, matching the rest
+// of Thoughts Jar's visual language. `isTyping` drives a subtle clack wiggle.
+function TypewriterGraphic({ isTyping }) {
+  return (
+    <svg viewBox="0 0 220 128" width="100%" height="auto"
+      style={{ maxWidth: 240, display: "block", margin: "0 auto",
+        animation: isTyping ? "twClack 0.16s steps(2) infinite" : "none" }}>
+      <style>{`
+        @keyframes twClack {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(1.4px); }
+        }
+      `}</style>
+      {/* Feet */}
+      <ellipse cx={38} cy={122} rx={10} ry={4} fill="#C9A87A" opacity={0.5} />
+      <ellipse cx={182} cy={122} rx={10} ry={4} fill="#C9A87A" opacity={0.5} />
+      {/* Body */}
+      <path d="M14,72 C12,60 20,52 34,50 L186,50 C200,52 208,60 206,72
+        L210,108 C211,114 207,118 200,118 L20,118 C13,118 9,114 10,108 Z"
+        fill="#FFF8EC" stroke="#6B4226" strokeWidth={3} strokeLinejoin="round" />
+      {/* Carriage / roller housing */}
+      <rect x={26} y={34} width={168} height={22} rx={11} fill="#F6E6C8" stroke="#6B4226" strokeWidth={3} />
+      <rect x={20} y={40} width={12} height={12} rx={4} fill="#F2A7B0" stroke="#6B4226" strokeWidth={2} />
+      <rect x={188} y={40} width={12} height={12} rx={4} fill="#A8BFDF" stroke="#6B4226" strokeWidth={2} />
+      {/* Little bell / ding knob */}
+      <circle cx={178} cy={62} r={6} fill="#F6E27A" stroke="#6B4226" strokeWidth={2} />
+      {/* Keys */}
+      {Array.from({ length: 9 }).map((_, i) => (
+        <circle key={i} cx={40 + i * 17} cy={100} r={7}
+          fill={["#F2A7B0", "#A8BFDF", "#F6E27A", "#A8C5A0", "#D4A5C9"][i % 5]}
+          stroke="#6B4226" strokeWidth={1.6} />
+      ))}
+      {/* Keyboard bed */}
+      <path d="M24,86 C24,82 28,80 34,80 L186,80 C192,80 196,82 196,86 L196,92 L24,92 Z"
+        fill="#FFF8EC" stroke="#6B4226" strokeWidth={2} opacity={0.9} />
+    </svg>
+  );
+}
+
+function LittleWinsScreen({
+  totalCompletedCount, paperThoughts, onOpenThought,
+  canGoPrev, canGoNext, goPrev, goNext,
+}) {
   const isEmpty = totalCompletedCount === 0;
+  const lines = useMemo(() => buildPaperLines(totalCompletedCount, paperThoughts),
+    [totalCompletedCount, paperThoughts]);
+  const typableLines = useMemo(() => lines.filter(l => l.kind !== "blank"), [lines]);
+  const totalChars = useMemo(
+    () => Math.max(1, typableLines.reduce((sum, l) => sum + l.text.length, 0)),
+    [typableLines]
+  );
+
+  const [revealChars, setRevealChars] = useState(0);
+  const [done, setDone] = useState(false);
+  const dingPlayed = useRef(false);
+
+  useEffect(() => {
+    setRevealChars(0);
+    setDone(false);
+    dingPlayed.current = false;
+    if (isEmpty) { setDone(true); return; }
+    const DURATION = 2200; // keep the whole reveal quick regardless of text length
+    const start = Date.now();
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const pct = Math.min(1, elapsed / DURATION);
+      setRevealChars(Math.ceil(totalChars * pct));
+      if (pct >= 1) {
+        clearInterval(timer);
+        setDone(true);
+      }
+    }, 45);
+    return () => clearInterval(timer);
+  }, [totalChars, isEmpty]);
+
+  useEffect(() => {
+    if (done && !dingPlayed.current && !isEmpty) {
+      dingPlayed.current = true;
+      playTypewriterDing();
+    }
+  }, [done, isEmpty]);
+
+  // Work out how much of each line is currently revealed, by cursor position.
+  let cursor = 0;
+  const renderedLines = lines.map(line => {
+    if (line.kind === "blank") return { ...line, visibleText: "", revealedFully: true };
+    const startOffset = cursor;
+    cursor += line.text.length;
+    const revealedCount = Math.max(0, Math.min(line.text.length, revealChars - startOffset));
+    return { ...line, visibleText: line.text.slice(0, revealedCount), revealedFully: revealedCount >= line.text.length };
+  });
 
   return (
-    <div style={{
-      width:"100%", maxWidth:360, margin:"0 auto",
-      background:"#FFFDF5", border:"3px solid #6B4226", borderRadius:20,
-      boxShadow:"5px 6px 0 #C9A87A",
-      padding:"1.3rem 1.2rem 1rem",
-      display:"flex", flexDirection:"column",
-      minHeight: 300, maxHeight: 340,
-      position:"relative", overflow:"hidden",
-    }}>
-      {/* A little washi-tape corner touch, purely decorative */}
-      <div style={{ position:"absolute", top:-8, left:22, width:52, height:20, borderRadius:3,
-        background:"#F2A7B0", opacity:0.55, transform:"rotate(-6deg)" }} />
+    <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
+      gap:"clamp(2px,0.8vw,6px)", width:"100%" }}>
 
-      <p className="fh" style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(20px,4vw,26px)",
-        color:"#3D2510",lineHeight:1.5,overflow:"visible",paddingBottom:2,marginBottom:2,
-        textAlign:"center" }}>
-        things i've put down ♡
-      </p>
-      <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#A07850",textAlign:"center",
-        marginBottom:12 }}>
-        {isEmpty
-          ? "nothing scratched off just yet"
-          : `${totalCompletedCount} thought${totalCompletedCount === 1 ? "" : "s"} scratched off so far`}
-      </p>
+      {/* Left arrow — same nav as the jar carousel */}
+      <button
+        onClick={goPrev} disabled={!canGoPrev}
+        aria-label="previous jar"
+        style={{
+          background:"none", border:"none", cursor: canGoPrev ? "pointer" : "default",
+          padding:"0 2px", flexShrink:0, opacity: canGoPrev ? 1 : 0.2,
+          WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
+        }}>
+        <svg viewBox="0 0 28 48" width={20} height={36}>
+          <path d="M22,5 C20,7 8,21 5,24 C8,27 20,41 22,43"
+            fill="none" stroke="#6B4226" strokeWidth={4.5}
+            strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
 
-      {isEmpty ? (
-        <div style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",
-          justifyContent:"center",gap:10,textAlign:"center",padding:"0 0.5rem" }}>
-          <MiniBlob color="#D4C5B0" seed={2} size={40} completed />
-          <p style={{ fontFamily:"var(--font-body)",fontSize:13,color:"#A07850",lineHeight:1.6 }}>
-            that's alright — there's no rush.<br/>
-            things will land here when they're ready to be put down.
-          </p>
+      {/* Achievement scene: paper above, typewriter anchored at the bottom */}
+      <div data-bt-target="little-wins" style={{ flex:"1 1 auto", maxWidth:"min(340px,80vw)", minWidth:0,
+        display:"flex", flexDirection:"column", alignItems:"center" }}>
+
+        <style>{`
+          @keyframes paperFeed {
+            from { transform: translateY(26px); opacity: 0; }
+            to   { transform: translateY(0px); opacity: 1; }
+          }
+        `}</style>
+
+        {/* Paper */}
+        <div style={{
+          width:"100%", background:"#FFFDF6",
+          border:"2px solid #D9C5A0", borderBottom:"none",
+          borderRadius:"6px 6px 0 0",
+          boxShadow:"0 3px 10px rgba(107,66,38,0.15)",
+          padding:"1.1rem 1.1rem 1.4rem",
+          marginBottom:-6, zIndex:1, position:"relative",
+          animation:"paperFeed 0.6s ease-out both",
+        }}>
+          {isEmpty ? (
+            <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:8,textAlign:"center" }}>
+              <p style={{ fontFamily:"'Courier New', Courier, monospace",fontSize:14,color:"#6B4226",lineHeight:1.6 }}>
+                look what i actually did ♡
+              </p>
+              <p style={{ fontFamily:"'Courier New', Courier, monospace",fontSize:12.5,color:"#A07850",lineHeight:1.6 }}>
+                nothing crossed off just yet —<br/>that's alright, there's no rush.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display:"flex",flexDirection:"column",gap:2 }}>
+              {renderedLines.map(line => {
+                if (line.kind === "blank") return <div key={line.key} style={{ height:8 }} />;
+                if (line.kind === "title") {
+                  return (
+                    <p key={line.key} style={{ fontFamily:"'Courier New', Courier, monospace",
+                      fontSize:15,fontWeight:700,color:"#3D2510",textAlign:"center",lineHeight:1.5 }}>
+                      {line.visibleText}
+                    </p>
+                  );
+                }
+                if (line.kind === "count") {
+                  return (
+                    <p key={line.key} style={{ fontFamily:"'Courier New', Courier, monospace",
+                      fontSize:13,color:"#A07850",textAlign:"center",lineHeight:1.5,letterSpacing:0.5 }}>
+                      {line.visibleText}
+                    </p>
+                  );
+                }
+                // thought line — types out, then gets an analogue strike drawn across it
+                return (
+                  <div key={line.key}
+                    onClick={() => line.revealedFully && onOpenThought(line.jarId, line.id)}
+                    role={line.revealedFully ? "button" : undefined}
+                    aria-label={line.revealedFully ? "open completed thought" : undefined}
+                    style={{ position:"relative", cursor: line.revealedFully ? "pointer" : "default",
+                      padding:"1px 0" }}>
+                    <span style={{ fontFamily:"'Courier New', Courier, monospace",
+                      fontSize:13.5,color:"#4A3220",lineHeight:1.55 }}>
+                      {line.visibleText}
+                    </span>
+                    {/* analogue strike-through, drawn once the line finishes typing */}
+                    <span aria-hidden="true" style={{
+                      position:"absolute", left:0, top:"50%", height:2,
+                      background:"#B0483A", opacity:0.75,
+                      width: line.revealedFully ? "100%" : "0%",
+                      transition:"width 0.35s ease",
+                      transform:"translateY(-50%) rotate(-0.6deg)",
+                    }} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      ) : (
-        <>
-          <div style={{ flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:8,
-            paddingRight:2,marginBottom:10 }}>
-            {recentCompletedThoughts.map(t => (
-              <div key={t.id}
-                onClick={() => onOpenThought(t.jarId, t.id)}
-                role="button" aria-label="open completed thought"
-                style={{ display:"flex",alignItems:"flex-start",gap:8,cursor:"pointer" }}>
-                <span style={{ flexShrink:0,marginTop:2,color:"#A8C5A0",fontSize:14,lineHeight:1 }}>✓</span>
-                <p style={{ fontFamily:"var(--font-hand)",fontSize:15,color:"#6B4226",lineHeight:1.4,
-                  textDecoration:"line-through",opacity:0.68,overflow:"hidden",display:"-webkit-box",
-                  WebkitLineClamp:2,WebkitBoxOrient:"vertical" }}>
-                  {t.text}
-                </p>
-              </div>
-            ))}
-          </div>
-          <button onClick={onViewAll}
-            style={{ background:"transparent",border:"none",cursor:"pointer",
-              fontFamily:"var(--font-body)",fontSize:13,fontWeight:500,color:"#E85D3A",
-              alignSelf:"center",padding:"4px 6px" }}>
-            view all completed →
-          </button>
-        </>
-      )}
+
+        {/* Typewriter, anchored at the bottom of the scene */}
+        <div style={{ width:"100%" }}>
+          <TypewriterGraphic isTyping={!done} />
+        </div>
+      </div>
+
+      {/* Right arrow — same nav as the jar carousel */}
+      <button
+        onClick={goNext} disabled={!canGoNext}
+        aria-label="next jar"
+        style={{
+          background:"none", border:"none", cursor: canGoNext ? "pointer" : "default",
+          padding:"0 2px", flexShrink:0, opacity: canGoNext ? 1 : 0.2,
+          WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
+        }}>
+        <svg viewBox="0 0 28 48" width={20} height={36}>
+          <path d="M6,5 C8,7 20,21 23,24 C20,27 8,41 6,43"
+            fill="none" stroke="#6B4226" strokeWidth={4.5}
+            strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
     </div>
   );
 }
@@ -3560,7 +3768,10 @@ export default function ThoughtJar() {
   const completedSortKey = (t) => t.completedAt ? new Date(t.completedAt).getTime() : -1;
   const sortedCompletedThoughts = [...allCompletedThoughts].sort((a, b) => completedSortKey(b) - completedSortKey(a));
   const totalCompletedCount = allCompletedThoughts.length;
-  const recentCompletedThoughts = sortedCompletedThoughts.slice(0, 10);
+  // Dynamic-fit selection for the Little Wins paper — most recent first, only
+  // as many as comfortably fit, never truncated. (All Thoughts keeps showing
+  // the complete history separately, unaffected by this.)
+  const paperThoughts = selectThoughtsForPaper(sortedCompletedThoughts);
 
   // Memory resurfacing — recompute for the active jar.
   // dismissedMemoryJars tracks which jar IDs have been dismissed this session.
@@ -3925,69 +4136,64 @@ export default function ThoughtJar() {
           paddingBottom:"clamp(24px,4vh,48px)",
           position:"relative" }}>
 
-          {/* Dice icon — above jar. Hidden on the Completed Scorecard slide, which isn't a jar. */}
-          {!isScorecardSlide && (
-            <button
-              data-bt-target="dice"
-              onClick={handleJarClick}
-              aria-label="roll dice for a random thought"
-              style={{
-                background: "none", border: "none", cursor: "pointer",
-                padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
-                transform: "translateX(0px)",
-                marginBottom: 28,
-              }}>
-              {/* Handdrawn 3D dice — matches reference: cube with rounded corners, clear pips */}
-                <img
-                  src="/icons/dice.svg"
-                  alt="dice"
-                  style={{ width: 62, height: 62 }}
-                />
-            </button>
-          )}
+          {isScorecardSlide ? (
+            /* ── Little Wins ✦ — achievement screen, not a jar ── */
+            <LittleWinsScreen
+              totalCompletedCount={totalCompletedCount}
+              paperThoughts={paperThoughts}
+              onOpenThought={handleOpenThoughtFromList}
+              canGoPrev={canGoPrev} canGoNext={canGoNext}
+              goPrev={goPrev} goNext={goNext}
+            />
+          ) : (
+            <>
+              {/* Dice icon — above jar */}
+              <button
+                data-bt-target="dice"
+                onClick={handleJarClick}
+                aria-label="roll dice for a random thought"
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                  WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
+                  transform: "translateX(0px)",
+                  marginBottom: 28,
+                }}>
+                {/* Handdrawn 3D dice — matches reference: cube with rounded corners, clear pips */}
+                  <img
+                    src="/icons/dice.svg"
+                    alt="dice"
+                    style={{ width: 62, height: 62 }}
+                  />
+              </button>
 
-          {/* Jar + nav arrows — arrows close to jar body. The last slide is the Completed
-              Scorecard, which reuses the same nav arrows but shows a card instead of a jar. */}
-          <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
-            gap:"clamp(2px,0.8vw,6px)", width:"100%" }}>
+              {/* Jar + nav arrows — arrows close to jar body */}
+              <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
+                gap:"clamp(2px,0.8vw,6px)", width:"100%" }}>
 
-            {/* Left arrow — tight to jar */}
-            <button
-              onClick={goPrev} disabled={!canGoPrev}
-              aria-label="previous jar"
-              style={{
-                transform:"translateY(-34px)",
-                background:"none", border:"none", cursor: canGoPrev ? "pointer" : "default",
-                padding:"0 2px", flexShrink:0, opacity: canGoPrev ? 1 : 0.2,
-                WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
-              }}>
-              <svg viewBox="0 0 28 48" width={20} height={36}>
-                <path d="M22,5 C20,7 8,21 5,24 C8,27 20,41 22,43"
-                  fill="none" stroke="#6B4226" strokeWidth={4.5}
-                  strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+                {/* Left arrow — tight to jar */}
+                <button
+                  onClick={goPrev} disabled={!canGoPrev}
+                  aria-label="previous jar"
+                  style={{
+                    transform:"translateY(-34px)",
+                    background:"none", border:"none", cursor: canGoPrev ? "pointer" : "default",
+                    padding:"0 2px", flexShrink:0, opacity: canGoPrev ? 1 : 0.2,
+                    WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
+                  }}>
+                  <svg viewBox="0 0 28 48" width={20} height={36}>
+                    <path d="M22,5 C20,7 8,21 5,24 C8,27 20,41 22,43"
+                      fill="none" stroke="#6B4226" strokeWidth={4.5}
+                      strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
 
-            {isScorecardSlide ? (
-              /* Completed Scorecard — final carousel slide, not a jar */
-              <div style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
-                transform:"translate(0px, -34px)",
-                transition:"opacity 0.5s ease, filter 0.5s ease" }}>
-                <CompletedScorecard
-                  totalCompletedCount={totalCompletedCount}
-                  recentCompletedThoughts={recentCompletedThoughts}
-                  onOpenThought={handleOpenThoughtFromList}
-                  onViewAll={() => { setListInitialFilter("completed"); setShowList(true); }}
-                />
-              </div>
-            ) : (
-              /* Jar — maximises central space, left-shifted to balance right icon column */
-              <div data-bt-target="jar" style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
-                transform:"translate(0px, -64px)",
-                transition:"opacity 0.5s ease, filter 0.5s ease",
-                animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
-                <style>{`
+                {/* Jar — maximises central space, left-shifted to balance right icon column */}
+                <div data-bt-target="jar" style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
+                  transform:"translate(0px, -64px)",
+                  transition:"opacity 0.5s ease, filter 0.5s ease",
+                  animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
+                  <style>{`
   @keyframes jarShake {
     0%, 100% {
       transform: translate(0px, -64px);
@@ -4009,59 +4215,56 @@ export default function ThoughtJar() {
     }
   }
 `}</style>
-                <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
-                  isAnimating={isJarAnimating} jarName={activeJar?.name}
-                  lidVariant={(activeJar?.id ?? 0) % 5}
-                  onLabelClick={() => { setJarNameInput(activeJar?.name || ""); setEditingJarName(true); }} />
+                  <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
+                    isAnimating={isJarAnimating} jarName={activeJar?.name}
+                    lidVariant={(activeJar?.id ?? 0) % 5}
+                    onLabelClick={() => { setJarNameInput(activeJar?.name || ""); setEditingJarName(true); }} />
+                </div>
+
+                {/* Right arrow — tight to jar */}
+                <button
+                  onClick={goNext} disabled={!canGoNext}
+                  aria-label="next jar"
+                  style={{
+                    transform:"translateY(-34px)",
+                    background:"none", border:"none", cursor: canGoNext ? "pointer" : "default",
+                    padding:"0 2px", flexShrink:0, opacity: canGoNext ? 1 : 0.2,
+                    WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
+                  }}>
+                  <svg viewBox="0 0 28 48" width={20} height={36}>
+                    <path d="M6,5 C8,7 20,21 23,24 C20,27 8,41 6,43"
+                      fill="none" stroke="#6B4226" strokeWidth={4.5}
+                      strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+
               </div>
-            )}
 
-            {/* Right arrow — tight to jar */}
-            <button
-              onClick={goNext} disabled={!canGoNext}
-              aria-label="next jar"
-              style={{
-                transform:"translateY(-34px)",
-                background:"none", border:"none", cursor: canGoNext ? "pointer" : "default",
-                padding:"0 2px", flexShrink:0, opacity: canGoNext ? 1 : 0.2,
-                WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
-              }}>
-              <svg viewBox="0 0 28 48" width={20} height={36}>
-                <path d="M6,5 C8,7 20,21 23,24 C20,27 8,41 6,43"
-                  fill="none" stroke="#6B4226" strokeWidth={4.5}
-                  strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+              <div data-bt-target="input" style={{width:"100%",maxWidth:480}}>
+                <AddThoughtInput onAdd={handleAddThought} />
+              </div>
 
-          </div>
+              {/* Hint text — below the input */}
+              <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(12px,1.8vw,14px)",
+                color:"#A07850",textAlign:"center",opacity:0.75,lineHeight:1.5 }}>
+                {currentThoughts.length === 0
+                  ? "add a thought, and it will float inside the jar"
+                  : currentThoughts.length >= JAR_CAPACITY
+                    ? "this jar is full — create a new one"
+                    : "tap the dice or jar to rediscover a thought"}
+              </p>
 
-          {!isScorecardSlide && (
-            <div data-bt-target="input" style={{width:"100%",maxWidth:480}}>
-              <AddThoughtInput onAdd={handleAddThought} />
-            </div>
+              {/* TV — right edge, clears input bar comfortably. Hidden on the Little Wins screen. */}
+              <div data-bt-target="tv" className="tv-widget" style={{
+                position:"absolute",
+                right:0,
+                bottom:"clamp(96px,16vh,130px)",
+                flexDirection:"column",alignItems:"center",
+                zIndex:2 }}>
+                <CozyTV broadcast={dailyBroadcast} />
+              </div>
+            </>
           )}
-
-          {/* Hint text — below the input (or below the scorecard, on that slide) */}
-          <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(12px,1.8vw,14px)",
-            color:"#A07850",textAlign:"center",opacity:0.75,lineHeight:1.5 }}>
-            {isScorecardSlide
-              ? "swipe back to your jars to put something new down"
-              : currentThoughts.length === 0
-                ? "add a thought, and it will float inside the jar"
-                : currentThoughts.length >= JAR_CAPACITY
-                  ? "this jar is full — create a new one"
-                  : "tap the dice or jar to rediscover a thought"}
-          </p>
-
-          {/* TV — right edge, clears input bar comfortably */}
-          <div data-bt-target="tv" className="tv-widget" style={{
-            position:"absolute",
-            right:0,
-            bottom:"clamp(96px,16vh,130px)",
-            flexDirection:"column",alignItems:"center",
-            zIndex:2 }}>
-            <CozyTV broadcast={dailyBroadcast} />
-          </div>
         </main>
         {/* Footer */}
         <AppFooter />
