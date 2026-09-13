@@ -963,7 +963,7 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
 // paper without ever truncating a thought's text. Always shows at least the
 // most recent one, even if it alone is long.
 function selectThoughtsForPaper(sortedCompletedThoughts) {
-  const CHARS_PER_LINE = 30; // rough estimate for the typewriter font/paper width
+  const CHARS_PER_LINE = 26; // rough estimate for the (larger, more readable) paper font/width
   const LINE_BUDGET = 9;     // lines available for thoughts (title/count take the rest)
   const selected = [];
   let usedLines = 0;
@@ -999,65 +999,61 @@ function buildPaperLines(totalCompletedCount, paperThoughts) {
   return lines;
 }
 
-// A short, self-contained "ding" — synthesized so no extra audio asset is needed.
-// Silently no-ops if the Web Audio API isn't available or sound is muted.
-function playTypewriterDing() {
+// ── Sound ───────────────────────────────────────────────────────────────
+// A single shared AudioContext, created/resumed from a real user gesture
+// (the arrow tap that enters the Little Wins slide) so autoplay restrictions
+// don't silently swallow the typing/ding sounds later.
+let _sharedAudioCtx = null;
+function unlockAudio() {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
+    if (!Ctx) return null;
+    if (!_sharedAudioCtx) _sharedAudioCtx = new Ctx();
+    if (_sharedAudioCtx.state === "suspended") _sharedAudioCtx.resume().catch(() => {});
+    return _sharedAudioCtx;
+  } catch (e) { return null; }
+}
+
+// A short, soft mechanical "clack" — pitch/volume randomised a little so a
+// run of them doesn't sound robotic. Never loud.
+function playClack() {
+  try {
+    const ctx = unlockAudio();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const freq = 170 + Math.random() * 110;
+    const gainPeak = 0.028 + Math.random() * 0.03;
+    const osc = ctx.createOscillator();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(freq, now);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(gainPeak, now + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.045 + Math.random() * 0.02);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.09);
+  } catch (e) { /* audio unavailable — silently ignore */ }
+}
+
+// A short, self-contained "ding" — synthesized so no extra audio asset is
+// needed. Plays once, after everything has finished typing.
+function playTypewriterDing() {
+  try {
+    const ctx = unlockAudio();
+    if (!ctx) return;
     const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "sine";
     osc.frequency.setValueAtTime(1568, now);
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.2, now + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
     osc.connect(gain).connect(ctx.destination);
     osc.start(now);
     osc.stop(now + 0.6);
-    osc.onended = () => { try { ctx.close(); } catch (e) { /* ignore */ } };
   } catch (e) { /* audio unavailable — silently ignore */ }
-}
-
-// Cute, hand-drawn vintage typewriter — cream/brown/pastel, matching the rest
-// of Thoughts Jar's visual language. `isTyping` drives a subtle clack wiggle.
-function TypewriterGraphic({ isTyping }) {
-  return (
-    <svg viewBox="0 0 220 128" width="100%" height="auto"
-      style={{ maxWidth: 240, display: "block", margin: "0 auto",
-        animation: isTyping ? "twClack 0.16s steps(2) infinite" : "none" }}>
-      <style>{`
-        @keyframes twClack {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(1.4px); }
-        }
-      `}</style>
-      {/* Feet */}
-      <ellipse cx={38} cy={122} rx={10} ry={4} fill="#C9A87A" opacity={0.5} />
-      <ellipse cx={182} cy={122} rx={10} ry={4} fill="#C9A87A" opacity={0.5} />
-      {/* Body */}
-      <path d="M14,72 C12,60 20,52 34,50 L186,50 C200,52 208,60 206,72
-        L210,108 C211,114 207,118 200,118 L20,118 C13,118 9,114 10,108 Z"
-        fill="#FFF8EC" stroke="#6B4226" strokeWidth={3} strokeLinejoin="round" />
-      {/* Carriage / roller housing */}
-      <rect x={26} y={34} width={168} height={22} rx={11} fill="#F6E6C8" stroke="#6B4226" strokeWidth={3} />
-      <rect x={20} y={40} width={12} height={12} rx={4} fill="#F2A7B0" stroke="#6B4226" strokeWidth={2} />
-      <rect x={188} y={40} width={12} height={12} rx={4} fill="#A8BFDF" stroke="#6B4226" strokeWidth={2} />
-      {/* Little bell / ding knob */}
-      <circle cx={178} cy={62} r={6} fill="#F6E27A" stroke="#6B4226" strokeWidth={2} />
-      {/* Keys */}
-      {Array.from({ length: 9 }).map((_, i) => (
-        <circle key={i} cx={40 + i * 17} cy={100} r={7}
-          fill={["#F2A7B0", "#A8BFDF", "#F6E27A", "#A8C5A0", "#D4A5C9"][i % 5]}
-          stroke="#6B4226" strokeWidth={1.6} />
-      ))}
-      {/* Keyboard bed */}
-      <path d="M24,86 C24,82 28,80 34,80 L186,80 C192,80 196,82 196,86 L196,92 L24,92 Z"
-        fill="#FFF8EC" stroke="#6B4226" strokeWidth={2} opacity={0.9} />
-    </svg>
-  );
 }
 
 function LittleWinsScreen({
@@ -1073,35 +1069,65 @@ function LittleWinsScreen({
     [typableLines]
   );
 
-  const [revealChars, setRevealChars] = useState(0);
-  const [done, setDone] = useState(false);
+  // phase: 'entering' (typewriter rises in) -> 'typing' (paper feeds + types) -> 'done'
+  const [phase, setPhase] = useState("entering");
+  const [pct, setPct] = useState(0); // 0..1 progress through the typing stage
   const dingPlayed = useRef(false);
+  const clackCursor = useRef(0);
+  const nextClackAt = useRef(2 + Math.floor(Math.random() * 3));
+  const cleanupRef = useRef(null);
+  const measureRef = useRef(null);
+  const [paperFullHeight, setPaperFullHeight] = useState(null);
+
+  const ENTER_MS = 700;        // Stage 1 — typewriter floats up and settles
+  const SETTLE_PAUSE_MS = 280; // brief pause before typing begins
+  // Stage 3 duration scales gently with content, but always breathes (~3.4–5.2s)
+  const typingDuration = isEmpty ? 500 : Math.min(5200, Math.max(3400, 1100 + totalChars * 42));
 
   useEffect(() => {
-    setRevealChars(0);
-    setDone(false);
+    setPhase("entering");
+    setPct(0);
     dingPlayed.current = false;
-    if (isEmpty) { setDone(true); return; }
-    const DURATION = 2200; // keep the whole reveal quick regardless of text length
-    const start = Date.now();
-    const timer = setInterval(() => {
-      const elapsed = Date.now() - start;
-      const pct = Math.min(1, elapsed / DURATION);
-      setRevealChars(Math.ceil(totalChars * pct));
-      if (pct >= 1) {
-        clearInterval(timer);
-        setDone(true);
-      }
-    }, 45);
-    return () => clearInterval(timer);
-  }, [totalChars, isEmpty]);
+    clackCursor.current = 0;
+    nextClackAt.current = 2 + Math.floor(Math.random() * 3);
+    if (cleanupRef.current) { cleanupRef.current(); cleanupRef.current = null; }
+
+    const enterTimer = setTimeout(() => {
+      setPhase("typing");
+      const start = Date.now();
+      const tick = setInterval(() => {
+        const elapsed = Date.now() - start;
+        const p = Math.min(1, elapsed / typingDuration);
+        setPct(p);
+        if (p >= 1) {
+          clearInterval(tick);
+          setPhase("done");
+        }
+      }, 45);
+      cleanupRef.current = () => clearInterval(tick);
+    }, ENTER_MS + SETTLE_PAUSE_MS);
+
+    return () => { clearTimeout(enterTimer); if (cleanupRef.current) cleanupRef.current(); };
+  }, [totalChars, isEmpty, typingDuration]);
 
   useEffect(() => {
-    if (done && !dingPlayed.current && !isEmpty) {
+    if (phase === "done" && !dingPlayed.current && !isEmpty) {
       dingPlayed.current = true;
       playTypewriterDing();
     }
-  }, [done, isEmpty]);
+  }, [phase, isEmpty]);
+
+  const revealChars = Math.floor(totalChars * pct);
+
+  // A gentle, irregular "clack… clack-clack… clack…" as new characters appear.
+  useEffect(() => {
+    if (phase !== "typing") return;
+    while (revealChars - clackCursor.current >= nextClackAt.current) {
+      clackCursor.current += nextClackAt.current;
+      nextClackAt.current = 2 + Math.floor(Math.random() * 3);
+      playClack();
+    }
+  }, [revealChars, phase]);
 
   // Work out how much of each line is currently revealed, by cursor position.
   let cursor = 0;
@@ -1113,9 +1139,35 @@ function LittleWinsScreen({
     return { ...line, visibleText: line.text.slice(0, revealedCount), revealedFully: revealedCount >= line.text.length };
   });
 
+  // Measure the fully-typed content once so the paper can feed upward toward
+  // its real final height, instead of jumping or guessing.
+  useEffect(() => {
+    if (measureRef.current) setPaperFullHeight(measureRef.current.offsetHeight);
+  }, [lines]);
+
+  const PEEK_HEIGHT = 26; // how much paper pokes out before typing starts
+  const paperProgress = phase === "entering" ? 0 : pct;
+  const paperHeight = paperFullHeight == null
+    ? undefined
+    : PEEK_HEIGHT + (Math.max(PEEK_HEIGHT, paperFullHeight) - PEEK_HEIGHT) * paperProgress;
+
+  const isTyping = phase === "typing";
+
   return (
     <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
       gap:"clamp(2px,0.8vw,6px)", width:"100%" }}>
+
+      <style>{`
+        @keyframes twRise {
+          0%   { transform: translateY(46px); opacity: 0; }
+          70%  { transform: translateY(-4px); opacity: 1; }
+          100% { transform: translateY(0px); opacity: 1; }
+        }
+        @keyframes twClack {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(1.2px); }
+        }
+      `}</style>
 
       {/* Left arrow — same nav as the jar carousel */}
       <button
@@ -1134,85 +1186,40 @@ function LittleWinsScreen({
       </button>
 
       {/* Achievement scene: paper above, typewriter anchored at the bottom */}
-      <div data-bt-target="little-wins" style={{ flex:"1 1 auto", maxWidth:"min(340px,80vw)", minWidth:0,
+      <div data-bt-target="little-wins" style={{ flex:"1 1 auto", maxWidth:"min(400px,86vw)", minWidth:0,
         display:"flex", flexDirection:"column", alignItems:"center" }}>
 
-        <style>{`
-          @keyframes paperFeed {
-            from { transform: translateY(26px); opacity: 0; }
-            to   { transform: translateY(0px); opacity: 1; }
-          }
-        `}</style>
+        {/* Hidden measurer — the fully-typed content, used only to learn the
+            paper's real final height so the feed animation targets it precisely. */}
+        <div ref={measureRef} aria-hidden="true" style={{
+          position:"absolute", visibility:"hidden", pointerEvents:"none",
+          width:"min(400px,86vw)", padding:"1.3rem 1.35rem 1.6rem",
+        }}>
+          <PaperContent lines={lines.map(l => ({ ...l, visibleText: l.text, revealedFully: true }))}
+            isEmpty={isEmpty} onOpenThought={() => {}} />
+        </div>
 
-        {/* Paper */}
-        <div style={{
+        {/* Paper — height feeds upward as typing progresses */}
+        <div data-testid="little-wins-paper" style={{
           width:"100%", background:"#FFFDF6",
           border:"2px solid #D9C5A0", borderBottom:"none",
           borderRadius:"6px 6px 0 0",
           boxShadow:"0 3px 10px rgba(107,66,38,0.15)",
-          padding:"1.1rem 1.1rem 1.4rem",
+          padding:"1.3rem 1.35rem 1.6rem",
           marginBottom:-6, zIndex:1, position:"relative",
-          animation:"paperFeed 0.6s ease-out both",
+          overflow:"hidden",
+          height: paperHeight,
+          transition: phase === "entering" ? "none" : "height 0.08s linear",
         }}>
-          {isEmpty ? (
-            <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:8,textAlign:"center" }}>
-              <p style={{ fontFamily:"'Courier New', Courier, monospace",fontSize:14,color:"#6B4226",lineHeight:1.6 }}>
-                look what i actually did ♡
-              </p>
-              <p style={{ fontFamily:"'Courier New', Courier, monospace",fontSize:12.5,color:"#A07850",lineHeight:1.6 }}>
-                nothing crossed off just yet —<br/>that's alright, there's no rush.
-              </p>
-            </div>
-          ) : (
-            <div style={{ display:"flex",flexDirection:"column",gap:2 }}>
-              {renderedLines.map(line => {
-                if (line.kind === "blank") return <div key={line.key} style={{ height:8 }} />;
-                if (line.kind === "title") {
-                  return (
-                    <p key={line.key} style={{ fontFamily:"'Courier New', Courier, monospace",
-                      fontSize:15,fontWeight:700,color:"#3D2510",textAlign:"center",lineHeight:1.5 }}>
-                      {line.visibleText}
-                    </p>
-                  );
-                }
-                if (line.kind === "count") {
-                  return (
-                    <p key={line.key} style={{ fontFamily:"'Courier New', Courier, monospace",
-                      fontSize:13,color:"#A07850",textAlign:"center",lineHeight:1.5,letterSpacing:0.5 }}>
-                      {line.visibleText}
-                    </p>
-                  );
-                }
-                // thought line — types out, then gets an analogue strike drawn across it
-                return (
-                  <div key={line.key}
-                    onClick={() => line.revealedFully && onOpenThought(line.jarId, line.id)}
-                    role={line.revealedFully ? "button" : undefined}
-                    aria-label={line.revealedFully ? "open completed thought" : undefined}
-                    style={{ position:"relative", cursor: line.revealedFully ? "pointer" : "default",
-                      padding:"1px 0" }}>
-                    <span style={{ fontFamily:"'Courier New', Courier, monospace",
-                      fontSize:13.5,color:"#4A3220",lineHeight:1.55 }}>
-                      {line.visibleText}
-                    </span>
-                    {/* analogue strike-through, drawn once the line finishes typing */}
-                    <span aria-hidden="true" style={{
-                      position:"absolute", left:0, top:"50%", height:2,
-                      background:"#B0483A", opacity:0.75,
-                      width: line.revealedFully ? "100%" : "0%",
-                      transition:"width 0.35s ease",
-                      transform:"translateY(-50%) rotate(-0.6deg)",
-                    }} />
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <PaperContent lines={renderedLines} isEmpty={isEmpty} onOpenThought={onOpenThought} />
         </div>
 
         {/* Typewriter, anchored at the bottom of the scene */}
-        <div style={{ width:"100%" }}>
-          <TypewriterGraphic isTyping={!done} />
+        <div style={{ width:"100%", animation:"twRise 0.7s cubic-bezier(0.22,0.61,0.36,1) both" }}>
+          <div style={{ animation: isTyping ? "twClack 0.16s steps(2) infinite" : "none" }}>
+            <img src="/typewriter.svg" alt="a cute vintage typewriter"
+              style={{ width:"min(80vw, 420px)", maxWidth:"100%", height:"auto", display:"block", margin:"0 auto" }} />
+          </div>
         </div>
       </div>
 
@@ -1231,6 +1238,71 @@ function LittleWinsScreen({
             strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
+    </div>
+  );
+}
+
+// The paper's actual printed content — factored out so it can be rendered both
+// visibly (progressively typed) and invisibly (fully typed, for measurement).
+function PaperContent({ lines, isEmpty, onOpenThought }) {
+  if (isEmpty) {
+    return (
+      <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:8,textAlign:"center" }}>
+        <p style={{ fontFamily:"'Courier New', Courier, monospace",fontSize:19,color:"#6B4226",lineHeight:1.6 }}>
+          look what i actually did ♡
+        </p>
+        <p style={{ fontFamily:"'Courier New', Courier, monospace",fontSize:14.5,color:"#A07850",lineHeight:1.6 }}>
+          nothing crossed off just yet —<br/>that's alright, there's no rush.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+      {lines.map(line => {
+        if (line.kind === "blank") return <div key={line.key} style={{ height:10 }} />;
+        if (line.kind === "title") {
+          return (
+            <p key={line.key} style={{ fontFamily:"'Courier New', Courier, monospace",
+              fontSize:19,fontWeight:700,color:"#3D2510",textAlign:"center",lineHeight:1.5 }}>
+              {line.visibleText}
+            </p>
+          );
+        }
+        if (line.kind === "count") {
+          return (
+            <p key={line.key} style={{ fontFamily:"'Courier New', Courier, monospace",
+              fontSize:14.5,color:"#A07850",textAlign:"center",lineHeight:1.5,letterSpacing:0.5 }}>
+              {line.visibleText}
+            </p>
+          );
+        }
+        // thought line — types out, then gets a soft analogue strike drawn across it
+        return (
+          <div key={line.key} style={{ textAlign:"center" }}>
+            <div
+              onClick={() => line.revealedFully && onOpenThought(line.jarId, line.id)}
+              role={line.revealedFully ? "button" : undefined}
+              aria-label={line.revealedFully ? "open completed thought" : undefined}
+              style={{ position:"relative", display:"inline-block", maxWidth:"100%",
+                cursor: line.revealedFully ? "pointer" : "default", padding:"1px 2px" }}>
+              <span style={{ fontFamily:"'Courier New', Courier, monospace",
+                fontSize:16.5,color:"#4A3220",lineHeight:1.6 }}>
+                {line.visibleText}
+              </span>
+              {/* soft, slightly-imperfect analogue strike-through, drawn left-to-right
+                  once the line finishes typing, following the text's own width */}
+              <span aria-hidden="true" style={{
+                position:"absolute", left:0, top:"52%", height:1.1,
+                background:"#9C6B54", opacity:0.62,
+                width: line.revealedFully ? "100%" : "0%",
+                transition:"width 0.45s ease-out",
+                transform:"translateY(-50%) rotate(-0.5deg)",
+              }} />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -3936,8 +4008,8 @@ export default function ThoughtJar() {
   // Jar navigation
   const canGoPrev = safeIdx > 0;
   const canGoNext = safeIdx < totalSlides - 1;
-  const goPrev = () => { blurKeyboard(); setActiveJarIndex(i => Math.max(0, i - 1)); };
-  const goNext = () => { blurKeyboard(); setActiveJarIndex(i => Math.min(totalSlides - 1, i + 1)); };
+  const goPrev = () => { blurKeyboard(); unlockAudio(); setActiveJarIndex(i => Math.max(0, i - 1)); };
+  const goNext = () => { blurKeyboard(); unlockAudio(); setActiveJarIndex(i => Math.min(totalSlides - 1, i + 1)); };
 
   return (
     <>
