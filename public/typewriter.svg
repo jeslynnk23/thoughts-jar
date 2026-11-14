@@ -1,0 +1,93 @@
+<svg viewBox="0 0 420 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="a cute vintage typewriter">
+  <defs>
+    <clipPath id="tw-body-clip">
+      <path d="M46,150 C40,130 46,112 66,104 L66,96 C66,80 80,68 98,68 L322,68
+        C340,68 354,80 354,96 L354,104 C374,112 380,130 374,150
+        L386,222 C389,244 374,262 350,264 L70,264 C46,262 31,244 34,222 Z" />
+    </clipPath>
+  </defs>
+
+  <!-- Soft ground shadow -->
+  <ellipse cx="210" cy="282" rx="132" ry="10" fill="#6B4226" opacity="0.10" />
+
+  <!-- Feet -->
+  <ellipse cx="96" cy="272" rx="16" ry="7" fill="#C9A87A" />
+  <ellipse cx="96" cy="272" rx="16" ry="7" fill="none" stroke="#6B4226" stroke-width="3" />
+  <ellipse cx="324" cy="272" rx="16" ry="7" fill="#C9A87A" />
+  <ellipse cx="324" cy="272" rx="16" ry="7" fill="none" stroke="#6B4226" stroke-width="3" />
+
+  <!-- Carriage return lever (right side arm) -->
+  <path d="M368,96 C384,90 398,82 406,70" fill="none" stroke="#6B4226" stroke-width="6" stroke-linecap="round" />
+  <circle cx="409" cy="66" r="9" fill="#F2A7B0" stroke="#6B4226" stroke-width="3" />
+
+  <!-- Main chassis body -->
+  <path d="M46,150 C40,130 46,112 66,104 L66,96 C66,80 80,68 98,68 L322,68
+    C340,68 354,80 354,96 L354,104 C374,112 380,130 374,150
+    L386,222 C389,244 374,262 350,264 L70,264 C46,262 31,244 34,222 Z"
+    fill="#FFF8EC" stroke="#6B4226" stroke-width="5" stroke-linejoin="round" />
+
+  <!-- Body shading (soft interior warmth, clipped to body) -->
+  <g clip-path="url(#tw-body-clip)">
+    <ellipse cx="210" cy="230" rx="190" ry="70" fill="#F6E6C8" opacity="0.55" />
+    <ellipse cx="130" cy="110" rx="90" ry="40" fill="#FFFDF6" opacity="0.6" />
+  </g>
+
+  <!-- Roller / carriage housing -->
+  <rect x="70" y="40" width="280" height="40" rx="20" fill="#F6E6C8" stroke="#6B4226" stroke-width="4.5" />
+  <!-- Ribbon spools -->
+  <circle cx="92" cy="60" r="15" fill="#F2A7B0" stroke="#6B4226" stroke-width="3.5" />
+  <circle cx="92" cy="60" r="5" fill="#FFF8EC" stroke="#6B4226" stroke-width="2" />
+  <circle cx="328" cy="60" r="15" fill="#A8BFDF" stroke="#6B4226" stroke-width="3.5" />
+  <circle cx="328" cy="60" r="5" fill="#FFF8EC" stroke="#6B4226" stroke-width="2" />
+
+  <!-- A little paper stub already peeking from the roller, for visual continuity
+       with the dynamic paper element layered above this illustration -->
+  <path d="M150,44 L270,44 L266,10 C266,6 262,4 258,6 L246,14 L234,4 C232,2 228,2 226,4
+    L214,14 L202,4 C200,2 196,2 194,4 L182,14 L170,4 C168,2 164,2 162,4 L150,14 Z"
+    fill="#FFFDF6" stroke="#D9C5A0" stroke-width="2.5" stroke-linejoin="round" />
+
+  <!-- Bell -->
+  <circle cx="300" cy="94" r="11" fill="#F6E27A" stroke="#6B4226" stroke-width="3" />
+  <circle cx="296" cy="90" r="3" fill="#FFFDF6" opacity="0.8" />
+
+  <!-- Keyboard bed -->
+  <path d="M64,178 C64,168 74,162 88,162 L332,162 C346,162 356,168 356,178 L356,196 C356,204 348,210 336,210
+    L84,210 C72,210 64,204 64,196 Z"
+    fill="#FFF8EC" stroke="#6B4226" stroke-width="4" />
+
+  <!-- Keys — two staggered rows for an authentic typewriter feel -->
+  <g>
+    <circle cx="94" cy="182" r="11" fill="#F2A7B0" stroke="#6B4226" stroke-width="2.4" />
+    <circle cx="122" cy="178" r="11" fill="#A8BFDF" stroke="#6B4226" stroke-width="2.4" />
+    <circle cx="150" cy="182" r="11" fill="#F6E27A" stroke="#6B4226" stroke-width="2.4" />
+    <circle cx="178" cy="178" r="11" fill="#A8C5A0" stroke="#6B4226" stroke-width="2.4" />
+    <circle cx="206" cy="182" r="11" fill="#D4A5C9" stroke="#6B4226" stroke-width="2.4" />
+    <circle cx="234" cy="178" r="11" fill="#F2A7B0" stroke="#6B4226" stroke-width="2.4" />
+    <circle cx="262" cy="182" r="11" fill="#A8BFDF" stroke="#6B4226" stroke-width="2.4" />
+    <circle cx="290" cy="178" r="11" fill="#F6E27A" stroke="#6B4226" stroke-width="2.4" />
+    <circle cx="318" cy="182" r="11" fill="#A8C5A0" stroke="#6B4226" stroke-width="2.4" />
+  </g>
+  <!-- key stems -->
+  <g stroke="#6B4226" stroke-width="2.2" opacity="0.5">
+    <line x1="94" y1="193" x2="94" y2="204" />
+    <line x1="122" y1="189" x2="122" y2="204" />
+    <line x1="150" y1="193" x2="150" y2="204" />
+    <line x1="178" y1="189" x2="178" y2="204" />
+    <line x1="206" y1="193" x2="206" y2="204" />
+    <line x1="234" y1="189" x2="234" y2="204" />
+    <line x1="262" y1="193" x2="262" y2="204" />
+    <line x1="290" y1="189" x2="290" y2="204" />
+    <line x1="318" y1="193" x2="318" y2="204" />
+  </g>
+
+  <!-- Space bar -->
+  <rect x="120" y="224" width="180" height="16" rx="8" fill="#FFF8EC" stroke="#6B4226" stroke-width="3" />
+
+  <!-- Front label plate -->
+  <path d="M150,246 C148,244 148,242 150,240 L270,240 C272,242 272,244 270,246 L270,254
+    C272,256 272,258 270,260 L150,260 C148,258 148,256 150,254 Z"
+    fill="#FFFDF6" stroke="#6B4226" stroke-width="2" opacity="0.85" />
+
+  <!-- Little shine on the body for a friendly, glossy feel -->
+  <path d="M58,120 C56,140 55,162 57,182" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" opacity="0.5" />
+</svg>

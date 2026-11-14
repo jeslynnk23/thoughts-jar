@@ -1,5 +1,5 @@
 import './index.css';
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from "react";
 import { Analytics } from '@vercel/analytics/react';
 
 // ─── CONSTANTS & STORAGE ────────────────────────────────────────────────────
@@ -381,7 +381,7 @@ function AdSenseSlot({ slot }) {
 
 // ─── THOUGHT REVEAL POPUP ───────────────────────────────────────────────────
 
-function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList, onEdit }) {
+function ThoughtReveal({ thought, onClose, onComplete, onUncomplete, onReroll, onOpenList, onEdit }) {
   const [shaking, setShaking] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [draftText, setDraftText] = useState("");
@@ -600,6 +600,14 @@ function ThoughtReveal({ thought, onClose, onComplete, onReroll, onOpenList, onE
                 mark complete
               </button>
             )}
+            {thought.completed && (
+              <button onClick={() => { onUncomplete(thought.id); onClose(); }}
+                style={{ background:"#FBF5E8",border:"2.5px solid #6B4226",borderRadius:50,
+                  padding:"10px 18px",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
+                  color:"#6B4226",cursor:"pointer",boxShadow:"3px 4px 0 #C9A87A",whiteSpace:"nowrap" }}>
+                not done yet
+              </button>
+            )}
             <button onClick={onClose}
               style={{ background:"#E85D3A",border:"2.5px solid #6B4226",borderRadius:50,
                 padding:"10px 18px",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
@@ -707,23 +715,32 @@ onClick={e => e.stopPropagation()}>
 
 // ─── THOUGHTS LIST MODAL ─────────────────────────────────────────────────────
 
-function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, activeJarId, onOpenThought }) {
+function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, activeJarId, onOpenThought, initialFilter = "all" }) {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  // "all" shows every jar, or filter by jar id
-  const [filterJar, setFilterJar] = useState("all");
+  // "all" shows every jar, a jar id filters to that jar, "completed" shows every completed thought across all jars.
+  const [filterJar, setFilterJar] = useState(initialFilter);
 
-  const displayThoughts = (filterJar === "all"
-    ? jars.flatMap(jar => jar.thoughts.map(t => ({ ...t, jarName: jar.name, jarId: jar.id })))
-    : (jars.find(j => j.id === filterJar)?.thoughts || []).map(t => ({
-        ...t,
-        jarName: jars.find(j => j.id === filterJar)?.name || "",
-        jarId: filterJar,
-      }))
-  ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const completedSortKey = (t) => t.completedAt ? new Date(t.completedAt).getTime() : -1;
+
+  const allCompletedThoughts = jars.flatMap(jar =>
+    jar.thoughts.filter(t => t.completed).map(t => ({ ...t, jarName: jar.name, jarId: jar.id }))
+  );
+  const totalCompletedCount = allCompletedThoughts.length;
+
+  const displayThoughts = filterJar === "completed"
+    ? [...allCompletedThoughts].sort((a, b) => completedSortKey(b) - completedSortKey(a))
+    : (filterJar === "all"
+        ? jars.flatMap(jar => jar.thoughts.map(t => ({ ...t, jarName: jar.name, jarId: jar.id })))
+        : (jars.find(j => j.id === filterJar)?.thoughts || []).map(t => ({
+            ...t,
+            jarName: jars.find(j => j.id === filterJar)?.name || "",
+            jarId: filterJar,
+          }))
+      ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   const handleTabClick = (jarId) => {
     setFilterJar(jarId);
-    if (jarId !== "all") onSwitchJar(jarId);
+    if (jarId !== "all" && jarId !== "completed") onSwitchJar(jarId);
   };
 
   return (
@@ -732,10 +749,19 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
       {/* Header */}
       <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",
         padding:"1rem 1.5rem 0.8rem",borderBottom:"2px solid #E8D8C0",flexShrink:0 }}>
-        <h2 style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(22px,4vw,30px)",color:"#3D2510",
-            lineHeight:1.6,paddingBottom:6,overflow:"visible",display:"block" }}>
-          all thoughts
-        </h2>
+        <div>
+          <h2 style={{ fontFamily:"var(--font-hand)",fontSize:"clamp(22px,4vw,30px)",color:"#3D2510",
+              lineHeight:1.6,paddingBottom:2,overflow:"visible",display:"block" }}>
+            {filterJar === "completed" ? "little wins ✦" : "all thoughts"}
+          </h2>
+          {filterJar === "completed" && (
+            <p style={{ fontFamily:"var(--font-body)",fontSize:12.5,color:"#A07850" }}>
+              {totalCompletedCount === 0
+                ? "nothing scratched off just yet"
+                : `${totalCompletedCount} thought${totalCompletedCount === 1 ? "" : "s"} scratched off so far`}
+            </p>
+          )}
+        </div>
         <button onClick={onClose}
           style={{ background:"#FBF5E8",border:"2px solid #6B4226",borderRadius:"50%",
             width:36,height:36,cursor:"pointer",fontFamily:"var(--font-body)",fontSize:16,
@@ -832,13 +858,31 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
             </React.Fragment>
           );
         })}
+
+        {/* "completed" card — always last, not a jar, just a filter into the scratched-off pile */}
+        <button onClick={() => handleTabClick("completed")}
+          style={{ background: filterJar==="completed" ? "#FFF8EC" : "transparent",
+            border:"2px solid " + (filterJar==="completed" ? "#6B4226" : "#D4C5B0"),
+            borderRadius:14,padding:"8px 12px",cursor:"pointer",flexShrink:0,
+            display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+            boxShadow: filterJar==="completed" ? "2px 3px 0 #C9A87A" : "none",
+            transition:"all 0.15s" }}>
+          <svg viewBox="0 0 32 28" width={32} height={28}>
+            <path d="M6,15 L13,21 L26,7" fill="none" stroke="#A8C5A0" strokeWidth={3.4}
+              strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span style={{ fontFamily:"var(--font-body)",fontSize:10,color: filterJar==="completed"?"#3D2510":"#A07850",
+            fontWeight: filterJar==="completed"?600:400, whiteSpace:"nowrap" }}>little wins ✦</span>
+        </button>
       </div>
 
       {/* List */}
       <div style={{ flex:1,overflowY:"auto",padding:"1rem 1.5rem",display:"flex",flexDirection:"column",gap:10 }}>
         {displayThoughts.length === 0 && (
           <p style={{ fontFamily:"var(--font-body)",fontSize:14,color:"#A07850",textAlign:"center",marginTop:40 }}>
-            no thoughts yet — add one to your jar!
+            {filterJar === "completed"
+              ? "nothing scratched off yet — that's alright. it'll fill in on its own time."
+              : "no thoughts yet — add one to your jar!"}
           </p>
         )}
         {displayThoughts.map((t, idx) => (
@@ -899,12 +943,815 @@ function ThoughtsListModal({ jars, onClose, onComplete, onDelete, onSwitchJar, a
               </div>
             </div>
             {/* Between-thoughts ad: after the 4th thought (idx === 3), only when ≥8 active thoughts */}
-            {displayThoughts.filter(t2 => !t2.completed).length >= 8 && idx === 3 && (
+            {filterJar !== "completed" && displayThoughts.filter(t2 => !t2.completed).length >= 8 && idx === 3 && (
               <AdSenseSlot slot="8368046380" />
             )}
           </React.Fragment>
         ))}
         {/* thoughts-jar-completed-section (slot 3244883075) — DISABLED, not rendered */}
+      </div>
+    </div>
+  );
+}
+
+// ─── LITTLE WINS ✦ — homepage achievement screen ───────────────────────────
+// The final slide in the jar carousel. NOT a jar — it doesn't hold blobs or
+// accept new thoughts. It reflects thoughts that are already marked completed
+// elsewhere, presented as a little printed "achievement receipt" that comes out
+// of a cute control-panel machine when the user pulls its lever.
+
+// Decide which completed thoughts (most-recent-first) comfortably fit on the
+// paper without ever truncating a thought's text. Always shows at least the
+// most recent one, even if it alone is long.
+function selectThoughtsForPaper(sortedCompletedThoughts) {
+  const CHARS_PER_LINE = 26; // rough estimate for the (larger, more readable) paper font/width
+  const LINE_BUDGET = 9;     // lines available for thoughts (title/count take the rest)
+  const selected = [];
+  let usedLines = 0;
+  for (const t of sortedCompletedThoughts) {
+    const lines = Math.max(1, Math.ceil(t.text.length / CHARS_PER_LINE));
+    if (selected.length === 0) {
+      selected.push(t);
+      usedLines += lines;
+      continue;
+    }
+    if (usedLines + lines <= LINE_BUDGET) {
+      selected.push(t);
+      usedLines += lines;
+    } else {
+      break;
+    }
+  }
+  return selected;
+}
+
+// Build the ordered list of "paper lines" — title, blank, count, blank, then
+// each thought separated by a blank line. Blank lines are not typed/counted.
+function buildPaperLines(totalCompletedCount, paperThoughts) {
+  const lines = [
+    { key: "title", text: "WHAT I DID SO FAR", kind: "title" },
+    { key: "spacer1", text: "", kind: "blank" },
+    { key: "count", text: `${totalCompletedCount} crossed off`, kind: "count" },
+  ];
+  paperThoughts.forEach((t) => {
+    lines.push({ key: `spacer-${t.id}`, text: "", kind: "blank" });
+    lines.push({ key: `thought-${t.id}`, text: t.text, kind: "thought", id: t.id, jarId: t.jarId });
+  });
+  return lines;
+}
+
+// ── Sound ───────────────────────────────────────────────────────────────
+// Three clearly separated, reusable sound hooks for the Little Wins print
+// sequence. Each wraps a single local <audio> file so they're trivial to
+// re-point at different assets later — nothing else in the component cares
+// how the sound is produced.
+//
+// Timing contract (enforced by the callers below):
+//   successful lever pull → playLeverClunkSound()
+//   → startTypingSound() while the paper is actively printing
+//   → stopTypingSound() the instant typing finishes
+//   → playFinishDingSound() once, after everything is done
+//
+// Placeholder note: point these paths at whatever the final assets end up
+// being named — nothing else in the app needs to change.
+const SOUND_SRC = {
+  leverClunk: "/sounds/lever-clunk.mp3",
+  typingLoop: "/sounds/typing-loop.mp3",
+  finishDing: "/sounds/finish-ding.mp3",
+};
+
+// The lever-clunk file has some leading silence baked in, which made the
+// sound feel delayed after a successful pull. Rather than fiddling with
+// animation timing, we just start playback a little way into the file.
+const LEVER_CLUNK_START_OFFSET_SEC = 1.0;
+
+// The typing loop and finish ding are noticeably quieter than the BGM even
+// at full native volume (1.0 is the ceiling for a plain <audio> element), so
+// they're routed through a small Web Audio gain boost to bring their
+// perceived loudness up closer to the BGM. Purely a playback-volume fix —
+// does not touch the BGM itself.
+const SFX_GAIN = {
+  typingLoop: 2.2,
+  finishDing: 2.6,
+};
+
+function safeCreateAudio(src, { loop = false } = {}) {
+  try {
+    if (typeof Audio === "undefined") return null;
+    const el = new Audio(src);
+    el.preload = "auto";
+    el.loop = loop;
+    return el;
+  } catch (e) { return null; }
+}
+
+// A single shared AudioContext used only to boost the SFX above their native
+// file volume. Independent of the app's music playback entirely.
+let _sfxAudioCtx;
+function getSfxAudioCtx() {
+  if (_sfxAudioCtx === undefined) {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      _sfxAudioCtx = Ctx ? new Ctx() : null;
+    } catch (e) { _sfxAudioCtx = null; }
+  }
+  return _sfxAudioCtx;
+}
+
+// Routes an <audio> element through ctx → GainNode(gain) → destination, so
+// its perceived loudness can exceed the native 1.0 volume ceiling. Falls
+// back silently to the element's normal (native-volume) playback if the Web
+// Audio API isn't available. Each element is only ever wired up once.
+function boostAudioVolume(audioEl, gain) {
+  if (!audioEl || audioEl._sfxGainNode) return;
+  const ctx = getSfxAudioCtx();
+  if (!ctx) return;
+  try {
+    const source = ctx.createMediaElementSource(audioEl);
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = gain;
+    source.connect(gainNode).connect(ctx.destination);
+    audioEl._sfxGainNode = gainNode;
+  } catch (e) { /* ignore — plays at native volume instead */ }
+}
+
+let _leverClunkAudio;
+function getLeverClunkAudio() {
+  if (_leverClunkAudio === undefined) _leverClunkAudio = safeCreateAudio(SOUND_SRC.leverClunk);
+  return _leverClunkAudio;
+}
+let _typingLoopAudio;
+function getTypingLoopAudio() {
+  if (_typingLoopAudio === undefined) {
+    _typingLoopAudio = safeCreateAudio(SOUND_SRC.typingLoop, { loop: true });
+    boostAudioVolume(_typingLoopAudio, SFX_GAIN.typingLoop);
+  }
+  return _typingLoopAudio;
+}
+let _finishDingAudio;
+function getFinishDingAudio() {
+  if (_finishDingAudio === undefined) {
+    _finishDingAudio = safeCreateAudio(SOUND_SRC.finishDing);
+    boostAudioVolume(_finishDingAudio, SFX_GAIN.finishDing);
+  }
+  return _finishDingAudio;
+}
+
+// Warms up playback permission from a real user gesture (called from the jar
+// nav arrows, the same interaction that can lead into Little Wins) so the
+// later, timer-driven ding isn't silently blocked by autoplay restrictions.
+function primeAudioEl(el) {
+  if (!el) return;
+  try {
+    const ctx = getSfxAudioCtx();
+    if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
+    const wasMuted = el.muted;
+    el.muted = true;
+    const p = el.play();
+    const reset = () => { try { el.pause(); el.currentTime = 0; el.muted = wasMuted; } catch (e) { /* ignore */ } };
+    if (p && typeof p.then === "function") p.then(reset).catch(reset);
+    else reset();
+  } catch (e) { /* ignore */ }
+}
+function unlockAudio() {
+  primeAudioEl(getLeverClunkAudio());
+  primeAudioEl(getTypingLoopAudio());
+  primeAudioEl(getFinishDingAudio());
+}
+
+// 1) Lever cock/clunk — fires immediately once the pull crosses the
+// threshold. Starts partway into the file (see LEVER_CLUNK_START_OFFSET_SEC)
+// so the sound itself feels instant despite leading silence in the asset.
+function playLeverClunkSound() {
+  const audio = getLeverClunkAudio();
+  if (!audio) return;
+  try {
+    audio.currentTime = LEVER_CLUNK_START_OFFSET_SEC;
+    audio.play().catch(() => {});
+  } catch (e) {
+    // If the browser can't seek yet (metadata not loaded), still play something
+    // rather than staying silent.
+    try { audio.play().catch(() => {}); } catch (e2) { /* ignore */ }
+  }
+}
+
+// 2) Typing sound — starts as soon as the paper begins actively printing.
+function startTypingSound() {
+  const audio = getTypingLoopAudio();
+  if (!audio) return;
+  try { audio.currentTime = 0; audio.play().catch(() => {}); } catch (e) { /* ignore */ }
+}
+// ...and stops the instant printing finishes (or is interrupted).
+function stopTypingSound() {
+  const audio = getTypingLoopAudio();
+  if (!audio) return;
+  try { audio.pause(); audio.currentTime = 0; } catch (e) { /* ignore */ }
+}
+
+// 3) Finish ding — plays once, only after the paper has fully finished.
+function playFinishDingSound() {
+  const audio = getFinishDingAudio();
+  if (!audio) return;
+  try { audio.currentTime = 0; audio.play().catch(() => {}); } catch (e) { /* ignore */ }
+}
+
+// ── Small JS tween helper (springy easing) for the lever's snap-back ──────
+function easeOutBack(t) {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+function tweenValue({ from, to, duration, ease = (t) => t, onUpdate, onDone }) {
+  const start = (typeof performance !== "undefined" ? performance.now() : Date.now());
+  let raf;
+  const frame = (now) => {
+    const t = Math.min(1, (now - start) / duration);
+    onUpdate(from + (to - from) * ease(t));
+    if (t < 1) {
+      raf = requestAnimationFrame(frame);
+    } else if (onDone) {
+      onDone();
+    }
+  };
+  raf = requestAnimationFrame(frame);
+  return () => cancelAnimationFrame(raf);
+}
+
+const LEVER_PIVOT = { x: 424, y: 96 };
+const LEVER_RADIUS = 62;
+const LEVER_IDLE_DEG = -58;   // resting: angled up and to the right
+const LEVER_PULLED_DEG = 26;  // pulled: swung down
+const LEVER_DRAG_RANGE_PX = 120;
+const LEVER_PULL_THRESHOLD = 0.6;
+const MACHINE_VIEWBOX_W = 460;
+const MACHINE_VIEWBOX_H = 190;
+const LEVER_HIT_RADIUS_PX = 28; // ~56px diameter invisible hit target, in real CSS px regardless of SVG scale
+
+function LittleWinsScreen({
+  totalCompletedCount, paperThoughts, onOpenThought,
+  canGoPrev, canGoNext, goPrev, goNext, soundMuted,
+}) {
+  const isEmpty = totalCompletedCount === 0;
+  const lines = useMemo(() => buildPaperLines(totalCompletedCount, paperThoughts),
+    [totalCompletedCount, paperThoughts]);
+  const typableLines = useMemo(() => lines.filter(l => l.kind !== "blank"), [lines]);
+  const totalChars = useMemo(
+    () => Math.max(1, typableLines.reduce((sum, l) => sum + l.text.length, 0)),
+    [typableLines]
+  );
+
+  // phase: 'idle' (waiting for the lever) -> 'printing' (paper feeds + types) -> 'done'
+  const [phase, setPhase] = useState("idle");
+  const [pullProgress, setPullProgress] = useState(0); // 0..1 — drives the lever's angle
+  const [isDragging, setIsDragging] = useState(false);
+  const [typedPct, setTypedPct] = useState(0); // 0..1 — drives paper feed + revealed chars + sound
+  const dragStartYRef = useRef(0);
+  const pullProgressRef = useRef(0); // mirrors pullProgress synchronously, read at pointer-up (no stale state)
+  const phaseRef = useRef("idle");   // mirrors phase synchronously, for the same reason
+  const tweenCancelRef = useRef(null);
+  const typingCleanupRef = useRef(null);
+  const dingPlayed = useRef(false);
+  const measureRef = useRef(null);
+  const [paperFullHeight, setPaperFullHeight] = useState(null);
+  const svgWrapRef = useRef(null);
+  const [svgScale, setSvgScale] = useState(1);
+
+  const muted = !!soundMuted;
+  // Printing breathes for a few seconds, scaling gently with how much there is to type.
+  const typingDuration = isEmpty ? 600 : Math.min(5200, Math.max(3000, 900 + totalChars * 40));
+
+  const cancelTween = useCallback(() => {
+    if (tweenCancelRef.current) { tweenCancelRef.current(); tweenCancelRef.current = null; }
+  }, []);
+
+  const setPull = useCallback((p) => {
+    pullProgressRef.current = p;
+    setPullProgress(p);
+  }, []);
+
+  // Keep track of the SVG's rendered scale (its box is responsive, but the
+  // lever's hit target needs to sit at a real, constant CSS-pixel size).
+  useEffect(() => {
+    const el = svgWrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const update = () => { if (el.clientWidth) setSvgScale(el.clientWidth / MACHINE_VIEWBOX_W); };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Reset to idle whenever the underlying content changes (e.g. navigating away
+  // and back re-mounts this component fresh) or on first mount.
+  useEffect(() => {
+    setPhase("idle");
+    phaseRef.current = "idle";
+    setPull(0);
+    setTypedPct(0);
+    setIsDragging(false);
+    dingPlayed.current = false;
+    return () => {
+      cancelTween();
+      stopTypingSound();
+      if (typingCleanupRef.current) { typingCleanupRef.current(); typingCleanupRef.current = null; }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+
+  // Drive the actual printing (paper feed + typed reveal) once the lever
+  // successfully triggers it — not on any unrelated fixed timer. The typing
+  // sound starts the moment printing begins and stops the instant it ends.
+  useEffect(() => {
+    if (phase !== "printing") return;
+    if (!muted) startTypingSound();
+    const start = Date.now();
+    const tick = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const p = Math.min(1, elapsed / typingDuration);
+      setTypedPct(p);
+      if (p >= 1) {
+        clearInterval(tick);
+        setPhase("done");
+      }
+    }, 45);
+    typingCleanupRef.current = () => clearInterval(tick);
+    return () => {
+      clearInterval(tick);
+      stopTypingSound();
+    };
+  }, [phase, typingDuration, muted]);
+
+  // The finish ding — plays exactly once, only once the paper has fully
+  // finished printing (typing has already stopped by this point).
+  useEffect(() => {
+    if (phase === "done" && !dingPlayed.current && !isEmpty) {
+      dingPlayed.current = true;
+      if (!muted) playFinishDingSound();
+    }
+  }, [phase, isEmpty, muted]);
+
+  const revealChars = Math.floor(totalChars * typedPct);
+
+  // Work out how much of each line is currently revealed, by cursor position.
+  let cursor = 0;
+  const renderedLines = lines.map(line => {
+    if (line.kind === "blank") return { ...line, visibleText: "", revealedFully: true };
+    const startOffset = cursor;
+    cursor += line.text.length;
+    const revealedCount = Math.max(0, Math.min(line.text.length, revealChars - startOffset));
+    return { ...line, visibleText: line.text.slice(0, revealedCount), revealedFully: revealedCount >= line.text.length };
+  });
+
+  // Measure the fully-typed content once so the paper can feed upward toward
+  // its real final height, instead of jumping or guessing.
+  useEffect(() => {
+    if (measureRef.current) setPaperFullHeight(measureRef.current.offsetHeight);
+  }, [lines]);
+
+  const PEEK_HEIGHT = 22; // how much paper pokes out before the lever is pulled
+  const paperProgress = phase === "idle" ? 0 : typedPct;
+  const paperHeight = paperFullHeight == null
+    ? undefined
+    : PEEK_HEIGHT + (Math.max(PEEK_HEIGHT, paperFullHeight) - PEEK_HEIGHT) * paperProgress;
+
+  // ── Lever drag handling ────────────────────────────────────────────────
+  // Reads/writes go through refs so pointer-up always evaluates the real,
+  // current pull progress — no stale closures, no deferred callbacks.
+  const triggerSuccessfulPull = useCallback(() => {
+    // Audio is primed on pointerdown (grab) and on jar navigation already —
+    // priming again here, back-to-back with the real clunk playback below,
+    // would race the async mute-reset and risk the clunk itself being muted.
+    if (!muted) playLeverClunkSound();
+    cancelTween();
+    tweenCancelRef.current = tweenValue({
+      from: pullProgressRef.current, to: 0, duration: 480, ease: easeOutBack, onUpdate: setPull,
+    });
+    phaseRef.current = "printing";
+    setPhase("printing");
+  }, [muted, cancelTween, setPull]);
+
+  const springBack = useCallback(() => {
+    cancelTween();
+    tweenCancelRef.current = tweenValue({
+      from: pullProgressRef.current, to: 0, duration: 420, ease: easeOutBack, onUpdate: setPull,
+    });
+  }, [cancelTween, setPull]);
+
+  const handlePointerDown = useCallback((e) => {
+    if (phaseRef.current !== "idle") return;
+    cancelTween();
+    setIsDragging(true);
+    dragStartYRef.current = e.clientY;
+    // Prime playback here too (in addition to jar navigation) so a user who
+    // lands directly on this slide (e.g. a refresh) still gets audio primed
+    // well before the real clunk/typing sounds are triggered on release.
+    unlockAudio();
+    try { e.target.setPointerCapture?.(e.pointerId); } catch (err) { /* ignore */ }
+  }, [cancelTween]);
+
+  const handlePointerMove = useCallback((e) => {
+    if (phaseRef.current !== "idle") return;
+    const delta = e.clientY - dragStartYRef.current;
+    const p = Math.max(0, Math.min(1, delta / LEVER_DRAG_RANGE_PX));
+    setPull(p);
+  }, [setPull]);
+
+  const handlePointerUp = useCallback(() => {
+    if (phaseRef.current !== "idle") return;
+    setIsDragging(false);
+    // Read the real, current progress directly from the ref — reliable
+    // regardless of render timing, no stale state.
+    if (pullProgressRef.current >= LEVER_PULL_THRESHOLD) {
+      triggerSuccessfulPull();
+    } else {
+      springBack();
+    }
+  }, [triggerSuccessfulPull, springBack]);
+
+  const leverAngleDeg = LEVER_IDLE_DEG + pullProgress * (LEVER_PULLED_DEG - LEVER_IDLE_DEG);
+  const leverAngleRad = (leverAngleDeg * Math.PI) / 180;
+  const handleX = LEVER_PIVOT.x + LEVER_RADIUS * Math.cos(leverAngleRad);
+  const handleY = LEVER_PIVOT.y + LEVER_RADIUS * Math.sin(leverAngleRad);
+
+  const showInstruction = phase === "idle";
+  const lightActive = phase !== "idle";
+  const idleKnobPulse = phase === "idle" && !isDragging;
+
+  return (
+    <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
+      gap:"clamp(2px,0.8vw,6px)", width:"100%" }}>
+
+      <style>{`
+        @keyframes knobIdlePulse {
+          0%, 100% { transform: translateY(0px) scale(1); }
+          50% { transform: translateY(-2px) scale(1.04); }
+        }
+        @keyframes lightPulseIdle {
+          0%, 100% { opacity: 0.35; r: 15; }
+          50% { opacity: 0.65; r: 19; }
+        }
+      `}</style>
+
+      {/* Left arrow — same nav as the jar carousel */}
+      <button
+        onClick={goPrev} disabled={!canGoPrev}
+        aria-label="previous jar"
+        style={{
+          background:"none", border:"none", cursor: canGoPrev ? "pointer" : "default",
+          padding:"0 2px", flexShrink:0, opacity: canGoPrev ? 1 : 0.2,
+          WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
+        }}>
+        <svg viewBox="0 0 28 48" width={20} height={36}>
+          <path d="M22,5 C20,7 8,21 5,24 C8,27 20,41 22,43"
+            fill="none" stroke="#6B4226" strokeWidth={4.5}
+            strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {/* Achievement scene: paper above, control-panel machine anchored at the bottom */}
+      <div data-bt-target="little-wins" style={{ flex:"1 1 auto", maxWidth:"min(420px,88vw)", minWidth:0,
+        display:"flex", flexDirection:"column", alignItems:"center" }}>
+
+        {/* Hidden measurer — the fully-typed content, used only to learn the
+            paper's real final height so the feed animation targets it precisely. */}
+        <div ref={measureRef} aria-hidden="true" style={{
+          position:"absolute", visibility:"hidden", pointerEvents:"none",
+          width:"min(420px,88vw)", padding:"1.3rem 1.35rem 1.6rem",
+        }}>
+          <PaperContent lines={lines.map(l => ({ ...l, visibleText: l.text, revealedFully: true }))}
+            isEmpty={isEmpty} onOpenThought={() => {}} />
+        </div>
+
+        {/* Paper — height feeds upward as the print job progresses.
+            A soft shadow along its own bottom edge helps it read as though
+            it's dipping down into the dark slot beneath it. */}
+        <div data-testid="little-wins-paper" style={{
+          width:"100%", background:"#FFFDF6",
+          border:"2px solid #D9C5A0", borderBottom:"none",
+          borderRadius:"6px 6px 0 0",
+          boxShadow:"0 3px 10px rgba(107,66,38,0.15)",
+          padding:"1.3rem 1.35rem 1.6rem",
+          marginBottom:-14, zIndex:2, position:"relative",
+          overflow:"hidden",
+          height: paperHeight,
+          transition: phase === "idle" ? "none" : "height 0.08s linear",
+        }}>
+          <PaperContent lines={renderedLines} isEmpty={isEmpty} onOpenThought={onOpenThought} />
+          <div aria-hidden="true" style={{
+            position:"absolute", left:0, right:0, bottom:0, height:16,
+            background:"linear-gradient(to bottom, rgba(58,36,20,0), rgba(58,36,20,0.32))",
+            pointerEvents:"none",
+          }} />
+        </div>
+
+        {/* The control-panel machine itself — low, wide, cream, with a
+            hand-drawn illustrated 2.5D depth via SVG gradients (no PNG). */}
+        <div ref={svgWrapRef} style={{ width:"100%", maxWidth: MACHINE_VIEWBOX_W, position:"relative" }}>
+          <svg viewBox={`0 0 ${MACHINE_VIEWBOX_W} ${MACHINE_VIEWBOX_H}`} width="100%" height="auto"
+            style={{ display:"block", overflow:"visible" }}
+            role="img" aria-label="little wins printing machine">
+
+            <defs>
+              <linearGradient id="lw-body-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#FFFDF6" />
+                <stop offset="55%" stopColor="#FFF8EC" />
+                <stop offset="100%" stopColor="#F1E1C2" />
+              </linearGradient>
+              <linearGradient id="lw-slot-inner-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#4A2E1A" />
+                <stop offset="60%" stopColor="#341F11" />
+                <stop offset="100%" stopColor="#2A180D" />
+              </linearGradient>
+              <radialGradient id="lw-lamp-grad" cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stopColor="#FFF3B0" />
+                <stop offset="55%" stopColor="#F6E27A" />
+                <stop offset="100%" stopColor="#D9B84E" />
+              </radialGradient>
+              <radialGradient id="lw-blue-grad" cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stopColor="#DCE7F7" />
+                <stop offset="55%" stopColor="#A8BFDF" />
+                <stop offset="100%" stopColor="#7E97C4" />
+              </radialGradient>
+              <radialGradient id="lw-green-grad" cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stopColor="#DCEBD6" />
+                <stop offset="55%" stopColor="#A8C5A0" />
+                <stop offset="100%" stopColor="#7DA173" />
+              </radialGradient>
+            </defs>
+
+            {/* Ground shadow */}
+            <ellipse cx="230" cy="182" rx="180" ry="7" fill="#6B4226" opacity="0.1" />
+
+            {/* Feet */}
+            <ellipse cx="90" cy="176" rx="14" ry="6" fill="#C9A87A" stroke="#6B4226" strokeWidth="2.5" />
+            <ellipse cx="370" cy="176" rx="14" ry="6" fill="#C9A87A" stroke="#6B4226" strokeWidth="2.5" />
+
+            {/* Dark recessed slot opening — sits BEHIND the body/bezel, so paper
+                (layered above, in HTML) appears to emerge out of a real hole */}
+            <rect x="76" y="44" width="308" height="26" rx="12" fill="url(#lw-slot-inner-grad)" />
+
+            {/* Body — low and wide, subtle gradient depth */}
+            <path d="M26,84 C22,72 30,62 46,58 L414,58 C430,62 438,72 434,84
+              L442,150 C444,162 434,170 418,170 L42,170 C26,170 16,162 18,150 Z"
+              fill="url(#lw-body-grad)" stroke="#6B4226" strokeWidth="4.5" strokeLinejoin="round" />
+            {/* soft highlight, upper-left */}
+            <ellipse cx="110" cy="90" rx="90" ry="34" fill="#FFFFFF" opacity="0.28" />
+            {/* soft warm shading, lower edge */}
+            <path d="M40,150 C120,164 340,164 420,150 L434,84 L442,150 C444,162 434,170 418,170 L42,170 C26,170 16,162 18,150 Z"
+              fill="#6B4226" opacity="0.06" />
+
+            {/* Outer slot bezel/lip — chocolate-brown frame with a warm highlight
+                right at the top edge, drawn OVER the body so the opening reads
+                as recessed rather than a flat bar */}
+            <rect x="68" y="40" width="324" height="30" rx="15" fill="none" stroke="#4A2E1A" strokeWidth="7" />
+            <path d="M74,42 C130,36 330,36 386,42" fill="none" stroke="#E8C79A" strokeWidth="2.4"
+              strokeLinecap="round" opacity="0.65" />
+
+            {/* ── Three physical indicator controls — centred, cute 2.5D treatment ── */}
+            {/* Status light — largest, softly glows while printing */}
+            {!lightActive && (
+              <circle cx="230" cy="122" r="15" fill="#F6E27A"
+                style={{ animation:"lightPulseIdle 2.4s ease-in-out infinite" }} opacity="0.4" />
+            )}
+            <circle cx="230" cy="122" r={lightActive ? 24 : 18}
+              fill="#F6E27A" opacity={lightActive ? 0.5 : 0}
+              style={{ transition:"r 0.3s ease, opacity 0.3s ease" }} />
+            <circle cx="230" cy="122" r="17" fill="url(#lw-lamp-grad)" stroke="#4A2E1A" strokeWidth="3" />
+            <ellipse cx="225" cy="116" rx="5.5" ry="4" fill="#FFFDF6" opacity="0.85" />
+            <path d="M236,128 A15,15 0 0 1 227,136" fill="none" stroke="#8A6A1E" strokeWidth="2" opacity="0.35" strokeLinecap="round" />
+
+            {/* Blue button — smaller */}
+            <circle cx="185" cy="126" r="11" fill="url(#lw-blue-grad)" stroke="#4A2E1A" strokeWidth="2.4" />
+            <ellipse cx="181.5" cy="122.5" rx="3.4" ry="2.6" fill="#FFFDF6" opacity="0.85" />
+            <path d="M191,130 A11,11 0 0 1 184,136" fill="none" stroke="#4C628A" strokeWidth="1.6" opacity="0.35" strokeLinecap="round" />
+
+            {/* Green button — smaller */}
+            <circle cx="275" cy="126" r="11" fill="url(#lw-green-grad)" stroke="#4A2E1A" strokeWidth="2.4" />
+            <ellipse cx="271.5" cy="122.5" rx="3.4" ry="2.6" fill="#FFFDF6" opacity="0.85" />
+            <path d="M281,130 A11,11 0 0 1 274,136" fill="none" stroke="#4F6B45" strokeWidth="1.6" opacity="0.35" strokeLinecap="round" />
+
+            {/* ── Lever — pivot always visibly fixed to the right side of the body.
+                 Only the pull itself (from real pointer drag) rotates the arm;
+                 there is no ambient group-level wiggle. ── */}
+            <line x1={LEVER_PIVOT.x} y1={LEVER_PIVOT.y} x2={handleX} y2={handleY}
+              stroke="#6B4226" strokeWidth="10" strokeLinecap="round" />
+            <circle cx={LEVER_PIVOT.x} cy={LEVER_PIVOT.y} r="8" fill="#4A2E1A" />
+            <circle cx={LEVER_PIVOT.x} cy={LEVER_PIVOT.y} r="8" fill="none" stroke="#6B4226" strokeWidth="2" />
+            {/* visual knob — purely decorative; the invisible HTML hit-target
+                (below) is what actually receives pointer events */}
+            <g style={{
+              animation: idleKnobPulse ? "knobIdlePulse 3.2s ease-in-out infinite" : "none",
+              transformBox: "fill-box", transformOrigin: "50% 50%",
+            }}>
+              <circle cx={handleX} cy={handleY} r="19" fill="#EE7A6E" stroke="#4A2E1A" strokeWidth="4" pointerEvents="none" />
+              <circle cx={handleX - 5} cy={handleY - 5} r="5.5" fill="#FFD9D3" opacity="0.75" pointerEvents="none" />
+              <path d={`M ${handleX + 8} ${handleY + 10} A 12 12 0 0 1 ${handleX - 2} ${handleY + 16}`}
+                fill="none" stroke="#B0483A" strokeWidth="2" opacity="0.3" strokeLinecap="round" pointerEvents="none" />
+            </g>
+          </svg>
+
+          {/* Invisible hit target for the lever — a real, constant ~56px CSS
+              circle regardless of how much the SVG itself is scaled down, so
+              the knob stays easy to grab on small screens. */}
+          <div
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            role="button"
+            aria-label="pull lever to print little wins"
+            style={{
+              position:"absolute",
+              left: handleX * svgScale - LEVER_HIT_RADIUS_PX,
+              top: handleY * svgScale - LEVER_HIT_RADIUS_PX,
+              width: LEVER_HIT_RADIUS_PX * 2,
+              height: LEVER_HIT_RADIUS_PX * 2,
+              borderRadius:"50%",
+              background:"transparent",
+              cursor: phase === "idle" ? "grab" : "default",
+              touchAction:"none",
+              WebkitTapHighlightColor:"transparent",
+            }}
+          />
+
+          {/* "pull to print ♡" instruction — a standalone HTML tooltip (not part
+              of the machine SVG) so it can sit at a higher stacking layer than
+              the paper and never get visually swallowed by it. Positioned
+              above/right of the knob, well clear of the arm, slot and body.
+              Always mounted so it can genuinely fade rather than just vanish,
+              and hidden completely the moment a successful pull begins printing. */}
+          <div aria-hidden="true" style={{
+            position:"absolute",
+            left: handleX * svgScale,
+            top: handleY * svgScale,
+            transform:"translate(-72%, -190%)",
+            zIndex:5,
+            opacity: showInstruction ? 1 : 0,
+            transition:"opacity 0.35s ease",
+            pointerEvents:"none",
+            whiteSpace:"nowrap",
+            background:"#FFF8EC", border:"2px solid #6B4226", borderRadius:16,
+            padding:"6px 14px",
+            fontFamily:"var(--font-body), 'Helvetica Neue', Arial, sans-serif",
+            fontSize:12.5, fontWeight:500, color:"#6B4226",
+            boxShadow:"2px 3px 0 rgba(107,66,38,0.15)",
+          }}>
+            pull to print ♡
+          </div>
+        </div>
+      </div>
+
+      {/* Right arrow — same nav as the jar carousel */}
+      <button
+        onClick={goNext} disabled={!canGoNext}
+        aria-label="next jar"
+        style={{
+          background:"none", border:"none", cursor: canGoNext ? "pointer" : "default",
+          padding:"0 2px", flexShrink:0, opacity: canGoNext ? 1 : 0.2,
+          WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
+        }}>
+        <svg viewBox="0 0 28 48" width={20} height={36}>
+          <path d="M6,5 C8,7 20,21 23,24 C20,27 8,41 6,43"
+            fill="none" stroke="#6B4226" strokeWidth={4.5}
+            strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+// The paper's actual printed content — factored out so it can be rendered both
+// visibly (progressively typed) and invisibly (fully typed, for measurement).
+function PaperContent({ lines, isEmpty, onOpenThought }) {
+  if (isEmpty) {
+    return (
+      <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:8,textAlign:"center" }}>
+        <p style={{ fontFamily:"'Courier New', Courier, monospace",fontSize:19,fontWeight:700,
+          color:"#3D2510",lineHeight:1.6,letterSpacing:0.5 }}>
+          WHAT I DID SO FAR
+        </p>
+        <p style={{ fontFamily:"'Courier New', Courier, monospace",fontSize:14.5,color:"#A07850",lineHeight:1.6 }}>
+          nothing crossed off just yet —<br/>that's alright, there's no rush.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div style={{ display:"flex",flexDirection:"column",gap:4 }}>
+      {lines.map(line => {
+        if (line.kind === "blank") return <div key={line.key} style={{ height:10 }} />;
+        if (line.kind === "title") {
+          return (
+            <p key={line.key} style={{ fontFamily:"'Courier New', Courier, monospace",
+              fontSize:19,fontWeight:700,color:"#3D2510",textAlign:"center",lineHeight:1.5,letterSpacing:0.5 }}>
+              {line.visibleText}
+            </p>
+          );
+        }
+        if (line.kind === "count") {
+          return (
+            <p key={line.key} style={{ textAlign:"center",lineHeight:1.5 }}>
+              {line.visibleText && (
+                <span style={{ fontFamily:"'Courier New', Courier, monospace",
+                  fontSize:14.5,fontWeight:700,color:"#3D2510",letterSpacing:0.5,
+                  background:"#F6E27A", borderRadius:6, padding:"2px 12px",
+                  display:"inline-block", transform:"rotate(-1deg)",
+                  boxShadow:"0 0 0 2px rgba(246,226,122,0.35)" }}>
+                  {line.visibleText}
+                </span>
+              )}
+            </p>
+          );
+        }
+        // thought line — types out, then gets a soft analogue strike drawn
+        // across EACH rendered (wrapped) line individually
+        return (
+          <ThoughtLine key={line.key} line={line} onOpenThought={onOpenThought} />
+        );
+      })}
+    </div>
+  );
+}
+
+// Renders one completed thought and, once it's fully typed, draws a thin
+// analogue strike-through across each *actually rendered* wrapped line —
+// using the Range API to read real line boxes rather than assuming a fixed
+// line count, so 1-line and multi-line (wrapped) thoughts both look correct.
+function ThoughtLine({ line, onOpenThought }) {
+  const containerRef = useRef(null);
+  const textRef = useRef(null);
+  const [lineRects, setLineRects] = useState([]);
+  const [strikesVisible, setStrikesVisible] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!line.revealedFully) { setLineRects([]); setStrikesVisible(false); return; }
+
+    const measure = () => {
+      const textEl = textRef.current;
+      const containerEl = containerRef.current;
+      if (!textEl || !containerEl || !textEl.firstChild) { setLineRects([]); return; }
+      try {
+        const range = document.createRange();
+        range.selectNodeContents(textEl);
+        const rects = Array.from(range.getClientRects());
+        const containerBox = containerEl.getBoundingClientRect();
+        const relative = rects
+          .filter(r => r.width > 0 && r.height > 0)
+          .map(r => ({
+            left: r.left - containerBox.left,
+            top: r.top - containerBox.top,
+            width: r.width,
+            height: r.height,
+          }));
+        setLineRects(relative);
+      } catch (e) { setLineRects([]); }
+    };
+
+    measure();
+    // Re-measure if the paper's width changes (e.g. viewport resize) so the
+    // strikes keep following the real wrapped line boxes.
+    let ro;
+    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+      ro = new ResizeObserver(measure);
+      ro.observe(containerRef.current);
+    }
+    return () => { if (ro) ro.disconnect(); };
+  }, [line.revealedFully, line.visibleText]);
+
+  // Start each strike at 0 width, then flip to its real width a tick later so
+  // the left-to-right transition actually has something to animate from.
+  useEffect(() => {
+    if (lineRects.length === 0) { setStrikesVisible(false); return; }
+    setStrikesVisible(false);
+    const raf = requestAnimationFrame(() => setStrikesVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, [lineRects]);
+
+  return (
+    <div style={{ textAlign:"center" }}>
+      <div
+        ref={containerRef}
+        onClick={() => line.revealedFully && onOpenThought(line.jarId, line.id)}
+        role={line.revealedFully ? "button" : undefined}
+        aria-label={line.revealedFully ? "open completed thought" : undefined}
+        style={{ position:"relative", display:"inline-block", maxWidth:"100%",
+          cursor: line.revealedFully ? "pointer" : "default", padding:"1px 2px" }}>
+        <span ref={textRef} style={{ fontFamily:"'Courier New', Courier, monospace",
+          fontSize:16.5,color:"#4A3220",lineHeight:1.6 }}>
+          {line.visibleText}
+        </span>
+        {/* one soft, slightly-imperfect analogue strike per actual rendered
+            line — not one line stretched across the whole wrapped block */}
+        {lineRects.map((r, i) => (
+          <span key={i} aria-hidden="true" style={{
+            position:"absolute", left:r.left, top:r.top + r.height / 2, height:1.1,
+            background:"#9C6B54", opacity:0.62,
+            width: strikesVisible ? r.width : 0,
+            transition:`width 0.4s ease-out ${i * 90}ms`,
+            transform:"translateY(-50%) rotate(-0.5deg)",
+          }} />
+        ))}
       </div>
     </div>
   );
@@ -2493,7 +3340,9 @@ function Toast({ message, visible }) {
       transform:`translateX(-50%) translateY(${visible ? 0 : 20}px)`,
       opacity: visible ? 1 : 0,transition:"all 0.35s cubic-bezier(0.34,1.56,0.64,1)",
       background:"#3D2510",color:"white",fontFamily:"var(--font-body)",fontSize:14,fontWeight:500,
-      padding:"10px 24px",borderRadius:50,pointerEvents:"none",zIndex:200,whiteSpace:"nowrap" }}
+      padding:"10px 24px",borderRadius:24,pointerEvents:"none",zIndex:200,
+      maxWidth:"calc(100vw - 48px)",width:"max-content",textAlign:"center",
+      whiteSpace:"normal",wordBreak:"break-word",lineHeight:1.4,boxSizing:"border-box" }}
       role="status" aria-live="polite">
       {message}
     </div>
@@ -3393,6 +4242,7 @@ export default function ThoughtJar() {
   const [toast, setToast]         = useState({ message: "", visible: false });
   const dailyBroadcast = useRef(getDailyBroadcast()).current;
   const [showList, setShowList]   = useState(false);
+  const [listInitialFilter, setListInitialFilter] = useState("all");
   const [showJarFull, setShowJarFull] = useState(false);
   const [showNewJar, setShowNewJar]   = useState(false);
   const [showInfo, setShowInfo]       = useState(false);
@@ -3422,10 +4272,30 @@ export default function ThoughtJar() {
   const [showHSPrompt, setShowHSPrompt] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(() => !load(INTRO_KEY, false));
 
-  // Derived active jar (clamp index in case jar was removed)
-  const safeIdx  = Math.min(activeJarIndex, Math.max(0, jars.length - 1));
-  const activeJar = jars[safeIdx] || jars[0];
+  // Derived active jar (clamp index in case jar was removed).
+  // The homepage carousel has one extra "virtual" slide beyond the jars:
+  // the Completed Scorecard, which always sits after the last jar and is not a jar itself.
+  const totalSlides = jars.length + 1; // + Completed Scorecard slide
+  const safeIdx  = Math.min(activeJarIndex, totalSlides - 1);
+  const isScorecardSlide = safeIdx === jars.length;
+  const activeJar = isScorecardSlide ? null : (jars[safeIdx] || jars[0]);
   const currentThoughts = activeJar?.thoughts || [];
+
+  // All completed thoughts across every jar — the scorecard's source of truth.
+  // Falls back to a very old sort key for legacy completed thoughts that predate
+  // the completedAt field, so they still appear (and count) without corrupting order.
+  const allCompletedThoughts = jars.flatMap(jar =>
+    jar.thoughts
+      .filter(t => t.completed)
+      .map(t => ({ ...t, jarId: jar.id, jarName: jar.name }))
+  );
+  const completedSortKey = (t) => t.completedAt ? new Date(t.completedAt).getTime() : -1;
+  const sortedCompletedThoughts = [...allCompletedThoughts].sort((a, b) => completedSortKey(b) - completedSortKey(a));
+  const totalCompletedCount = allCompletedThoughts.length;
+  // Dynamic-fit selection for the Little Wins paper — most recent first, only
+  // as many as comfortably fit, never truncated. (All Thoughts keeps showing
+  // the complete history separately, unaffected by this.)
+  const paperThoughts = selectThoughtsForPaper(sortedCompletedThoughts);
 
   // Memory resurfacing — recompute for the active jar.
   // dismissedMemoryJars tracks which jar IDs have been dismissed this session.
@@ -3507,10 +4377,24 @@ export default function ThoughtJar() {
   const handleComplete = useCallback((jarId, thoughtId) => {
     setJars(prev => prev.map(jar => jar.id !== jarId ? jar : {
       ...jar,
-      thoughts: jar.thoughts.map(t => t.id === thoughtId ? { ...t, completed: true } : t),
+      thoughts: jar.thoughts.map(t => t.id === thoughtId
+        ? { ...t, completed: true, completedAt: new Date().toISOString() }
+        : t),
     }));
     showToast("thought completed");
     setStardustActive(true);
+  }, [showToast]);
+
+  // Un-complete a thought — clears completedAt so it drops out of the scorecard
+  // and becomes eligible for random resurfacing again.
+  const handleUncomplete = useCallback((jarId, thoughtId) => {
+    setJars(prev => prev.map(jar => jar.id !== jarId ? jar : {
+      ...jar,
+      thoughts: jar.thoughts.map(t => t.id === thoughtId
+        ? { ...t, completed: false, completedAt: null }
+        : t),
+    }));
+    showToast("marked as not done yet");
   }, [showToast]);
 
   const handleDelete = useCallback((jarId, thoughtId) => {
@@ -3527,6 +4411,11 @@ export default function ThoughtJar() {
     handleComplete(activeJar.id, thoughtId);
     setRevealedThought(prev => prev ? { ...prev, completed: true } : null);
   }, [activeJar?.id, handleComplete]);
+
+  const handleUncompleteFromReveal = useCallback((thoughtId) => {
+    handleUncomplete(activeJar.id, thoughtId);
+    setRevealedThought(prev => prev ? { ...prev, completed: false, completedAt: null } : null);
+  }, [activeJar?.id, handleUncomplete]);
 
   // Edit a thought's text in place — preserves id, createdAt, jar, blob identity, and completed status.
   const handleEditThought = useCallback((jarId, thoughtId, newText) => {
@@ -3570,9 +4459,9 @@ export default function ThoughtJar() {
 
   // Jar navigation
   const canGoPrev = safeIdx > 0;
-  const canGoNext = safeIdx < jars.length - 1;
-  const goPrev = () => { blurKeyboard(); setActiveJarIndex(i => Math.max(0, i - 1)); };
-  const goNext = () => { blurKeyboard(); setActiveJarIndex(i => Math.min(jars.length - 1, i + 1)); };
+  const canGoNext = safeIdx < totalSlides - 1;
+  const goPrev = () => { blurKeyboard(); unlockAudio(); setActiveJarIndex(i => Math.max(0, i - 1)); };
+  const goNext = () => { blurKeyboard(); unlockAudio(); setActiveJarIndex(i => Math.min(totalSlides - 1, i + 1)); };
 
   return (
     <>
@@ -3710,7 +4599,7 @@ export default function ThoughtJar() {
   }}
 />
                       ),
-                      action: () => { blurKeyboard(); setShowMenu(false); setShowList(true); },
+                      action: () => { blurKeyboard(); setShowMenu(false); setListInitialFilter("all"); setShowList(true); },
                     },
                     {
                       label: "new jar",
@@ -3771,53 +4660,65 @@ export default function ThoughtJar() {
           paddingBottom:"clamp(24px,4vh,48px)",
           position:"relative" }}>
 
-          {/* Dice icon — above jar. Handdrawn 3D dice matching TV illustration style */}
-          <button
-            data-bt-target="dice"
-            onClick={handleJarClick}
-            aria-label="roll dice for a random thought"
-            style={{
-              background: "none", border: "none", cursor: "pointer",
-              padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
-              WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
-              transform: "translateX(0px)",
-              marginBottom: 28,
-            }}>
-            {/* Handdrawn 3D dice — matches reference: cube with rounded corners, clear pips */}
-              <img
-                src="/icons/dice.svg"
-                alt="dice"
-                style={{ width: 62, height: 62 }}
-              />
-          </button>
+          {isScorecardSlide ? (
+            /* ── Little Wins ✦ — achievement screen, not a jar ── */
+            <LittleWinsScreen
+              totalCompletedCount={totalCompletedCount}
+              paperThoughts={paperThoughts}
+              onOpenThought={handleOpenThoughtFromList}
+              canGoPrev={canGoPrev} canGoNext={canGoNext}
+              goPrev={goPrev} goNext={goNext}
+              soundMuted={musicMuted}
+            />
+          ) : (
+            <>
+              {/* Dice icon — above jar */}
+              <button
+                data-bt-target="dice"
+                onClick={handleJarClick}
+                aria-label="roll dice for a random thought"
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                  WebkitTapHighlightColor: "transparent", touchAction: "manipulation",
+                  transform: "translateX(0px)",
+                  marginBottom: 28,
+                }}>
+                {/* Handdrawn 3D dice — matches reference: cube with rounded corners, clear pips */}
+                  <img
+                    src="/icons/dice.svg"
+                    alt="dice"
+                    style={{ width: 62, height: 62 }}
+                  />
+              </button>
 
-          {/* Jar + nav arrows — arrows close to jar body */}
-          <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
-            gap:"clamp(2px,0.8vw,6px)", width:"100%" }}>
+              {/* Jar + nav arrows — arrows close to jar body */}
+              <div style={{ display:"flex",alignItems:"center",justifyContent:"center",
+                gap:"clamp(2px,0.8vw,6px)", width:"100%" }}>
 
-            {/* Left arrow — tight to jar */}
-            <button
-              onClick={goPrev} disabled={!canGoPrev}
-              aria-label="previous jar"
-              style={{
-                transform:"translateY(-34px)",
-                background:"none", border:"none", cursor: canGoPrev ? "pointer" : "default",
-                padding:"0 2px", flexShrink:0, opacity: canGoPrev ? 1 : 0.2,
-                WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
-              }}>
-              <svg viewBox="0 0 28 48" width={20} height={36}>
-                <path d="M22,5 C20,7 8,21 5,24 C8,27 20,41 22,43"
-                  fill="none" stroke="#6B4226" strokeWidth={4.5}
-                  strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+                {/* Left arrow — tight to jar */}
+                <button
+                  onClick={goPrev} disabled={!canGoPrev}
+                  aria-label="previous jar"
+                  style={{
+                    transform:"translateY(-34px)",
+                    background:"none", border:"none", cursor: canGoPrev ? "pointer" : "default",
+                    padding:"0 2px", flexShrink:0, opacity: canGoPrev ? 1 : 0.2,
+                    WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
+                  }}>
+                  <svg viewBox="0 0 28 48" width={20} height={36}>
+                    <path d="M22,5 C20,7 8,21 5,24 C8,27 20,41 22,43"
+                      fill="none" stroke="#6B4226" strokeWidth={4.5}
+                      strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
 
-            {/* Jar — maximises central space, left-shifted to balance right icon column */}
-            <div data-bt-target="jar" style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
-              transform:"translate(0px, -64px)",
-              transition:"opacity 0.5s ease, filter 0.5s ease",
-              animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
-              <style>{`
+                {/* Jar — maximises central space, left-shifted to balance right icon column */}
+                <div data-bt-target="jar" style={{ flex:"1 1 auto", maxWidth:"min(400px,80vw)", minWidth:0,
+                  transform:"translate(0px, -64px)",
+                  transition:"opacity 0.5s ease, filter 0.5s ease",
+                  animation: isJarAnimating ? "jarShake 0.4s ease" : "none" }}>
+                  <style>{`
   @keyframes jarShake {
     0%, 100% {
       transform: translate(0px, -64px);
@@ -3839,54 +4740,56 @@ export default function ThoughtJar() {
     }
   }
 `}</style>
-              <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
-                isAnimating={isJarAnimating} jarName={activeJar?.name}
-                lidVariant={(activeJar?.id ?? 0) % 5}
-                onLabelClick={() => { setJarNameInput(activeJar?.name || ""); setEditingJarName(true); }} />
-            </div>
+                  <JarSVG thoughts={currentThoughts} onJarClick={handleJarClick}
+                    isAnimating={isJarAnimating} jarName={activeJar?.name}
+                    lidVariant={(activeJar?.id ?? 0) % 5}
+                    onLabelClick={() => { setJarNameInput(activeJar?.name || ""); setEditingJarName(true); }} />
+                </div>
 
-            {/* Right arrow — tight to jar */}
-            <button
-              onClick={goNext} disabled={!canGoNext}
-              aria-label="next jar"
-              style={{
-                transform:"translateY(-34px)",
-                background:"none", border:"none", cursor: canGoNext ? "pointer" : "default",
-                padding:"0 2px", flexShrink:0, opacity: canGoNext ? 1 : 0.2,
-                WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
-              }}>
-              <svg viewBox="0 0 28 48" width={20} height={36}>
-                <path d="M6,5 C8,7 20,21 23,24 C20,27 8,41 6,43"
-                  fill="none" stroke="#6B4226" strokeWidth={4.5}
-                  strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+                {/* Right arrow — tight to jar */}
+                <button
+                  onClick={goNext} disabled={!canGoNext}
+                  aria-label="next jar"
+                  style={{
+                    transform:"translateY(-34px)",
+                    background:"none", border:"none", cursor: canGoNext ? "pointer" : "default",
+                    padding:"0 2px", flexShrink:0, opacity: canGoNext ? 1 : 0.2,
+                    WebkitTapHighlightColor:"transparent", touchAction:"manipulation",
+                  }}>
+                  <svg viewBox="0 0 28 48" width={20} height={36}>
+                    <path d="M6,5 C8,7 20,21 23,24 C20,27 8,41 6,43"
+                      fill="none" stroke="#6B4226" strokeWidth={4.5}
+                      strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
 
-          </div>
+              </div>
 
-          <div data-bt-target="input" style={{width:"100%",maxWidth:480}}>
-            <AddThoughtInput onAdd={handleAddThought} />
-          </div>
+              <div data-bt-target="input" style={{width:"100%",maxWidth:480}}>
+                <AddThoughtInput onAdd={handleAddThought} />
+              </div>
 
-          {/* Hint text — below the input */}
-          <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(12px,1.8vw,14px)",
-            color:"#A07850",textAlign:"center",opacity:0.75,lineHeight:1.5 }}>
-            {currentThoughts.length === 0
-              ? "add a thought, and it will float inside the jar"
-              : currentThoughts.length >= JAR_CAPACITY
-                ? "this jar is full — create a new one"
-                : "tap the dice or jar to rediscover a thought"}
-          </p>
+              {/* Hint text — below the input */}
+              <p style={{ fontFamily:"var(--font-body)",fontSize:"clamp(12px,1.8vw,14px)",
+                color:"#A07850",textAlign:"center",opacity:0.75,lineHeight:1.5 }}>
+                {currentThoughts.length === 0
+                  ? "add a thought, and it will float inside the jar"
+                  : currentThoughts.length >= JAR_CAPACITY
+                    ? "this jar is full — create a new one"
+                    : "tap the dice or jar to rediscover a thought"}
+              </p>
 
-          {/* TV — right edge, clears input bar comfortably */}
-          <div data-bt-target="tv" className="tv-widget" style={{
-            position:"absolute",
-            right:0,
-            bottom:"clamp(96px,16vh,130px)",
-            flexDirection:"column",alignItems:"center",
-            zIndex:2 }}>
-            <CozyTV broadcast={dailyBroadcast} />
-          </div>
+              {/* TV — right edge, clears input bar comfortably. Hidden on the Little Wins screen. */}
+              <div data-bt-target="tv" className="tv-widget" style={{
+                position:"absolute",
+                right:0,
+                bottom:"clamp(96px,16vh,130px)",
+                flexDirection:"column",alignItems:"center",
+                zIndex:2 }}>
+                <CozyTV broadcast={dailyBroadcast} />
+              </div>
+            </>
+          )}
         </main>
         {/* Footer */}
         <AppFooter />
@@ -3905,6 +4808,7 @@ export default function ThoughtJar() {
         <ThoughtsListModal jars={jars} onClose={() => setShowList(false)}
           onComplete={handleComplete} onDelete={handleDelete}
           onOpenThought={handleOpenThoughtFromList}
+          initialFilter={listInitialFilter}
           activeJarId={activeJar?.id}
           onSwitchJar={(jarId) => {
             const idx = jars.findIndex(j => j.id === jarId);
@@ -3972,6 +4876,7 @@ export default function ThoughtJar() {
 
       <ThoughtReveal thought={revealedThought} onClose={() => setRevealedThought(null)}
         onComplete={handleCompleteFromReveal}
+        onUncomplete={handleUncompleteFromReveal}
         onEdit={(thoughtId, newText) => handleEditThought(activeJar.id, thoughtId, newText)}
         onReroll={() => {
           // Rerolling only picks among incomplete thoughts — completed thoughts stay
@@ -3986,7 +4891,7 @@ export default function ThoughtJar() {
           const next = source[Math.floor(Math.random() * source.length)];
           setRevealedThought(next);
         }}
-        onOpenList={() => { setRevealedThought(null); setShowList(true); }}
+        onOpenList={() => { setRevealedThought(null); setListInitialFilter("all"); setShowList(true); }}
       />
 
       <Toast message={toast.message} visible={toast.visible} />
